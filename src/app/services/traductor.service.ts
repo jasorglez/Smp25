@@ -12,15 +12,8 @@ export class TraductorService {
     // Agregar los idiomas disponibles
     this.translate.addLangs(['es', 'en']);
 
-    // Obtener el idioma del navegador
-    const browserLang = this.translate.getBrowserLang();
-
-    // Verificar si browserLang tiene un valor antes de establecerlo como idioma predeterminado
-    if (browserLang) {
-      this.translate.setDefaultLang(browserLang);
-    } else {
-      this.translate.setDefaultLang('es'); // Establecer un valor predeterminado si browserLang es undefined
-    }
+    // Use Spanish as the fallback; app startup selects the browser's English or Spanish catalog.
+    this.translate.setDefaultLang('es');
 
   }
 

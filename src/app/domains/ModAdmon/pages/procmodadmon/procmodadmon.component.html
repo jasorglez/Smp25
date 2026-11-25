@@ -25,12 +25,12 @@
         </li>
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'transfers')" [style.order]="authService.getDetailedPermissionOrder('administration', 'transfers')">
           <a class="nav-link green-tab" routerLink="transferencias" routerLinkActive="active">
-            <mat-icon>swap_horiz</mat-icon><span>Transferencias</span>
+            <mat-icon>swap_horiz</mat-icon><span>{{ 'modules.administration.menu.transfers' | translate }}</span>
           </a>
         </li>
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'aportaciones')" [style.order]="authService.getDetailedPermissionOrder('administration', 'aportaciones')">
           <a class="nav-link green-tab" routerLink="aportaciones" routerLinkActive="active">
-            <mat-icon>account_balance_wallet</mat-icon><span>Aportación</span>
+            <mat-icon>account_balance_wallet</mat-icon><span>{{ 'modules.administration.menu.contribution' | translate }}</span>
           </a>
         </li>
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'income')" [style.order]="authService.getDetailedPermissionOrder('administration', 'income')">
@@ -45,22 +45,22 @@
         </li>
       <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'expend-rapido')" [style.order]="authService.getDetailedPermissionOrder('administration', 'expend-rapido')">
         <a class="nav-link green-tab" routerLink="expend-rapido" routerLinkActive="active">
-          <mat-icon>bolt</mat-icon><span>Egreso Rápido</span>
+          <mat-icon>bolt</mat-icon><span>{{ 'modules.administration.menu.quickExpense' | translate }}</span>
         </a>
       </li>
       <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'control-diario-ia')" [style.order]="authService.getDetailedPermissionOrder('administration', 'control-diario-ia')">
         <a class="nav-link green-tab" routerLink="control-diario-ia" routerLinkActive="active">
-          <mat-icon>smart_toy</mat-icon><span>Control Diario IA</span>
+          <mat-icon>smart_toy</mat-icon><span>{{ 'modules.administration.menu.dailyAiControl' | translate }}</span>
         </a>
       </li>
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'stakeholder-expend')" [style.order]="authService.getDetailedPermissionOrder('administration', 'stakeholder-expend')">
           <a class="nav-link green-tab" routerLink="stakeholder-expend" routerLinkActive="active">
-            <mat-icon>group_remove</mat-icon><span>Retiro Socios</span>
+            <mat-icon>group_remove</mat-icon><span>{{ 'modules.administration.menu.partnerWithdrawal' | translate }}</span>
           </a>
         </li>
         <li class="nav-item" *ngIf="idUser === 42">
           <a class="nav-link green-tab" routerLink="masterExpenses" routerLinkActive="active">
-            <mat-icon>paid</mat-icon><span>Egresos 3</span>
+            <mat-icon>paid</mat-icon><span>{{ 'modules.administration.menu.expensesThree' | translate }}</span>
           </a>
         </li>
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'customer')" [style.order]="authService.getDetailedPermissionOrder('administration', 'customer')">
@@ -70,27 +70,27 @@
         </li>
         <li class="nav-item">
           <a class="nav-link green-tab" routerLink="providers-st" routerLinkActive="active">
-            <i class="bi bi-people-fill"></i><span>Proveedores</span>
+            <i class="bi bi-people-fill"></i><span>{{ 'modules.administration.menu.providers' | translate }}</span>
           </a>
         </li>
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'electronic_invoice')" [style.order]="authService.getDetailedPermissionOrder('administration', 'electronic_invoice')">
           <a class="nav-link green-tab" routerLink="page04" routerLinkActive="active">
-            <mat-icon>receipt_long</mat-icon><span>Fact. Electrónica</span>
+          <mat-icon>receipt_long</mat-icon><span>{{ 'modules.administration.menu.electronicInvoicing' | translate }}</span>
           </a>
         </li>
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'accounting_accounts')" [style.order]="authService.getDetailedPermissionOrder('administration', 'accounting_accounts')">
           <a class="nav-link green-tab" routerLink="cuentas-contables" routerLinkActive="active">
-            <mat-icon>account_tree</mat-icon><span>Cuentas Contables</span>
+          <mat-icon>account_tree</mat-icon><span>{{ 'modules.administration.menu.accountingAccounts' | translate }}</span>
           </a>
         </li>
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'catalogs')" [style.order]="authService.getDetailedPermissionOrder('administration', 'catalogs')">
           <a class="nav-link green-tab" routerLink="catalogs" routerLinkActive="active">
-            <i class="bi bi-list-ul"></i><span>Catálogos</span>
+            <i class="bi bi-list-ul"></i><span>{{ 'modules.administration.menu.catalogs' | translate }}</span>
           </a>
         </li>
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'saldos')" [style.order]="authService.getDetailedPermissionOrder('administration', 'saldos')">
           <a class="nav-link green-tab" routerLink="saldos" routerLinkActive="active">
-            <mat-icon>account_balance_wallet</mat-icon><span>Saldos</span>
+            <mat-icon>account_balance_wallet</mat-icon><span>{{ 'modules.administration.menu.balances' | translate }}</span>
           </a>
         </li>
 

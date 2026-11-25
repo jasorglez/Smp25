@@ -15,7 +15,7 @@ import { NgbModal, NgbModalOptions } from '@ng-bootstrap/ng-bootstrap';
 import { AttachHandlerService } from 'app/services/attach-handler.service';
 import { MultiLineEditorComponent } from "../../../../../shared/multi-line/multi-line-editor.component";
 import { ModalService } from 'app/services/modal.service';
-import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { AG_GRID_LOCALE } from 'assets/i18n/ag-grid.locale';
 import { conventionDetailsComponent } from "./convention-details/convention-details.component";
 import { DetalleButtonRendererComponent } from "./detalle-button-renderer.component";
 import { TrackingService } from 'app/services/tracking.service';
@@ -39,7 +39,7 @@ export class ConventionsComponent {
   public attachHandlerService = inject(AttachHandlerService);
   private modalServiceTable = inject(ModalService);
 
-  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE;
   addConvention: FormGroup;
   isEditing = false;
   notSavedChanges: boolean = false;

@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { catchError, firstValueFrom, forkJoin, map, of, switchMap } from 'rxjs';
-import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { AG_GRID_LOCALE } from 'assets/i18n/ag-grid.locale';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { MaterialsService } from 'app/services/materials.service';
@@ -15,43 +15,44 @@ import { RootService } from 'app/services/root.service';
 import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
   selector: 'app-material-traceability',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, PdfReportViewerComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, PdfReportViewerComponent, TranslateModule],
   template: `
     <div class="p-3">
       <div class="d-flex align-items-center justify-content-between mb-2">
-        <div><h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Trazabilidad de materiales</h5>
-          <small class="text-muted">Requisiciones, órdenes de compra, entradas y salidas</small></div>
+        <div><h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>{{ 'modules.warehouses.ui.traceability.title' | translate }}</h5>
+          <small class="text-muted">{{ 'modules.warehouses.ui.traceability.description' | translate }}</small></div>
         <div class="d-flex align-items-center gap-3"><label class="form-check form-switch d-flex align-items-center gap-2 mb-0 small text-nowrap">
           <input class="form-check-input m-0" type="checkbox" [(ngModel)]="showZeroInventory" (ngModelChange)="applyInventoryFilter()">
-          <span>Mostrar inventario en cero <span class="badge bg-light text-secondary">{{ zeroInventoryCount }}</span></span>
+          <span>{{ 'modules.warehouses.ui.traceability.showZero' | translate }} <span class="badge bg-light text-secondary">{{ zeroInventoryCount }}</span></span>
         </label>
-        <button class="btn btn-sm btn-outline-primary" (click)="load()" [disabled]="loading"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
-        <button class="btn btn-sm btn-danger" (click)="previewPdf()" [disabled]="loading || pdfGenerating || dataWarnings.length > 0 || !rowData.length"><i class="bi bi-file-earmark-pdf"></i> {{ pdfGenerating ? 'Preparando…' : 'Ver PDF' }}</button></div>
+        <button class="btn btn-sm btn-outline-primary" (click)="load()" [disabled]="loading"><i class="bi bi-arrow-clockwise"></i> {{ 'modules.warehouses.ui.traceability.refresh' | translate }}</button>
+        <button class="btn btn-sm btn-danger" (click)="previewPdf()" [disabled]="loading || pdfGenerating || dataWarnings.length > 0 || !rowData.length"><i class="bi bi-file-earmark-pdf"></i> {{ pdfGenerating ? ('modules.warehouses.ui.traceability.preparing' | translate) : ('modules.warehouses.ui.traceability.viewPdf' | translate) }}</button></div>
       </div>
-      <div class="alert alert-info py-2" *ngIf="!projectId">Selecciona un proyecto para consultar sus movimientos.</div>
+      <div class="alert alert-info py-2" *ngIf="!projectId">{{ 'modules.warehouses.ui.traceability.selectProject' | translate }}</div>
       <div class="alert alert-warning py-2 small" *ngIf="dataWarnings.length" role="alert">
-        <strong>La trazabilidad está incompleta y no se puede conciliar.</strong>
+        <strong>{{ 'modules.warehouses.ui.traceability.incompleteWarning' | translate }}</strong>
         <div *ngFor="let warning of dataWarnings">{{ warning }}</div>
-        <span>Actualiza la consulta antes de generar el PDF.</span>
+        <span>{{ 'modules.warehouses.ui.traceability.refreshBeforePdf' | translate }}</span>
       </div>
-      <div class="text-muted py-4 text-center" *ngIf="loading"><span class="spinner-border spinner-border-sm me-2"></span>Preparando trazabilidad...</div>
+      <div class="text-muted py-4 text-center" *ngIf="loading"><span class="spinner-border spinner-border-sm me-2"></span>{{ 'modules.warehouses.ui.traceability.loading' | translate }}</div>
       <ag-grid-angular *ngIf="!loading && !pdfPreviewUrl" class="ag-theme-quartz small-text-ag-grid" style="width:100%;height:78vh"
         [rowData]="rowData" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef" [autoGroupColumnDef]="autoGroupColumnDef"
         [pagination]="true" [paginationPageSize]="25" [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)" (columnResized)="onColumnResized($event)"></ag-grid-angular>
       <section *ngIf="pdfPreviewUrl" class="traceability-pdf-preview">
         <div class="traceability-pdf-preview__heading">
-          <div><i class="bi bi-file-earmark-pdf me-2"></i>Vista previa · Trazabilidad de materiales</div>
-          <button type="button" class="btn btn-sm btn-light" (click)="closePdfPreview()"><i class="bi bi-arrow-left me-1"></i>Volver a la tabla</button>
+          <div><i class="bi bi-file-earmark-pdf me-2"></i>{{ 'modules.warehouses.ui.traceability.previewTitle' | translate }}</div>
+          <button type="button" class="btn btn-sm btn-light" (click)="closePdfPreview()"><i class="bi bi-arrow-left me-1"></i>{{ 'modules.warehouses.ui.traceability.backToTable' | translate }}</button>
         </div>
         <div class="traceability-pdf-preview__viewer">
-          <app-pdf-report-viewer [sourceUrl]="pdfPreviewUrl" title="Trazabilidad de materiales" fileName="Trazabilidad_Materiales.pdf"></app-pdf-report-viewer>
+          <app-pdf-report-viewer [sourceUrl]="pdfPreviewUrl" [title]="'modules.warehouses.ui.traceability.title' | translate" fileName="Trazabilidad_Materiales.pdf"></app-pdf-report-viewer>
         </div>
       </section>
     </div>`
@@ -64,6 +65,7 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
   `]
 })
 export class MaterialTraceabilityComponent implements OnDestroy {
+  private translate = inject(TranslateService);
   private signals = inject(SignalsService);
   private tracking = inject(TrackingService);
   private materials = inject(MaterialsService);
@@ -82,20 +84,20 @@ export class MaterialTraceabilityComponent implements OnDestroy {
   pdfPreviewUrl: string | null = null;
   private defaultWarehouseName = '';
   gridApi!: GridApi;
-  readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE;
   readonly defaultColDef: ColDef = { sortable: true, filter: true, resizable: true, flex: 1, minWidth: 110 };
-  readonly autoGroupColumnDef: ColDef = { headerName: 'Almacén / Material', minWidth: 300, flex: 2 };
+  readonly autoGroupColumnDef: ColDef = { headerName: this.translate.instant('modules.warehouses.ui.traceability.warehouseMaterial'), minWidth: 300, flex: 2 };
   readonly columnDefs: ColDef[] = [
-    { field: 'material', headerName: 'Descripción', minWidth: 360, width: 420, flex: 0, suppressSizeToFit: true },
-    { field: 'marca', headerName: 'Marca', minWidth: 130 },
-    { field: 'almacen', headerName: 'Almacén', rowGroup: true, hide: true },
-    { field: 'unidad', headerName: 'Unidad', maxWidth: 110 },
-    { field: 'requisicion', headerName: 'Requisición (cantidad)', minWidth: 180 },
-    { field: 'oc', headerName: 'OC (cantidad)', minWidth: 170 },
-    { field: 'entrada', headerName: 'Entrada', type: 'numericColumn', maxWidth: 110 },
-    { field: 'salida', headerName: 'Salida', type: 'numericColumn', maxWidth: 110 },
-    { field: 'inventario', headerName: 'Inventario', type: 'numericColumn', maxWidth: 120 },
-    { field: 'movimientos', headerName: 'Movimientos', minWidth: 180 }
+    { field: 'material', headerName: this.translate.instant('modules.warehouses.ui.traceability.descriptionColumn'), minWidth: 360, width: 420, flex: 0, suppressSizeToFit: true },
+    { field: 'marca', headerName: this.translate.instant('modules.warehouses.ui.traceability.brand'), minWidth: 130 },
+    { field: 'almacen', headerName: this.translate.instant('modules.warehouses.ui.movements.warehouse'), rowGroup: true, hide: true },
+    { field: 'unidad', headerName: this.translate.instant('modules.warehouses.ui.traceability.unit'), maxWidth: 110 },
+    { field: 'requisicion', headerName: this.translate.instant('modules.warehouses.ui.traceability.requisitionQty'), minWidth: 180 },
+    { field: 'oc', headerName: this.translate.instant('modules.warehouses.ui.traceability.poQty'), minWidth: 170 },
+    { field: 'entrada', headerName: this.translate.instant('modules.warehouses.ui.traceability.receipt'), type: 'numericColumn', maxWidth: 110 },
+    { field: 'salida', headerName: this.translate.instant('modules.warehouses.ui.traceability.issue'), type: 'numericColumn', maxWidth: 110 },
+    { field: 'inventario', headerName: this.translate.instant('modules.warehouses.ui.traceability.inventory'), type: 'numericColumn', maxWidth: 120 },
+    { field: 'movimientos', headerName: this.translate.instant('modules.warehouses.ui.traceability.movements'), minWidth: 180 }
   ];
 
   constructor() {
@@ -145,35 +147,35 @@ export class MaterialTraceabilityComponent implements OnDestroy {
     };
     const reference = this.projectId || this.idRoot;
     forkJoin({
-      materialList: this.materials.getMaterials2Fields(this.idRoot).pipe(catchError(() => { warn('No se pudo cargar el catálogo de materiales.'); return of([]); })),
-      brands: this.materials.getMaterialBrands(this.idRoot).pipe(catchError(() => { warn('No se pudo cargar el catálogo de marcas.'); return of([]); })),
-      requisitions: this.docs.getOcAndReqs('project', reference, 'REQUIS').pipe(catchError(() => { warn('No se pudieron cargar las requisiciones.'); return of([]); })),
-      orders: this.docs.getOcAndReqs('project', reference, 'OC').pipe(catchError(() => { warn('No se pudieron cargar las órdenes de compra.'); return of([]); })),
-      warehouses: this.permissions.getPermisionswarehousexEmail(this.tracking.getEmail()).pipe(catchError(() => { warn('No se pudieron cargar los almacenes autorizados.'); return of([]); }))
+      materialList: this.materials.getMaterials2Fields(this.idRoot).pipe(catchError(() => { warn(this.translate.instant('modules.warehouses.ui.traceability.warnings.materialCatalog')); return of([]); })),
+      brands: this.materials.getMaterialBrands(this.idRoot).pipe(catchError(() => { warn(this.translate.instant('modules.warehouses.ui.traceability.warnings.brandCatalog')); return of([]); })),
+      requisitions: this.docs.getOcAndReqs('project', reference, 'REQUIS').pipe(catchError(() => { warn(this.translate.instant('modules.warehouses.ui.traceability.warnings.requisitions')); return of([]); })),
+      orders: this.docs.getOcAndReqs('project', reference, 'OC').pipe(catchError(() => { warn(this.translate.instant('modules.warehouses.ui.traceability.warnings.purchaseOrders')); return of([]); })),
+      warehouses: this.permissions.getPermisionswarehousexEmail(this.tracking.getEmail()).pipe(catchError(() => { warn(this.translate.instant('modules.warehouses.ui.traceability.warnings.warehouses')); return of([]); }))
     }).pipe(switchMap(base => {
       const materialMap = new Map((this.asArray(base.materialList)).map((m: any) => [+m.id, m]));
       const brandMap = new Map(this.asArray(base.brands).map((brand: any) => [`${Number(brand.idMaterial)}|${Number(brand.id)}`, brand.brand]));
       const reqs = this.asArray(base.requisitions).filter((d: any) => d.active !== false && Number(d.active) !== 0);
       const orders = this.asArray(base.orders).filter((d: any) => d.active !== false && Number(d.active) !== 0);
       const documents$ = [...reqs, ...orders].map(d => this.docs.getReqItems(+d.id).pipe(
-        catchError(() => { warn('No se pudieron cargar partidas de una requisición u orden de compra.'); return of([]); }),
+        catchError(() => { warn(this.translate.instant('modules.warehouses.ui.traceability.warnings.purchaseLines')); return of([]); }),
         map(items => ({ d, items: this.asArray(items).filter((item: any) => item.active !== false && Number(item.active) !== 0), materialMap, brandMap }))
       ));
       const whs = this.asArray(base.warehouses);
       this.defaultWarehouseName = whs[0]?.nombreAlmacen || whs[0]?.name || whs[0]?.description || '';
       const movement$ = whs.flatMap(w => ['IN', 'OUT'].map(type => this.movements.getInAndOuts(reference, +(w.id || w.idWarehouse || w.idAlmacen), type).pipe(
-        catchError(() => { warn('No se pudieron cargar algunos encabezados de entradas o salidas.'); return of([]); }),
+        catchError(() => { warn(this.translate.instant('modules.warehouses.ui.traceability.warnings.movementHeaders')); return of([]); }),
         switchMap((masters: any) => {
         const rows = this.asArray(masters).filter((m: any) => m.active !== false && Number(m.active) !== 0);
         return rows.length ? forkJoin(rows.map(m => this.movements.getInAndOutItems(+m.id).pipe(
-          catchError(() => { warn('No se pudieron cargar partidas de una entrada o salida.'); return of([]); }),
+          catchError(() => { warn(this.translate.instant('modules.warehouses.ui.traceability.warnings.movementLines')); return of([]); }),
           map(details => ({ m, details: this.asArray(details).filter((detail: any) => detail.active !== false && Number(detail.active) !== 0) }))
         ))).pipe(map(details => ({ w, type, items: details, materialMap, brandMap }))) : of({ w, type, items: [], materialMap, brandMap });
       }))));
       return forkJoin({ documents: documents$.length ? forkJoin(documents$) : of([]), movements: movement$.length ? forkJoin(movement$) : of([]) });
     })).subscribe({
       next: result => { this.allRows = this.groupByMaterial([...this.flattenDocuments(result.documents), ...this.flattenMovements(result.movements)]); this.applyInventoryFilter(); this.loading = false; },
-      error: () => { warn('No se pudo completar la consulta de trazabilidad.'); this.allRows = []; this.rowData = []; this.loading = false; }
+      error: () => { warn(this.translate.instant('modules.warehouses.ui.traceability.warnings.query')); this.allRows = []; this.rowData = []; this.loading = false; }
     });
   }
 
@@ -266,10 +268,10 @@ export class MaterialTraceabilityComponent implements OnDestroy {
       }
     }
     const body: any[] = [[
-      { text: 'Material', bold: true, color: '#fff' }, { text: 'Marca', bold: true, color: '#fff' }, { text: 'Unidad', bold: true, color: '#fff' },
-      { text: 'Requisición (cantidad)', bold: true, color: '#fff' }, { text: 'OC (cantidad)', bold: true, color: '#fff' },
-      { text: 'Entrada', bold: true, color: '#fff' }, { text: 'Salida', bold: true, color: '#fff' },
-      { text: 'Inventario', bold: true, color: '#fff' }, { text: 'Movimientos', bold: true, color: '#fff' }
+      { text: this.translate.instant('modules.warehouses.ui.traceability.material'), bold: true, color: '#fff' }, { text: this.translate.instant('modules.warehouses.ui.traceability.brand'), bold: true, color: '#fff' }, { text: this.translate.instant('modules.warehouses.ui.traceability.unit'), bold: true, color: '#fff' },
+      { text: this.translate.instant('modules.warehouses.ui.traceability.requisitionQty'), bold: true, color: '#fff' }, { text: this.translate.instant('modules.warehouses.ui.traceability.poQty'), bold: true, color: '#fff' },
+      { text: this.translate.instant('modules.warehouses.ui.traceability.receipt'), bold: true, color: '#fff' }, { text: this.translate.instant('modules.warehouses.ui.traceability.issue'), bold: true, color: '#fff' },
+      { text: this.translate.instant('modules.warehouses.ui.traceability.inventory'), bold: true, color: '#fff' }, { text: this.translate.instant('modules.warehouses.ui.traceability.movements'), bold: true, color: '#fff' }
     ]];
     this.rowData.forEach((r, i) => body.push([
       `${r.almacen || 'General'} / ${r.material || ''}`, r.marca || '', r.unidad || '', r.requisicion || '', r.oc || '',
@@ -277,7 +279,7 @@ export class MaterialTraceabilityComponent implements OnDestroy {
     ].map((text: any) => ({ text, fontSize: 7, fillColor: i % 2 ? '#f4f7fb' : '#fff' }))));
     const centeredHeader: any[] = [];
     if (companyName) centeredHeader.push({ text: companyName, alignment: 'center', color: '#003366', bold: true, fontSize: 13, margin: [0, 0, 0, 2] });
-    centeredHeader.push({ text: 'TRAZABILIDAD DE MATERIALES', alignment: 'center', color: '#1a5a9a', bold: true, fontSize: 11 });
+    centeredHeader.push({ text: this.translate.instant('modules.warehouses.ui.traceability.title').toLocaleUpperCase(), alignment: 'center', color: '#1a5a9a', bold: true, fontSize: 11 });
     const doc: any = {
       pageOrientation: 'landscape', pageSize: 'LEGAL', pageMargins: [24, 100, 24, 35],
       header: () => ({

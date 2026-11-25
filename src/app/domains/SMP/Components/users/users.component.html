@@ -4,42 +4,42 @@
             <div class="users-heading">
                 <span class="users-heading-icon"><i class="bi bi-people-fill"></i></span>
                 <div>
-                    <h1>Usuarios</h1>
-                    <p>{{ showDeletedUsers ? 'Usuarios borrados · solo lectura' : 'Administra las cuentas y sus accesos a la empresa' }}</p>
+                    <h1>{{ 'modules.userSetup.ui.users' | translate }}</h1>
+                    <p>{{ showDeletedUsers ? ('modules.userSetup.ui.deletedReadOnly' | translate) : ('modules.userSetup.ui.accountsDescription' | translate) }}</p>
                 </div>
             </div>
 
             <div class="users-header-actions">
                 <span class="users-unsaved-status" *ngIf="notSavedChanges">
-                    <i class="bi bi-circle-fill"></i> Cambios sin guardar
+                    <i class="bi bi-circle-fill"></i> {{ 'modules.userSetup.ui.unsavedChanges' | translate }}
                 </span>
                 <button *ngIf="isRootUser && idRoot" type="button" class="btn btn-sm btn-outline-primary"
                     (click)="toggleDeletedUsers()">
                     <i class="bi" [ngClass]="showDeletedUsers ? 'bi-arrow-left' : 'bi-person-x'"></i>
-                    {{ showDeletedUsers ? 'Volver a usuarios activos' : 'Usuarios borrados' }}
+                    {{ showDeletedUsers ? ('modules.userSetup.ui.backToActive' | translate) : ('modules.userSetup.ui.deletedUsers' | translate) }}
                 </button>
             </div>
         </header>
 
         <div class="users-list-body">
-                <nav class="users-action-group" aria-label="Acciones de usuarios">
-                    <button *ngIf="!showDeletedUsers" type="button" class="btn users-action users-action-add" (click)="addRow()" title="Agregar usuario" aria-label="Agregar usuario">
-                        <i class="bi bi-plus-lg"></i><span class="visually-hidden">Agregar usuario</span>
+                <nav class="users-action-group" [attr.aria-label]="'modules.userSetup.ui.userActions' | translate">
+                    <button *ngIf="!showDeletedUsers" type="button" class="btn users-action users-action-add" (click)="addRow()" [title]="'modules.userSetup.ui.addUser' | translate" [attr.aria-label]="'modules.userSetup.ui.addUser' | translate">
+                        <i class="bi bi-plus-lg"></i><span class="visually-hidden">{{ 'modules.userSetup.ui.addUser' | translate }}</span>
                     </button>
-                    <button *ngIf="!showDeletedUsers" type="button" class="btn users-action users-action-save position-relative" (click)="saveChanges()" title="Guardar" aria-label="Guardar">
-                        <i class="bi bi-floppy"></i><span class="visually-hidden">Guardar</span>
-                        <span class="users-save-dot" *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span>
+                    <button *ngIf="!showDeletedUsers" type="button" class="btn users-action users-action-save position-relative" (click)="saveChanges()" [title]="'modules.userSetup.ui.save' | translate" [attr.aria-label]="'modules.userSetup.ui.save' | translate">
+                        <i class="bi bi-floppy"></i><span class="visually-hidden">{{ 'modules.userSetup.ui.save' | translate }}</span>
+                        <span class="users-save-dot" *ngIf="notSavedChanges"><span class="visually-hidden">{{ 'modules.userSetup.ui.unsavedChanges' | translate }}</span></span>
                     </button>
-                    <button *ngIf="!showDeletedUsers" type="button" class="btn users-action users-action-revert" (click)="revert()" title="Deshacer" aria-label="Deshacer">
-                        <i class="bi bi-arrow-counterclockwise"></i><span class="visually-hidden">Deshacer</span>
+                    <button *ngIf="!showDeletedUsers" type="button" class="btn users-action users-action-revert" (click)="revert()" [title]="'modules.userSetup.ui.undo' | translate" [attr.aria-label]="'modules.userSetup.ui.undo' | translate">
+                        <i class="bi bi-arrow-counterclockwise"></i><span class="visually-hidden">{{ 'modules.userSetup.ui.undo' | translate }}</span>
                     </button>
-                    <button *ngIf="!showDeletedUsers" type="button" class="btn users-action users-action-delete" (click)="deleteUser()" title="Borrar" aria-label="Borrar">
-                        <i class="bi bi-trash3"></i><span class="visually-hidden">Borrar</span>
+                    <button *ngIf="!showDeletedUsers" type="button" class="btn users-action users-action-delete" (click)="deleteUser()" [title]="'modules.userSetup.ui.delete' | translate" [attr.aria-label]="'modules.userSetup.ui.delete' | translate">
+                        <i class="bi bi-trash3"></i><span class="visually-hidden">{{ 'modules.userSetup.ui.delete' | translate }}</span>
                     </button>
                     <button *ngIf="isRootUser && showDeletedUsers" type="button" class="btn users-action users-action-restore"
                         (click)="restoreDeletedUser()" [disabled]="!selectedRowData"
-                        title="Restaurar usuario seleccionado" aria-label="Restaurar usuario seleccionado">
-                        <i class="bi bi-person-check"></i><span class="visually-hidden">Restaurar</span>
+                        [title]="'modules.userSetup.ui.restoreSelected' | translate" [attr.aria-label]="'modules.userSetup.ui.restoreSelected' | translate">
+                        <i class="bi bi-person-check"></i><span class="visually-hidden">{{ 'modules.userSetup.ui.restore' | translate }}</span>
                     </button>
                 </nav>
         <div class="users-list-grid">
@@ -68,7 +68,7 @@
     </section>
 </div>
 
-<!-- Modal de Permisos -->
+<!-- User permissions modal -->
 <div *ngIf="showPermissionsModal"
     class="permissions-modal-backdrop"
     (click)="closePermissionsModal()">
@@ -79,36 +79,32 @@
         <header class="permissions-modal-header">
             <div class="permissions-modal-title">
                 <span class="permissions-modal-icon"><i class="bi bi-shield-lock-fill"></i></span>
-                <div><strong>Permisos</strong><small>{{ modalUserName }}</small></div>
+                <div><strong>{{ 'modules.userSetup.ui.masterPermissions' | translate }}</strong><small>{{ modalUserName }}</small></div>
             </div>
 
             <div class="permissions-modal-actions">
-                <!-- Botón Modificar -->
-                <button class="btn btn-sm btn-outline-primary" (click)="permissionsViewRef.modificar()" title="Modificar" aria-label="Modificar permisos">
-                    <i class="bi bi-pencil"></i><span>Modificar</span>
+                <button class="btn btn-sm btn-outline-primary" (click)="permissionsViewRef.modificar()" [title]="'modules.userSetup.ui.modify' | translate" [attr.aria-label]="'modules.userSetup.ui.modifyPermissions' | translate">
+                    <i class="bi bi-pencil"></i><span>{{ 'modules.userSetup.ui.modify' | translate }}</span>
                 </button>
-                <!-- Botón Guardar -->
                 <button class="btn btn-sm btn-success position-relative"
                     (click)="permissionsViewRef.saveDetailChanges()"
                     [disabled]="!permissionsViewRef?.notSavedChanges"
-                    title="Guardar cambios">
-                    <i class="bi bi-floppy"></i><span>Guardar</span>
+                    [title]="'modules.userSetup.ui.saveChanges' | translate">
+                    <i class="bi bi-floppy"></i><span>{{ 'modules.userSetup.ui.save' | translate }}</span>
                     <span
                         class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
                         *ngIf="permissionsViewRef?.notSavedChanges">
-                        <span class="visually-hidden">Hay cambios sin guardar</span>
+                        <span class="visually-hidden">{{ 'modules.userSetup.ui.unsavedChanges' | translate }}</span>
                     </span>
                 </button>
-                <!-- Botón Revertir -->
                 <button class="btn btn-sm btn-warning"
                     (click)="permissionsViewRef.revertChanges()"
                     [disabled]="!permissionsViewRef?.notSavedChanges"
-                    title="Revertir cambios">
-                    <i class="bi bi-arrow-counterclockwise"></i><span>Deshacer</span>
+                    [title]="'modules.userSetup.ui.undoChanges' | translate">
+                    <i class="bi bi-arrow-counterclockwise"></i><span>{{ 'modules.userSetup.ui.undo' | translate }}</span>
                 </button>
-                <!-- Botón Cerrar -->
-                <button class="btn btn-sm btn-light permissions-modal-close" (click)="closePermissionsModal()" title="Cerrar" aria-label="Cerrar permisos">
-                    <i class="bi bi-x-lg"></i><span>Cerrar</span>
+                <button class="btn btn-sm btn-light permissions-modal-close" (click)="closePermissionsModal()" [title]="'modules.userSetup.ui.close' | translate" [attr.aria-label]="'modules.userSetup.ui.closePermissions' | translate">
+                    <i class="bi bi-x-lg"></i><span>{{ 'modules.userSetup.ui.close' | translate }}</span>
                 </button>
             </div>
         </header>

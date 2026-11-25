@@ -3,39 +3,40 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, GetDetailRowDataParams, IDetailCellRendererParams } from 'ag-grid-enterprise';
-import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { AG_GRID_LOCALE } from 'assets/i18n/ag-grid.locale';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom } from 'rxjs';
 import { SignalsService } from 'app/services/signals.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 // ==================== DETAIL CELL RENDERER COMPONENT ====================
 @Component({
   selector: 'app-subfamily-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, TranslateModule],
   template: `
     <div class="detail-container p-2 small">
       <!-- Botonera de subfamilias -->
       <div class="d-flex mb-1 align-items-center">
-        <span class="badge bg-info" style="font-size: 11px;">Subfamilias de: {{ parentFamily?.description }}</span>
+        <span class="badge bg-info" style="font-size: 11px;">{{ 'modules.shopping.ui.families.subfamiliesOf' | translate }} {{ parentFamily?.description }}</span>
         <div class="d-flex gap-1 ms-auto">
-          <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" (click)="closeDetail()" title="Cerrar detalle" aria-label="Cerrar detalle"><i class="bi bi-x-lg"></i></button>
-          <button class="btn btn-sm btn-success py-0 px-1" style="font-size: 11px;" (click)="addSubfamily()" title="Agregar Subfamilia">
-            <i class="bi bi-plus-lg"></i> Agregar
+          <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" (click)="closeDetail()" [title]="'modules.shopping.ui.families.closeDetail' | translate" [attr.aria-label]="'modules.shopping.ui.families.closeDetail' | translate"><i class="bi bi-x-lg"></i></button>
+          <button class="btn btn-sm btn-success py-0 px-1" style="font-size: 11px;" (click)="addSubfamily()" [title]="'modules.shopping.ui.families.addSubfamily' | translate">
+            <i class="bi bi-plus-lg"></i> {{ 'modules.shopping.ui.add' | translate }}
           </button>
-          <button class="btn btn-sm btn-primary py-0 px-1 position-relative" style="font-size: 11px;" (click)="saveSubfamilies()" [disabled]="!hasChanges" title="Guardar">
-            <i class="bi bi-floppy"></i> Guardar
+          <button class="btn btn-sm btn-primary py-0 px-1 position-relative" style="font-size: 11px;" (click)="saveSubfamilies()" [disabled]="!hasChanges" [title]="'modules.shopping.ui.save' | translate">
+            <i class="bi bi-floppy"></i> {{ 'modules.shopping.ui.save' | translate }}
             <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
               *ngIf="hasChanges">
             </span>
           </button>
-          <button class="btn btn-sm btn-warning py-0 px-1" style="font-size: 11px;" (click)="revertSubfamilies()" title="Deshacer">
-            <i class="bi bi-arrow-clockwise"></i> Deshacer
+          <button class="btn btn-sm btn-warning py-0 px-1" style="font-size: 11px;" (click)="revertSubfamilies()" [title]="'modules.shopping.ui.undo' | translate">
+            <i class="bi bi-arrow-clockwise"></i> {{ 'modules.shopping.ui.undo' | translate }}
           </button>
-          <button class="btn btn-sm btn-danger py-0 px-1" style="font-size: 11px;" (click)="deleteSubfamily()" [disabled]="!selectedSubfamily" title="Eliminar">
-            <i class="bi bi-trash"></i> Eliminar
+          <button class="btn btn-sm btn-danger py-0 px-1" style="font-size: 11px;" (click)="deleteSubfamily()" [disabled]="!selectedSubfamily" [title]="'modules.shopping.ui.delete' | translate">
+            <i class="bi bi-trash"></i> {{ 'modules.shopping.ui.delete' | translate }}
           </button>
         </div>
       </div>
@@ -75,6 +76,7 @@ import { TrackingService } from 'app/services/tracking.service';
 export class SubfamilyDetailComponent {
   private catalogsService = inject(CatalogsService);
   private trackingService = inject(TrackingService);
+  private translate = inject(TranslateService);
 
   params!: IDetailCellRendererParams;
   parentFamily: any = null;
@@ -105,7 +107,7 @@ export class SubfamilyDetailComponent {
     },
     {
       field: 'description',
-      headerName: 'Descripción',
+      headerName: this.translate.instant('modules.shopping.ui.description'),
       flex: 1,
       editable: true,
     }
@@ -183,7 +185,7 @@ export class SubfamilyDetailComponent {
 
     const invalidItems = [...newItems, ...modifiedItems].filter(item => !item.description?.trim());
     if (invalidItems.length > 0) {
-      alerts.basicAlert('Error', 'Todas las subfamilias deben tener una descripción.', 'error');
+      alerts.basicAlert(this.translate.instant('modules.shopping.ui.error'), this.translate.instant('modules.shopping.ui.families.subfamilyDescriptionRequired'), 'error');
       return;
     }
 
@@ -198,7 +200,7 @@ export class SubfamilyDetailComponent {
         await lastValueFrom(this.catalogsService.updateCatalog(item.id, dataToSave));
       }
 
-      alerts.basicAlert('Guardado', 'Las subfamilias se han guardado correctamente.', 'success');
+      alerts.basicAlert(this.translate.instant('modules.shopping.ui.saved'), this.translate.instant('modules.shopping.ui.families.subfamiliesSaved'), 'success');
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardar Subfamilias', 'Catálogo Familias/Subfamilias', this.trackingService.getEmail());
 
       // Reload all subfamilies in parent context
@@ -208,7 +210,7 @@ export class SubfamilyDetailComponent {
       }
 
     } catch (error: any) {
-      alerts.basicAlert('Error', `Error al guardar: ${error?.error?.message || error?.message || 'Error desconocido'}`, 'error');
+      alerts.basicAlert(this.translate.instant('modules.shopping.ui.error'), `${this.translate.instant('modules.shopping.ui.saveError')}: ${error?.error?.message || error?.message || this.translate.instant('modules.shopping.ui.unknownError')}`, 'error');
     }
   }
 
@@ -230,16 +232,16 @@ export class SubfamilyDetailComponent {
     }
 
     const result = await alerts.confirmAlert(
-      'Eliminar Subfamilia',
-      `¿Está seguro que desea eliminar "${this.selectedSubfamily.description}"?`,
+      this.translate.instant('modules.shopping.ui.families.deleteSubfamily'),
+      `${this.translate.instant('modules.shopping.ui.confirmDelete')} "${this.selectedSubfamily.description}"?`,
       'warning',
-      'Sí, eliminar'
+      this.translate.instant('modules.shopping.ui.yesDelete')
     );
 
     if (result.isConfirmed) {
       try {
         await lastValueFrom(this.catalogsService.deleteCatalog(this.selectedSubfamily.id));
-        alerts.basicAlert('Eliminado', 'La subfamilia se ha eliminado correctamente.', 'success');
+        alerts.basicAlert(this.translate.instant('modules.shopping.ui.deleted'), this.translate.instant('modules.shopping.ui.families.subfamilyDeleted'), 'success');
         this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminar Subfamilia', 'Catálogo Familias/Subfamilias', this.trackingService.getEmail());
 
         if (this.params.context && this.params.context.reloadSubfamilies) {
@@ -247,7 +249,7 @@ export class SubfamilyDetailComponent {
           this.loadSubfamilies();
         }
       } catch (error: any) {
-        alerts.basicAlert('Error', `Error al eliminar: ${error?.error?.message || error?.message || 'Error desconocido'}`, 'error');
+        alerts.basicAlert(this.translate.instant('modules.shopping.ui.error'), `${this.translate.instant('modules.shopping.ui.deleteError')}: ${error?.error?.message || error?.message || this.translate.instant('modules.shopping.ui.unknownError')}`, 'error');
       }
     }
   }
@@ -267,27 +269,27 @@ export class SubfamilyDetailComponent {
 @Component({
   selector: 'app-fam-subfam',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SubfamilyDetailComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, TranslateModule, SubfamilyDetailComponent],
   template: `
     <div class="container-fluid p-3">
       <div class="card">
         <div class="card-header bg-success text-white d-flex align-items-center">
-          <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Catálogo de Familias y Subfamilias</h5>
+          <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>{{ 'modules.shopping.ui.families.title' | translate }}</h5>
           <div class="d-flex gap-2 ms-auto">
-            <button class="btn btn-sm btn-light" (click)="addFamily()" title="Agregar Familia">
-              <i class="bi bi-plus-lg"></i> Agregar Familia
+            <button class="btn btn-sm btn-light" (click)="addFamily()" [title]="'modules.shopping.ui.families.addFamily' | translate">
+              <i class="bi bi-plus-lg"></i> {{ 'modules.shopping.ui.families.addFamily' | translate }}
             </button>
-            <button class="btn btn-sm btn-light position-relative" (click)="saveFamilies()" [disabled]="!hasUnsavedFamilyChanges" title="Guardar">
-              <i class="bi bi-floppy"></i> Guardar
+            <button class="btn btn-sm btn-light position-relative" (click)="saveFamilies()" [disabled]="!hasUnsavedFamilyChanges" [title]="'modules.shopping.ui.save' | translate">
+              <i class="bi bi-floppy"></i> {{ 'modules.shopping.ui.save' | translate }}
               <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
                 *ngIf="hasUnsavedFamilyChanges">
               </span>
             </button>
-            <button class="btn btn-sm btn-light" (click)="revertFamilies()" title="Deshacer">
-              <i class="bi bi-arrow-clockwise"></i> Deshacer
+            <button class="btn btn-sm btn-light" (click)="revertFamilies()" [title]="'modules.shopping.ui.undo' | translate">
+              <i class="bi bi-arrow-clockwise"></i> {{ 'modules.shopping.ui.undo' | translate }}
             </button>
-            <button class="btn btn-sm btn-light" (click)="deleteFamily()" [disabled]="!selectedFamily" title="Eliminar Familia">
-              <i class="bi bi-trash"></i> Eliminar
+            <button class="btn btn-sm btn-light" (click)="deleteFamily()" [disabled]="!selectedFamily" [title]="'modules.shopping.ui.families.deleteFamily' | translate">
+              <i class="bi bi-trash"></i> {{ 'modules.shopping.ui.delete' | translate }}
             </button>
           </div>
         </div>
@@ -317,7 +319,7 @@ export class SubfamilyDetailComponent {
       <!-- Instrucciones -->
       <div class="alert alert-info mt-3">
         <i class="bi bi-info-circle me-2"></i>
-        <strong>Instrucciones:</strong> Haga clic en la flecha <i class="bi bi-chevron-right"></i> de cada familia para expandir y ver/editar sus subfamilias.
+        <strong>{{ 'modules.shopping.ui.families.instructions' | translate }}</strong> {{ 'modules.shopping.ui.families.instructionsText' | translate }} <i class="bi bi-chevron-right"></i> {{ 'modules.shopping.ui.families.instructionsEnd' | translate }}
       </div>
     </div>
   `,
@@ -334,8 +336,9 @@ export class FamSubfamComponent {
   private signalsService = inject(SignalsService);
   private catalogsService = inject(CatalogsService);
   private trackingService = inject(TrackingService);
+  private translate = inject(TranslateService);
 
-  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE;
 
   idCompany: number = 0;
   familyGridApi!: GridApi;
@@ -363,7 +366,7 @@ export class FamSubfamComponent {
   familyColDefs: ColDef[] = [
     {
       field: 'description',
-      headerName: 'Familia',
+      headerName: this.translate.instant('modules.shopping.ui.families.family'),
       flex: 1,
       editable: true,
       cellRenderer: 'agGroupCellRenderer',
@@ -424,7 +427,7 @@ export class FamSubfamComponent {
       this.selectedFamily = null;
     } catch (error) {
       console.error('Error loading families:', error);
-      alerts.basicAlert('Error', 'Error al cargar las familias.', 'error');
+      alerts.basicAlert(this.translate.instant('modules.shopping.ui.error'), this.translate.instant('modules.shopping.ui.families.loadFamiliesError'), 'error');
     }
   }
 
@@ -483,7 +486,7 @@ export class FamSubfamComponent {
 
     const invalidItems = [...newItems, ...modifiedItems].filter(item => !item.description?.trim());
     if (invalidItems.length > 0) {
-      alerts.basicAlert('Error', 'Todas las familias deben tener una descripción.', 'error');
+      alerts.basicAlert(this.translate.instant('modules.shopping.ui.error'), this.translate.instant('modules.shopping.ui.families.familyDescriptionRequired'), 'error');
       return;
     }
 
@@ -498,14 +501,14 @@ export class FamSubfamComponent {
         await lastValueFrom(this.catalogsService.updateCatalog(item.id, dataToSave));
       }
 
-      alerts.basicAlert('Guardado', 'Las familias se han guardado correctamente.', 'success');
+      alerts.basicAlert(this.translate.instant('modules.shopping.ui.saved'), this.translate.instant('modules.shopping.ui.families.familiesSaved'), 'success');
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardar Familias', 'Catálogo Familias/Subfamilias', this.trackingService.getEmail());
 
       await this.loadFamilies();
       await this.loadAllSubfamilies();
 
     } catch (error: any) {
-      alerts.basicAlert('Error', `Error al guardar: ${error?.error?.message || error?.message || 'Error desconocido'}`, 'error');
+      alerts.basicAlert(this.translate.instant('modules.shopping.ui.error'), `${this.translate.instant('modules.shopping.ui.saveError')}: ${error?.error?.message || error?.message || this.translate.instant('modules.shopping.ui.unknownError')}`, 'error');
     }
   }
 
@@ -517,7 +520,7 @@ export class FamSubfamComponent {
 
   async deleteFamily() {
     if (!this.selectedFamily) {
-      alerts.basicAlert('Error', 'Seleccione una familia para eliminar.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.shopping.ui.error'), this.translate.instant('modules.shopping.ui.families.selectFamilyToDelete'), 'warning');
       return;
     }
 
@@ -531,26 +534,26 @@ export class FamSubfamComponent {
 
     const hasSubfamilies = this.allSubfamilies.some(s => s.parentId === this.selectedFamily.id);
     if (hasSubfamilies) {
-      alerts.basicAlert('Error', 'No se puede eliminar la familia porque tiene subfamilias asociadas. Elimine primero las subfamilias.', 'error');
+      alerts.basicAlert(this.translate.instant('modules.shopping.ui.error'), this.translate.instant('modules.shopping.ui.families.familyHasSubfamilies'), 'error');
       return;
     }
 
     const result = await alerts.confirmAlert(
-      'Eliminar Familia',
-      `¿Está seguro que desea eliminar la familia "${this.selectedFamily.description}"?`,
+      this.translate.instant('modules.shopping.ui.families.deleteFamily'),
+      `${this.translate.instant('modules.shopping.ui.confirmDeleteFamily')} "${this.selectedFamily.description}"?`,
       'warning',
-      'Sí, eliminar'
+      this.translate.instant('modules.shopping.ui.yesDelete')
     );
 
     if (result.isConfirmed) {
       try {
         await lastValueFrom(this.catalogsService.deleteCatalog(this.selectedFamily.id));
-        alerts.basicAlert('Eliminado', 'La familia se ha eliminado correctamente.', 'success');
+        alerts.basicAlert(this.translate.instant('modules.shopping.ui.deleted'), this.translate.instant('modules.shopping.ui.families.familyDeleted'), 'success');
         this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminar Familia', 'Catálogo Familias/Subfamilias', this.trackingService.getEmail());
         await this.loadFamilies();
         await this.loadAllSubfamilies();
       } catch (error: any) {
-        alerts.basicAlert('Error', `Error al eliminar: ${error?.error?.message || error?.message || 'Error desconocido'}`, 'error');
+        alerts.basicAlert(this.translate.instant('modules.shopping.ui.error'), `${this.translate.instant('modules.shopping.ui.deleteError')}: ${error?.error?.message || error?.message || this.translate.instant('modules.shopping.ui.unknownError')}`, 'error');
       }
     }
   }

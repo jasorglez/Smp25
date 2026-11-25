@@ -3,9 +3,11 @@ import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AgGridModule } from 'ag-grid-angular';
+import { TranslateModule } from '@ngx-translate/core';
 import { ColDef, GridApi, GridReadyEvent, SelectionChangedEvent } from 'ag-grid-enterprise';
 import { catchError, forkJoin, map, of } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
+import { injectWorkOrderTranslator } from '../work-order-i18n';
 import {
   LogbookPresentationResponse,
   OtSearchRequest,
@@ -24,11 +26,12 @@ const CONTENT_TYPES: Record<ContentTab, string> = {
 @Component({
   selector: 'app-busquedas-ot',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, TranslateModule],
   templateUrl: './busquedas-ot.component.html',
   styleUrl: './busquedas-ot.component.scss'
 })
 export class BusquedasOtComponent implements OnInit {
+  private readonly t = injectWorkOrderTranslator();
   private otService = inject(OtService);
   private router = inject(Router);
   private gridApi: GridApi | null = null;
@@ -78,13 +81,13 @@ export class BusquedasOtComponent implements OnInit {
   };
 
   columnDefs: ColDef[] = [
-    { field: 'id', headerName: 'ID', width: 90, pinned: 'left', suppressMenu: true },
+    { field: 'id', headerName: this.t('grid.id'), width: 90, pinned: 'left', suppressMenu: true },
     {
       field: 'active',
-      headerName: 'Estado',
+      headerName: this.t('grid.status'),
       width: 120,
       pinned: 'left',
-      valueFormatter: ({ value }) => value === false ? 'BORRADA' : 'ACTIVA',
+      valueFormatter: ({ value }) => value === false ? this.t('deleted') : this.t('active'),
       cellClassRules: {
         'status-deleted': ({ value }) => value === false,
         'status-active': ({ value }) => value !== false
@@ -92,22 +95,22 @@ export class BusquedasOtComponent implements OnInit {
     },
     {
       colId: 'logicalDeletion',
-      headerName: 'Borrado lógico',
+      headerName: this.t('grid.logicalDeletion'),
       width: 145,
-      valueGetter: ({ data }) => data?.active === false ? 'Sí' : 'No'
+      valueGetter: ({ data }) => data?.active === false ? this.t('no') : this.t('yes')
     },
     {
       field: 'cuadrilla',
-      headerName: 'Cuadrilla asignada',
+      headerName: this.t('grid.assignedCrew'),
       minWidth: 180,
       pinned: 'left',
-      valueFormatter: ({ value }) => this.normalizeCuadrillaLabel(value) || 'Sin asignar'
+      valueFormatter: ({ value }) => this.normalizeCuadrillaLabel(value) || this.t('unassigned')
     },
     {
       field: 'closed',
-      headerName: 'Cierre Web',
+      headerName: this.t('grid.webClosure'),
       width: 115,
-      valueFormatter: ({ value }) => value ? 'Sí' : 'No',
+      valueFormatter: ({ value }) => value ? this.t('yes') : this.t('no'),
       cellClassRules: {
         'semaphore-good': ({ value }) => value === true,
         'semaphore-warn': ({ value }) => value === false
@@ -115,9 +118,9 @@ export class BusquedasOtComponent implements OnInit {
     },
     {
       field: 'closedApp',
-      headerName: 'Cierre App',
+      headerName: this.t('grid.appClosure'),
       width: 115,
-      valueFormatter: ({ value }) => value ? 'Sí' : 'No',
+      valueFormatter: ({ value }) => value ? this.t('yes') : this.t('no'),
       cellClassRules: {
         'semaphore-good': ({ value }) => value === true,
         'semaphore-warn': ({ value }) => value === false
@@ -125,7 +128,7 @@ export class BusquedasOtComponent implements OnInit {
     },
     {
       field: 'photoCount',
-      headerName: 'Fotos',
+      headerName: this.t('grid.photos'),
       width: 105,
       valueFormatter: ({ value }) => this.formatContentCount(value),
       cellClassRules: {
@@ -135,7 +138,7 @@ export class BusquedasOtComponent implements OnInit {
     },
     {
       field: 'personalCount',
-      headerName: 'Personal',
+      headerName: this.t('grid.personnel'),
       width: 110,
       valueFormatter: ({ value }) => this.formatContentCount(value),
       cellClassRules: {
@@ -145,7 +148,7 @@ export class BusquedasOtComponent implements OnInit {
     },
     {
       field: 'materialCount',
-      headerName: 'Material',
+      headerName: this.t('grid.material'),
       width: 110,
       valueFormatter: ({ value }) => this.formatContentCount(value),
       cellClassRules: {
@@ -155,7 +158,7 @@ export class BusquedasOtComponent implements OnInit {
     },
     {
       field: 'equipmentCount',
-      headerName: 'Equipos',
+      headerName: this.t('grid.equipment'),
       width: 110,
       valueFormatter: ({ value }) => this.formatContentCount(value),
       cellClassRules: {
@@ -163,28 +166,28 @@ export class BusquedasOtComponent implements OnInit {
         'semaphore-bad': ({ value }) => Number(value) <= 0
       }
     },
-    { field: 'cdc', headerName: 'CDC', width: 130, pinned: 'left' },
-    { field: 'otNumber', headerName: 'Número OT', width: 150, pinned: 'left' },
-    { field: 'area', headerName: 'Área', width: 140 },
-    { field: 'idProject', headerName: 'ID Proyecto', width: 125 },
-    { field: 'cuentaHoja', headerName: 'Hoja', width: 100 },
-    { field: 'description', headerName: 'Descripción', minWidth: 260, flex: 1 },
-    { field: 'assignedTo', headerName: 'Asignado a', minWidth: 170 },
-    { field: 'nameConsumer', headerName: 'Usuario', minWidth: 190 },
-    { field: 'propertyNumber', headerName: 'Cuenta/Predio', minWidth: 140 },
-    { field: 'contractNumber', headerName: 'Contrato', minWidth: 130 },
-    { field: 'phoneConsumer', headerName: 'Teléfono', minWidth: 140 },
-    { field: 'address', headerName: 'Dirección', minWidth: 220 },
-    { field: 'addressNumber', headerName: 'Número', width: 110 },
-    { field: 'neighborhood', headerName: 'Colonia', minWidth: 180 },
-    { field: 'chargePhase', headerName: 'Fase', width: 120 },
-    { field: 'hydrometerNumber', headerName: 'Medidor', minWidth: 140 },
-    { field: 'period', headerName: 'Periodo', width: 120 },
-    { field: 'lastActivity', headerName: 'Última actividad', minWidth: 175, valueFormatter: ({ value }) => this.formatDate(value) },
-    { field: 'observations', headerName: 'Observaciones', minWidth: 240 },
-    { field: 'results', headerName: 'Resultados', minWidth: 240 },
-    { field: 'registerDate', headerName: 'Fecha de registro', minWidth: 175, valueFormatter: ({ value }) => this.formatDate(value) },
-    { field: 'closedAt', headerName: 'Fecha de cierre', minWidth: 175, valueFormatter: ({ value }) => this.formatDate(value) }
+    { field: 'cdc', headerName: this.t('grid.cdc'), width: 130, pinned: 'left' },
+    { field: 'otNumber', headerName: this.t('grid.otNumber'), width: 150, pinned: 'left' },
+    { field: 'area', headerName: this.t('grid.area'), width: 140 },
+    { field: 'idProject', headerName: this.t('grid.projectId'), width: 125 },
+    { field: 'cuentaHoja', headerName: this.t('grid.sheet'), width: 100 },
+    { field: 'description', headerName: this.t('grid.description'), minWidth: 260, flex: 1 },
+    { field: 'assignedTo', headerName: this.t('grid.assignedTo'), minWidth: 170 },
+    { field: 'nameConsumer', headerName: this.t('grid.user'), minWidth: 190 },
+    { field: 'propertyNumber', headerName: this.t('grid.accountProperty'), minWidth: 140 },
+    { field: 'contractNumber', headerName: this.t('grid.contract'), minWidth: 130 },
+    { field: 'phoneConsumer', headerName: this.t('grid.phone'), minWidth: 140 },
+    { field: 'address', headerName: this.t('grid.address'), minWidth: 220 },
+    { field: 'addressNumber', headerName: this.t('grid.number'), width: 110 },
+    { field: 'neighborhood', headerName: this.t('grid.neighborhood'), minWidth: 180 },
+    { field: 'chargePhase', headerName: this.t('grid.phase'), width: 120 },
+    { field: 'hydrometerNumber', headerName: this.t('grid.meter'), minWidth: 140 },
+    { field: 'period', headerName: this.t('grid.period'), width: 120 },
+    { field: 'lastActivity', headerName: this.t('grid.lastActivity'), minWidth: 175, valueFormatter: ({ value }) => this.formatDate(value) },
+    { field: 'observations', headerName: this.t('grid.observations'), minWidth: 240 },
+    { field: 'results', headerName: this.t('grid.results'), minWidth: 240 },
+    { field: 'registerDate', headerName: this.t('grid.registerDate'), minWidth: 175, valueFormatter: ({ value }) => this.formatDate(value) },
+    { field: 'closedAt', headerName: this.t('grid.closedAt'), minWidth: 175, valueFormatter: ({ value }) => this.formatDate(value) }
   ];
 
   gridOptions = {
@@ -260,7 +263,7 @@ export class BusquedasOtComponent implements OnInit {
         this.gridApi?.showNoRowsOverlay();
         const message = error?.error?.message || error?.error?.Message || error?.message
           || 'No fue posible consultar las órdenes de trabajo.';
-        alerts.basicAlert('Error en Búsquedas OT', message, 'error');
+        alerts.basicAlert(this.t('alerts.searchErrorTitle'), message, 'error');
       }
     });
   }
@@ -374,7 +377,7 @@ export class BusquedasOtComponent implements OnInit {
 
   exportPage(): void {
     if (!this.rowData.length) {
-      alerts.basicAlert('Sin datos', 'No hay resultados para exportar en la página actual.', 'warning');
+      alerts.basicAlert(this.t('alerts.noDataTitle'), this.t('alerts.noPageResultsToExport'), 'warning');
       return;
     }
 
@@ -385,7 +388,7 @@ export class BusquedasOtComponent implements OnInit {
 
   openSelectedOt(): void {
     if (!this.selectedOt?.id) {
-      alerts.basicAlert('Sin selección', 'Selecciona una OT para abrir su detalle.', 'warning');
+      alerts.basicAlert(this.t('alerts.noSelectionTitle'), this.t('alerts.selectOtToOpenDetails'), 'warning');
       return;
     }
 
@@ -453,7 +456,7 @@ export class BusquedasOtComponent implements OnInit {
 
   openContentModal(tab: ContentTab): void {
     if (!this.selectedOt?.id) {
-      alerts.basicAlert('Sin selección', 'Selecciona una OT para ver su contenido.', 'warning');
+      alerts.basicAlert(this.t('alerts.noSelectionTitle'), this.t('alerts.selectOtToViewContent'), 'warning');
       return;
     }
 
@@ -531,7 +534,7 @@ export class BusquedasOtComponent implements OnInit {
         };
         this.contentModalLoadedOtId = null;
         this.contentModalLoading = false;
-        this.contentModalError = 'No fue posible cargar el detalle de contenido de esta OT.';
+        this.contentModalError = this.t('alerts.contentLoadFailed');
       }
     });
   }
@@ -541,7 +544,7 @@ export class BusquedasOtComponent implements OnInit {
     return this.otService.getLogbooksPresentationByOt(otId, typeNote).pipe(
       map((response: LogbookPresentationResponse) => Array.isArray(response?.data) ? response.data : []),
       catchError(() => {
-        this.contentModalError = this.contentModalError || 'Una o más categorías no pudieron cargarse.';
+        this.contentModalError = this.contentModalError || this.t('alerts.someCategoriesFailed');
         return of([]);
       })
     );

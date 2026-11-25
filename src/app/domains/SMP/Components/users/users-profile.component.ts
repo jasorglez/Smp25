@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, Input } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { catchError, forkJoin, of } from 'rxjs';
 import { BranchsService } from 'app/services/branchs.service';
 import { ContractsService } from 'app/services/contracts.service';
@@ -26,7 +27,7 @@ interface ProfileCompanyGroup {
 @Component({
   selector: 'app-users-profile',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   templateUrl: './users-profile.component.html',
   styleUrl: './users-profile.component.scss'
 })

@@ -6,7 +6,7 @@ import { CellClickedEvent, ColDef, GridApi } from 'ag-grid-enterprise';
 import * as XLSX from 'xlsx';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
-import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { AG_GRID_LOCALE } from 'assets/i18n/ag-grid.locale';
 import { alerts } from 'app/helpers/alerts';
 import { MaterialsService } from 'app/services/materials.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -37,7 +37,7 @@ export class SubcontractProgramsComponent {
   loading = false;
   program: any = this.emptyProgram();
   private gridApi?: GridApi;
-  readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE;
   readonly defaultColDef: ColDef = {
     sortable: true,
     filter: true,

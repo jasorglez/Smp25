@@ -4,12 +4,12 @@
       <header class="permissions-header">
         <span class="permissions-icon"><i class="bi bi-shield-check"></i></span>
         <div>
-          <h5>Permisos maestros</h5>
-          <p>Configure los accesos de {{ profile().nameUser() || profile().emailUser() }}</p>
+          <h5>{{ 'modules.userSetup.ui.masterPermissions' | translate }}</h5>
+          <p>{{ 'modules.userSetup.ui.configureAccessFor' | translate }} {{ profile().nameUser() || profile().emailUser() }}</p>
         </div>
       </header>
-    <p class="text-muted px-3">Permisos para la empresa seleccionada en el sidebar.</p>
-    <p *ngIf="loading" class="text-muted px-3" role="status">Cargando permisos…</p>
+    <p class="text-muted px-3">{{ 'modules.userSetup.ui.permissionsForSelectedCompany' | translate }}</p>
+    <p *ngIf="loading" class="text-muted px-3" role="status">{{ 'modules.userSetup.ui.loadingPermissions' | translate }}</p>
     <div class="row g-3 permissions-grid">
       <div class="col-xl-3 col-lg-4 col-sm-6 col-12" *ngFor="let master of masterPermissions">
         <div class="accordion" id="permissionsAccordion{{ master.id }}">
@@ -36,12 +36,12 @@
                 <!-- Botones masivos -->
                 <div class="d-flex gap-1 align-items-center mb-2 pb-2 border-bottom">
                   <button class="btn btn-outline-success btn-sm permission-action"
-                    [disabled]="loading || saving" (click)="enableAllInMaster(master)" title="Activar todos">
-                    <i class="bi bi-check2-all"></i> Activar todos
+                    [disabled]="loading || saving" (click)="enableAllInMaster(master)" [title]="'modules.userSetup.ui.enableAll' | translate">
+                    <i class="bi bi-check2-all"></i> {{ 'modules.userSetup.ui.enableAll' | translate }}
                   </button>
                   <button class="btn btn-outline-danger btn-sm permission-action"
-                    [disabled]="loading || saving" (click)="disableAllInMaster(master)" title="Desactivar todos">
-                    <i class="bi bi-x-circle"></i> Desactivar todos
+                    [disabled]="loading || saving" (click)="disableAllInMaster(master)" [title]="'modules.userSetup.ui.disableAll' | translate">
+                    <i class="bi bi-x-circle"></i> {{ 'modules.userSetup.ui.disableAll' | translate }}
                   </button>
                 </div>
                 <!-- Switches individuales -->

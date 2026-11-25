@@ -1,6 +1,7 @@
 import { Component, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import Swal from 'sweetalert2';
 import { RootService } from 'app/services/root.service';
@@ -11,11 +12,12 @@ import { canSeeWarehouseCleanup } from 'app/guards/warehouse-cleanup.guard';
 @Component({
   selector: 'app-warehouse-module-cleanup',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslateModule],
   templateUrl: './module-cleanup.component.html'
 })
 export class ModuleCleanupComponent {
   readonly signals = inject(SignalsService);
+  private readonly translate = inject(TranslateService);
   private readonly service = inject(WarehouseCleanupService);
   private readonly rootService = inject(RootService);
   companyName = '';
@@ -27,15 +29,15 @@ export class ModuleCleanupComponent {
   executing = false;
   error = '';
   result = '';
-  readonly groups: Array<{ key: WarehouseCleanupGroup; label: string; selected: boolean }> = [
-    { key: 'materials', label: 'Materiales y sus relaciones', selected: true },
-    { key: 'providers', label: 'Proveedores y sus relaciones', selected: true },
-    { key: 'requisitions', label: 'Requisiciones y sus partidas', selected: true },
-    { key: 'purchaseOrders', label: 'Órdenes de compra y sus partidas', selected: true },
-    { key: 'quotes', label: 'Cotizaciones y otros documentos de compra', selected: true },
-    { key: 'entries', label: 'Entradas y sus partidas', selected: true },
-    { key: 'exits', label: 'Salidas y sus partidas', selected: true },
-    { key: 'otherMovements', label: 'Otros movimientos de almacén', selected: true }
+  readonly groups: Array<{ key: WarehouseCleanupGroup; labelKey: string; selected: boolean }> = [
+    { key: 'materials', labelKey: 'modules.warehouseCleanup.groups.materials', selected: true },
+    { key: 'providers', labelKey: 'modules.warehouseCleanup.groups.providers', selected: true },
+    { key: 'requisitions', labelKey: 'modules.warehouseCleanup.groups.requisitions', selected: true },
+    { key: 'purchaseOrders', labelKey: 'modules.warehouseCleanup.groups.purchaseOrders', selected: true },
+    { key: 'quotes', labelKey: 'modules.warehouseCleanup.groups.quotes', selected: true },
+    { key: 'entries', labelKey: 'modules.warehouseCleanup.groups.entries', selected: true },
+    { key: 'exits', labelKey: 'modules.warehouseCleanup.groups.exits', selected: true },
+    { key: 'otherMovements', labelKey: 'modules.warehouseCleanup.groups.otherMovements', selected: true }
   ];
 
   constructor() {
@@ -53,7 +55,7 @@ export class ModuleCleanupComponent {
   get selectedGroups(): WarehouseCleanupGroup[] { return this.groups.filter(group => group.selected).map(group => group.key); }
   get allSelected(): boolean { return this.groups.every(group => group.selected); }
   get someSelected(): boolean { return this.groups.some(group => group.selected); }
-  get keptGroupNames(): string { return this.groups.filter(group => !group.selected).map(group => group.label).join(', '); }
+  get keptGroupNames(): string { return this.groups.filter(group => !group.selected).map(group => this.translate.instant(group.labelKey)).join(', '); }
 
   toggleAll(selected: boolean): void {
     if (this.busy) return;
@@ -108,13 +110,13 @@ export class ModuleCleanupComponent {
       const preview = await firstValueFrom(this.service.preview(id, groups));
       if (id === this.selectedCompanyId && this.isRoot) {
         if (!this.matchesSelection(preview)) {
-          this.error = 'El servidor debe actualizarse para respetar los grupos seleccionados. No se ejecutará la limpieza.';
+          this.error = this.translate.instant('modules.warehouseCleanup.serverOutdated');
           return;
         }
         this.preview = preview;
       }
     } catch (error: any) {
-      if (id === this.selectedCompanyId) this.error = error?.error?.message || 'No se pudo consultar la vista previa. No se ejecutó ninguna limpieza.';
+      if (id === this.selectedCompanyId) this.error = error?.error?.message || this.translate.instant('modules.warehouseCleanup.previewFailed');
     } finally { this.busy = false; }
   }
 

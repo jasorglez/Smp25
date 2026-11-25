@@ -8,6 +8,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { OtRowNumbers } from 'app/helpers/ot-row-numbers';
 import { alerts } from 'app/helpers/alerts';
 import { OrdenesComponent } from '../ordenes/ordenes.component';
+import { injectWorkOrderTranslator } from '../work-order-i18n';
 
 interface ReportData {
   id: number;
@@ -36,6 +37,7 @@ interface ReportData {
   styleUrl: './inspeccion.component.scss'
 })
 export class InspeccionComponent implements OnInit {
+  private readonly t = injectWorkOrderTranslator();
 
   // Servicios
   private otService = inject(OtService);
@@ -91,7 +93,7 @@ export class InspeccionComponent implements OnInit {
   public reportesColumnDefs: ColDef[] = [
     {
       field: 'date',
-      headerName: 'Fecha',
+      headerName: this.t('grid.date'),
       width: 120,
       rowGroup: true,
       hide: true,
@@ -103,12 +105,12 @@ export class InspeccionComponent implements OnInit {
     },
     {
       field: 'projectName',
-      headerName: 'Cuadrillas',
+      headerName: this.t('grid.crews'),
       width: 120      
     },
     {
       field: 'startTime',
-      headerName: 'Inicio',
+      headerName: this.t('grid.start'),
       width: 100,
       valueFormatter: (params) => {
         return params.value ? params.value.substring(0, 5) : '';
@@ -116,7 +118,7 @@ export class InspeccionComponent implements OnInit {
     },
     {
       field: 'endTime',
-      headerName: 'Término',
+      headerName: this.t('grid.end'),
       width: 100,
       valueFormatter: (params) => {
         return params.value ? params.value.substring(0, 5) : '';
@@ -124,7 +126,7 @@ export class InspeccionComponent implements OnInit {
     },
     {
       field: 'totalPay',
-      headerName: 'Total $',
+      headerName: this.t('grid.totalAmount'),
       hide: !this.signalsService.getrootChoose(), // ← Esto oculta toda la columna
       width: 120,
       aggFunc: 'sum',
@@ -139,22 +141,22 @@ export class InspeccionComponent implements OnInit {
     },
     {
       field: 'otNumber',
-      headerName: 'OT',
+      headerName: this.t('grid.workOrder'),
       width: 120
     },
     {
       field: 'cdc',
-      headerName: 'CDC',
+      headerName: this.t('grid.cdc'),
       width: 100
     },
     {
       field: 'area',
-      headerName: 'Área',
+      headerName: this.t('grid.area'),
       width: 150
     },
     {
       field: 'description',
-      headerName: 'Descripción',
+      headerName: this.t('grid.description'),
       flex: 1,
       minWidth: 200
     }
@@ -164,7 +166,7 @@ export class InspeccionComponent implements OnInit {
   public otsColumnDefs: ColDef[] = [
     {
       colId: 'contentIndicators',
-      headerName: 'Contenido',
+      headerName: this.t('grid.content'),
       width: 112,
       minWidth: 104,
       maxWidth: 160,
@@ -189,7 +191,7 @@ export class InspeccionComponent implements OnInit {
     },
     {
       field: 'otNumber',
-      headerName: 'OT',
+      headerName: this.t('grid.workOrder'),
       width: 80,
       minWidth: 74,
       sortable: true,
@@ -197,7 +199,7 @@ export class InspeccionComponent implements OnInit {
     },
     {
       field: 'cdc',
-      headerName: 'CDC',
+      headerName: this.t('grid.cdc'),
       width: 88,
       minWidth: 80,
       sortable: true,
@@ -205,7 +207,7 @@ export class InspeccionComponent implements OnInit {
     },
     {
       field: 'results',
-      headerName: 'Respuesta',
+      headerName: this.t('grid.response'),
       flex: 1,
       minWidth: 110,
       sortable: true,

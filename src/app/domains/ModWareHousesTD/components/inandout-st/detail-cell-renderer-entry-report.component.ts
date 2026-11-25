@@ -7,29 +7,30 @@ import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { TrackingService } from 'app/services/tracking.service';
 import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 (pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
 
 @Component({
   selector: 'app-detail-cell-renderer-entry-report',
   standalone: true,
-  imports: [CommonModule, PdfReportViewerComponent],
+  imports: [CommonModule, PdfReportViewerComponent, TranslateModule],
   template: `
     <div class="report-detail-container">
       <div class="report-header d-flex justify-content-between align-items-center mb-3">
-        <h5 class="mb-0">Vista Previa del Reporte - Folio: {{ entryData?.folio || 'Sin Folio' }}</h5>
+        <h5 class="mb-0">{{ 'modules.warehouses.ui.report.previewTitle' | translate }} - {{ 'modules.warehouses.ui.report.reference' | translate }}: {{ entryData?.folio || ('modules.warehouses.ui.report.noReference' | translate) }}</h5>
         <div class="d-flex align-items-center gap-2">
 
-          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()"><i class="bi bi-x-lg"></i> Cerrar</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()"><i class="bi bi-x-lg"></i> {{ 'modules.warehouses.ui.report.close' | translate }}</button>
         </div>
       </div>
       <div class="report-content" style="width:100%; min-width:0; height:920px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
-        <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" title="Reporte de entrada" fileName="Reporte_Entrada.pdf"></app-pdf-report-viewer>
+        <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" [title]="'modules.warehouses.ui.report.receiptReport' | translate" fileName="Reporte_Entrada.pdf"></app-pdf-report-viewer>
         <div *ngIf="!pdfUrl" class="d-flex justify-content-center align-items-center h-100">
           <div class="text-center">
             <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">Generando reporte...</span>
+              <span class="visually-hidden">{{ 'modules.warehouses.ui.report.generating' | translate }}</span>
             </div>
-            <p class="mt-2 text-muted">Generando reporte PDF...</p>
+            <p class="mt-2 text-muted">{{ 'modules.warehouses.ui.report.generatingPdf' | translate }}</p>
           </div>
         </div>
       </div>
@@ -51,6 +52,7 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
   private context: any;
   private sanitizer = inject(DomSanitizer);
   private trackingService = inject(TrackingService);
+  private translate = inject(TranslateService);
 
   entryData: any = null;
   pdfUrl: SafeResourceUrl | null = null;
@@ -138,26 +140,26 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
         },
         content: [
           {
-            text: `Vale de ${this.entryData.type === 'IN' ? 'Entrada' : 'Salida'} - Folio: ${this.entryData.folio || 'Sin Folio'}`,
+            text: `${this.translate.instant(this.entryData.type === 'IN' ? 'modules.warehouses.ui.movements.receiptVoucher' : 'modules.warehouses.ui.movements.issue') } - ${this.translate.instant('modules.warehouses.ui.report.reference')}: ${this.entryData.folio || this.translate.instant('modules.warehouses.ui.report.noReference')}`,
             style: 'header'
           },
           {
-            text: `Detalles de ${this.entryData.type === 'IN' ? 'Entrada' : 'Salida'}`,
+            text: `${this.translate.instant('modules.warehouses.ui.report.detailsOf')} ${this.translate.instant(this.entryData.type === 'IN' ? 'modules.warehouses.ui.movements.receipt' : 'modules.warehouses.ui.movements.issue')}`,
             style: 'subheader'
           },
           {
             table: {
               widths: ['25%', '75%'],
               body: [
-                ['Folio', this.entryData.folio || 'N/A'],
-                ['Fecha', this.entryData.date ? new Date(this.entryData.date).toLocaleDateString('es-MX') : 'N/A'],
-                ['Fecha Entrega', this.entryData.deliveryDate ? new Date(this.entryData.deliveryDate).toLocaleDateString('es-MX') : 'N/A'],
-                ['Factura', this.entryData.numBill || 'N/A'],
-                ['Entregado Por', this.entryData.deliverName || 'N/A'],
-                ['Comentario', this.entryData.comment || 'N/A'],
-                ['Tipo Entrada', this.entryData.directEntry ? 'Directa' : 'Normal'],
-                ['Cliente/OC', this.entryData.ocList || 'N/A'],
-                ['Items', this.entryData.countrow || 0]
+                [this.translate.instant('modules.warehouses.ui.report.fields.folio'), this.entryData.folio || 'N/A'],
+                [this.translate.instant('modules.warehouses.ui.report.fields.date'), this.entryData.date ? new Date(this.entryData.date).toLocaleDateString(this.translate.currentLang === 'en' ? 'en-US' : 'es-MX') : 'N/A'],
+                [this.translate.instant('modules.warehouses.ui.report.fields.deliveryDate'), this.entryData.deliveryDate ? new Date(this.entryData.deliveryDate).toLocaleDateString(this.translate.currentLang === 'en' ? 'en-US' : 'es-MX') : 'N/A'],
+                [this.translate.instant('modules.warehouses.ui.report.fields.invoice'), this.entryData.numBill || 'N/A'],
+                [this.translate.instant('modules.warehouses.ui.report.fields.deliveredBy'), this.entryData.deliverName || 'N/A'],
+                [this.translate.instant('modules.warehouses.ui.report.fields.comment'), this.entryData.comment || 'N/A'],
+                [this.translate.instant('modules.warehouses.ui.report.fields.entryType'), this.translate.instant(this.entryData.directEntry ? 'modules.warehouses.ui.report.fields.direct' : 'modules.warehouses.ui.report.fields.normal')],
+                [this.translate.instant('modules.warehouses.ui.report.fields.customerPurchaseOrder'), this.entryData.ocList || 'N/A'],
+                [this.translate.instant('modules.warehouses.ui.report.fields.items'), this.entryData.countrow || 0]
               ]
             },
             layout: {
@@ -177,7 +179,7 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
                 width: '50%',
                 stack: [
                   {
-                    text: 'Entrega:',
+                    text: `${this.translate.instant('modules.warehouses.ui.report.deliver')}:`,
                     style: 'signatureLabel',
                     margin: [0, 0, 0, 2]
                   },
@@ -186,7 +188,7 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
                     margin: [0, 0, 0, 2]
                   },
                   {
-                    text: 'Nombre',
+                    text: this.translate.instant('modules.warehouses.ui.report.name'),
                     style: 'signatureText',
                     margin: [0, 1, 0, 1]
                   },
@@ -195,7 +197,7 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
                     margin: [0, 0, 0, 2]
                   },
                   {
-                    text: 'Firma',
+                    text: this.translate.instant('modules.warehouses.ui.report.signature'),
                     style: 'signatureText',
                     margin: [0, 1, 0, 0]
                   }
@@ -206,7 +208,7 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
                 width: '50%',
                 stack: [
                   {
-                    text: 'Recibe:',
+                    text: `${this.translate.instant('modules.warehouses.ui.report.receivedBy')}:`,
                     style: 'signatureLabel',
                     margin: [0, 0, 0, 2]
                   },
@@ -215,7 +217,7 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
                     margin: [0, 0, 0, 2]
                   },
                   {
-                    text: 'Nombre',
+                    text: this.translate.instant('modules.warehouses.ui.report.name'),
                     style: 'signatureText',
                     margin: [0, 1, 0, 1]
                   },
@@ -224,7 +226,7 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
                     margin: [0, 0, 0, 2]
                   },
                   {
-                    text: 'Firma',
+                    text: this.translate.instant('modules.warehouses.ui.report.signature'),
                     style: 'signatureText',
                     margin: [0, 1, 0, 0]
                   }

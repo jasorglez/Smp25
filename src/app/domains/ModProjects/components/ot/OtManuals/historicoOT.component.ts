@@ -12,6 +12,7 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { alerts } from 'app/helpers/alerts';
 import { environment } from '@env/environment';
 import { TrackingService } from 'app/services/tracking.service';
+import { injectWorkOrderTranslator } from '../work-order-i18n';
 
 // Interface para los datos históricos de OT
 interface HistoricoOTData {
@@ -40,6 +41,7 @@ interface HistoricoOTData {
   styleUrl: './historicoOT.component.scss'
 })
 export class HistoricoOTComponent implements OnInit {
+  private readonly t = injectWorkOrderTranslator();
   private readonly addAreaOption = '+ Agregar nueva Área';
   private lastManualDescription = 'RECONEXION DE MEDIDOR';
   private lastManualArea = '';
@@ -93,7 +95,7 @@ export class HistoricoOTComponent implements OnInit {
   public readonly columnDefs: ColDef[] = [
       {
         field: 'id',
-        headerName: 'ID',
+        headerName: this.t('grid.id'),
         sortable: true,
         filter: true,
         resizable: true,
@@ -104,7 +106,7 @@ export class HistoricoOTComponent implements OnInit {
       },
       {
         field: 'projectName',
-        headerName: 'Proyecto',
+        headerName: this.t('grid.project'),
         sortable: true,
         filter: true,
         resizable: true,
@@ -121,7 +123,7 @@ export class HistoricoOTComponent implements OnInit {
       },
       {
         field: 'cuentaHoja',
-        headerName: 'Nº Hoja',
+        headerName: this.t('grid.sheetNumber'),
         sortable: true,
         filter: true,
         resizable: true,
@@ -135,7 +137,7 @@ export class HistoricoOTComponent implements OnInit {
       },
       {
         field: 'otNumber',
-        headerName: 'Número OT',
+        headerName: this.t('grid.otNumber'),
         sortable: true,
         filter: true,
         resizable: true,
@@ -144,7 +146,7 @@ export class HistoricoOTComponent implements OnInit {
       },
       {
         field: 'cdc',
-        headerName: 'CDC',
+        headerName: this.t('grid.cdc'),
         sortable: true,
         filter: true,
         resizable: true,
@@ -153,7 +155,7 @@ export class HistoricoOTComponent implements OnInit {
       },
       {
         field: 'package',
-        headerName: 'Paquete',
+        headerName: this.t('grid.package'),
         sortable: true,
         filter: true,
         resizable: true,
@@ -167,7 +169,7 @@ export class HistoricoOTComponent implements OnInit {
       },
       {
         field: 'area',
-        headerName: 'Área',
+        headerName: this.t('grid.area'),
         sortable: true,
         filter: true,
         resizable: true,
@@ -183,7 +185,7 @@ export class HistoricoOTComponent implements OnInit {
       },
       {
         field: 'description',
-        headerName: 'Descripción',
+        headerName: this.t('grid.description'),
         sortable: true,
         filter: true,
         resizable: true,
@@ -197,7 +199,7 @@ export class HistoricoOTComponent implements OnInit {
       },
       {
         field: 'observations',
-        headerName: 'Observaciones',
+        headerName: this.t('grid.observations'),
         sortable: true,
         filter: true,
         resizable: true,
@@ -211,7 +213,7 @@ export class HistoricoOTComponent implements OnInit {
       },
       {
         field: 'closed',
-        headerName: 'Cerrado Web',
+        headerName: this.t('grid.webClosed'),
         sortable: true,
         filter: true,
         resizable: true,
@@ -222,7 +224,7 @@ export class HistoricoOTComponent implements OnInit {
       },
         {
         field: 'closedApp',
-        headerName: 'Cerrado App',
+        headerName: this.t('grid.appClosed'),
         sortable: true,
         filter: true,
         resizable: true,
@@ -269,7 +271,7 @@ export class HistoricoOTComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error al cargar proyectos:', error);
-        alerts.basicAlert('Error', 'No se pudieron cargar los proyectos', 'error');
+        alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.projectsLoadFailed'), 'error');
       }
     });
   }
@@ -288,7 +290,7 @@ export class HistoricoOTComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error al cargar catálogo de áreas:', error);
-        alerts.basicAlert('Error', 'No se pudo cargar el catálogo de áreas', 'error');
+        alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.areasLoadFailed'), 'error');
       }
     });
   }
@@ -322,7 +324,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       this.rowData = [];
       this.autoSizeColumns();
       // Opcional: mostrar mensaje informativo en lugar de error
-      // alerts.basicAlert('Información', 'No se encontraron OTs cerradas para este proyecto', 'info');
+      // alerts.basicAlert(this.t('alerts.infoTitle'), 'No se encontraron OTs cerradas para este proyecto', 'info');
       return;
     }
     
@@ -359,20 +361,20 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       this.rowData = [];
       this.autoSizeColumns();
       // Opcional: mostrar mensaje informativo
-      // alerts.basicAlert('Información', 'No se encontraron OTs cerradas para este proyecto', 'info');
+      // alerts.basicAlert(this.t('alerts.infoTitle'), 'No se encontraron OTs cerradas para este proyecto', 'info');
     } else if (error.status === 500) {
       console.error('Error interno del servidor:', error.error);
-      alerts.basicAlert('Error', 'Error interno del servidor al cargar las OTs', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.serverErrorLoadingWorkOrders'), 'error');
       this.rowData = [];
       this.autoSizeColumns();
     } else if (error.status === 0) {
       console.error('Error de conexión');
-      alerts.basicAlert('Error', 'Error de conexión. Verifique su red.', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.connectionErrorCheckNetwork'), 'error');
       this.rowData = [];
       this.autoSizeColumns();
     } else {
       console.error('Error desconocido:', error);
-      alerts.basicAlert('Error', 'No se pudieron cargar las OTs del proyecto', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.projectWorkOrdersLoadFailed'), 'error');
       this.rowData = [];
       this.autoSizeColumns();
     }
@@ -487,15 +489,15 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
   saveNewArea(): void {
     const description = this.normalizeText(this.newAreaName);
     if (!description) {
-      alerts.basicAlert('Área requerida', 'Escribe el nombre del área.', 'warning');
+      alerts.basicAlert(this.t('alerts.areaRequiredTitle'), this.t('alerts.enterAreaName'), 'warning');
       return;
     }
     if (description.length > 50) {
-      alerts.basicAlert('Nombre muy largo', 'El nombre del área debe tener máximo 50 caracteres.', 'warning');
+      alerts.basicAlert(this.t('alerts.nameTooLongTitle'), this.t('alerts.areaNameLimit'), 'warning');
       return;
     }
     if (!this.idcompany) {
-      alerts.basicAlert('Empresa requerida', 'Selecciona una empresa antes de crear un área.', 'warning');
+      alerts.basicAlert(this.t('alerts.companyRequiredTitle'), this.t('alerts.selectCompanyBeforeCreatingArea'), 'warning');
       return;
     }
 
@@ -503,7 +505,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
     if (existing) {
       this.applyAreaToPendingRow(this.normalizeText(existing.description));
       this.closeAreaModal();
-      alerts.basicAlert('Área existente', 'Esa área ya estaba en el catálogo y quedó seleccionada.', 'info');
+      alerts.basicAlert(this.t('alerts.areaAlreadyExistsTitle'), this.t('alerts.areaAlreadyExistsSelected'), 'info');
       return;
     }
 
@@ -530,7 +532,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
             this.applyAreaToPendingRow(description);
             this.savingArea = false;
             this.closeAreaModal();
-            alerts.basicAlert('Área agregada', `${description} ya está disponible en el combo de Área.`, 'success');
+            alerts.basicAlert(this.t('alerts.areaAddedTitle'), this.t('alerts.areaAlreadyAvailable', { area: description }), 'success');
           },
           error: (error) => {
             console.error('Error recargando áreas:', error);
@@ -538,14 +540,14 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
             this.applyAreaToPendingRow(description);
             this.savingArea = false;
             this.closeAreaModal();
-            alerts.basicAlert('Área agregada', `${description} se agregó y quedó disponible en el combo.`, 'success');
+            alerts.basicAlert(this.t('alerts.areaAddedTitle'), this.t('alerts.areaAddedAvailable', { area: description }), 'success');
           }
         });
       },
       error: (error) => {
         console.error('Error creando área:', error);
         this.savingArea = false;
-        alerts.basicAlert('Error', 'No se pudo crear el área. Intenta nuevamente.', 'error');
+        alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.areaCreateFailed'), 'error');
       }
     });
   }
@@ -721,7 +723,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
     
     // Validar que hay un proyecto seleccionado
     if (!currentProject) {
-      alerts.basicAlert('Advertencia', 'Debe seleccionar un proyecto antes de agregar una OT', 'warning');
+      alerts.basicAlert(this.t('alerts.warningTitle'), this.t('alerts.selectProjectBeforeAddingWorkOrder'), 'warning');
       return;
     }
     
@@ -772,16 +774,16 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
     if (invalidNewRows.length > 0) {
       const missingFields = invalidNewRows.map((item, index) => {
         const fields: string[] = [];
-        if (!item.otNumber?.trim()) fields.push('Número OT');
-        if (!item.cdc?.trim()) fields.push('CDC');
-        if (!item.description?.trim()) fields.push('Descripción');
-        if (!item.idProject) fields.push('Proyecto');
-        return `${index + 1}) Faltan: ${fields.join(', ')}`;
+        if (!item.otNumber?.trim()) fields.push(this.t('grid.otNumber'));
+        if (!item.cdc?.trim()) fields.push(this.t('grid.cdc'));
+        if (!item.description?.trim()) fields.push(this.t('grid.description'));
+        if (!item.idProject) fields.push(this.t('grid.project'));
+        return this.t('alerts.missingFieldsList', { index: index + 1, fields: fields.join(', ') });
       }).join(' | ');
 
       alerts.basicAlert(
-        'Validación', 
-        `Complete los campos obligatorios antes de guardar. ${missingFields}`, 
+        this.t('alerts.validationTitle'),
+        this.t('alerts.completeRequiredFieldsBeforeSaving', { fields: missingFields }),
         'warning'
       );
       return;
@@ -792,15 +794,15 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
     
     if (invalidModifiedRows.length > 0) {
       alerts.basicAlert(
-        'Validación', 
-        'Hay registros sin proyecto asignado. Verifique los datos.', 
+        this.t('alerts.validationTitle'),
+        this.t('alerts.recordsRequireProject'),
         'warning'
       );
       return;
     }
 
     if (newRows.length === 0 && modifiedRows.length === 0) {
-      alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+      alerts.basicAlert(this.t('alerts.infoTitle'), this.t('alerts.noChangesToSave'), 'info');
       return;
     }
 
@@ -836,12 +838,12 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
           delete row.__isNew;
           delete (row as any).tempId;
 
-          alerts.basicAlert('Guardado', `Se guardó correctamente la OT manual ${row.otNumber}.`, 'success');
+          alerts.basicAlert(this.t('alerts.savedTitle'), this.t('alerts.manualWorkOrderSaved', { number: row.otNumber }), 'success');
           
           completedOperations++;
           if (completedOperations === totalOperations) {
             this.updateNotSavedChangesStatus();
-            alerts.basicAlert('Éxito', 'Registro(s) guardado(s) correctamente.', 'success');
+            alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.recordsSaved'), 'success');
             // Recargar datos después de guardar exitosamente
             const currentProject = this.signalsService.getProjectSelectedBySidebar()();
             if (currentProject) {
@@ -853,7 +855,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
           console.error('Error al crear OT:', error);
           console.error('Detalles del error:', error.error);
           console.error('Estado HTTP:', error.status);
-          alerts.basicAlert('Error', `No se pudo guardar la OT manual ${row.otNumber}. ${error.error?.message || error.message || 'Verifique los datos e intente nuevamente.'}`, 'error');
+          alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.manualWorkOrderSaveFailed', { number: row.otNumber, error: error.error?.message || error.message || this.t('alerts.checkDataAndTryAgain') }), 'error');
         }
       });
     });
@@ -887,12 +889,12 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
           this.lastManualPackage = this.normalizeText(row.package) || this.lastManualPackage;
           delete row.__modified;
 
-          alerts.basicAlert('Guardado', `Se actualizó correctamente la OT manual ${row.otNumber}.`, 'success');
+          alerts.basicAlert(this.t('alerts.savedTitle'), this.t('alerts.manualWorkOrderUpdated', { number: row.otNumber }), 'success');
           
           completedOperations++;
           if (completedOperations === totalOperations) {
             this.updateNotSavedChangesStatus();
-            alerts.basicAlert('Éxito', 'Registro(s) guardado(s) correctamente.', 'success');
+            alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.recordsSaved'), 'success');
             // Recargar datos después de guardar exitosamente
             const currentProject = this.signalsService.getProjectSelectedBySidebar()();
             if (currentProject) {
@@ -902,7 +904,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
         },
         error: (error) => {
           console.error('Error al actualizar OT:', error);
-          alerts.basicAlert('Error', `No se pudo actualizar la OT manual ${row.otNumber}. ${error.error?.message || error.message || 'Verifique los datos e intente nuevamente.'}`, 'error');
+          alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.manualWorkOrderUpdateFailed', { number: row.otNumber, error: error.error?.message || error.message || this.t('alerts.checkDataAndTryAgain') }), 'error');
         }
       });
     });
@@ -917,7 +919,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       this.loadData();
     }
     this.updateNotSavedChangesStatus();
-    alerts.basicAlert('Info', 'Cambios revertidos', 'info');
+    alerts.basicAlert(this.t('alerts.infoTitle'), this.t('alerts.changesReverted'), 'info');
   }
 
   deleteEntry(): void {
@@ -925,18 +927,18 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
     const selectedNodes = this.gridApi.getSelectedNodes();
     
     if (selectedNodes.length === 0) {
-      alerts.basicAlert('Advertencia', 'Seleccione una fila para eliminar', 'warning');
+      alerts.basicAlert(this.t('alerts.warningTitle'), this.t('alerts.selectRowToDelete'), 'warning');
       return;
     }
     
     const selectedData = selectedNodes[0].data;
     
-    if (confirm('¿Está seguro de que desea eliminar este registro?')) {
+    if (confirm(this.t('alerts.confirmDeleteRecord'))) {
       // Si es una fila nueva (no guardada), solo eliminarla del grid
       if (selectedData.__isNew) {
         this.rowData = this.rowData.filter(row => row !== selectedData);
         this.updateNotSavedChangesStatus();
-        alerts.basicAlert('Éxito', 'Registro eliminado', 'success');
+        alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.recordDeleted'), 'success');
         return;
       }
 
@@ -947,18 +949,18 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
             console.log('OT eliminada exitosamente:', response);
             this.rowData = this.rowData.filter(row => row !== selectedData);
             this.updateNotSavedChangesStatus();
-            alerts.basicAlert('Éxito', 'OT eliminada exitosamente', 'success');
+            alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.workOrderDeleted'), 'success');
           },
           error: (error) => {
             console.error('Error al eliminar OT:', error);
-            alerts.basicAlert('Error', 'Error al eliminar la OT', 'error');
+            alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.workOrderDeleteFailed'), 'error');
           }
         });
       } else {
         // Fallback: eliminar del grid si no tiene ID
         this.rowData = this.rowData.filter(row => row !== selectedData);
         this.updateNotSavedChangesStatus();
-        alerts.basicAlert('Éxito', 'Registro eliminado', 'success');
+        alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.recordDeleted'), 'success');
       }
     }
   }

@@ -15,7 +15,13 @@ export function HttpLoaderFactory(http: HttpClient) {
 }
 
 export function appInitializer(translate: TranslateService) {
-  return () => translate.use('es').toPromise(); // Cambia 'es' por tu idioma por defecto
+  return () => {
+    const browserLanguage = translate.getBrowserLang()?.toLowerCase();
+    const language = browserLanguage === 'en' ? 'en' : 'es';
+    translate.setDefaultLang('es');
+    if (typeof document !== 'undefined') document.documentElement.lang = language;
+    return translate.use(language).toPromise();
+  };
 }
 
 @NgModule({

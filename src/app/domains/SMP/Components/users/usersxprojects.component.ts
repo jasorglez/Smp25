@@ -1,4 +1,5 @@
 import { Component, computed, effect, HostListener, inject } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { ProjectsService } from 'app/services/projects.service';
@@ -10,15 +11,17 @@ import { catchError, concat, EMPTY, forkJoin, lastValueFrom, map, toArray } from
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { injectUserSetupTranslator } from './user-setup-i18n';
 
 @Component({
   selector: 'app-usersxprojects',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, TranslateModule, UsersProfileComponent],
   templateUrl: './usersxprojects.component.html',
   styleUrl: './usersxprojects.component.scss'
 })
 export class UsersxprojectsComponent {
+  private readonly u18n = injectUserSetupTranslator();
 
   private signalsService = inject(SignalsService);
   private projectsService = inject(ProjectsService);
@@ -32,8 +35,7 @@ export class UsersxprojectsComponent {
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.notSavedChanges) {
-      $event.returnValue =
-        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
+      $event.returnValue = this.u18n('alerts.leaveWithUnsavedChanges');
     }
   }
 
@@ -55,7 +57,7 @@ export class UsersxprojectsComponent {
   private permissionType: string = 'project';
   bulkAssigning: boolean = false;
   searchTerm: string = '';
-  profileSectionTitle: string = 'Proyectos';
+  profileSectionTitle: string = this.u18n('projects');
 
   get profileItems(): string[] {
     return (Array.isArray(this.rowData) ? this.rowData : [])
@@ -63,8 +65,8 @@ export class UsersxprojectsComponent {
       .filter((item: string) => !!item);
   }
 
-  companyName = computed(() => this.signalsService.nameCompany() || 'Empresa seleccionada');
-  contractName = computed(() => this.signalsService.nameContract() || 'Contrato seleccionado');
+  companyName = computed(() => this.signalsService.nameCompany() || this.u18n('selectedCompany'));
+  contractName = computed(() => this.signalsService.nameContract() || this.u18n('selectedContract'));
 
   get availableProjectCount(): number {
     return Object.keys(this.projects).length;
@@ -254,12 +256,12 @@ public gridOptions: any = {
     return [
       {
         field: 'idUser',
-        headerName: 'ID del Usuario',
+        headerName: this.u18n('grid.userId'),
         hide: true,
       },
       {
         field: 'idProject',
-        headerName: 'Proyecto',
+        headerName: this.u18n('grid.project'),
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: Object.keys(this.projects).sort((a, b) => this.projects[a].localeCompare(this.projects[b])),
@@ -315,15 +317,15 @@ public gridOptions: any = {
   addRow() {
     const currentIdUser = this.profile().idUser();
     if (!currentIdUser) {
-      alerts.basicAlert('Proyectos', 'Seleccione un usuario antes de agregar proyectos.', 'info');
+      alerts.basicAlert(this.u18n('projects'), this.u18n('alerts.selectUserBeforeAddingProjects'), 'info');
       return;
     }
     if (this.availableProjectCount === 0) {
-      alerts.basicAlert('Proyectos', 'No hay proyectos disponibles en la selección actual.', 'info');
+      alerts.basicAlert(this.u18n('projects'), this.u18n('alerts.noProjectsAvailable'), 'info');
       return;
     }
     if (this.rowData.some(row => row.__isNew && !Number(row.idProject))) {
-      alerts.basicAlert('Proyectos', 'Primero seleccione el proyecto de la fila nueva.', 'info');
+      alerts.basicAlert(this.u18n('projects'), this.u18n('alerts.selectNewProjectFirst'), 'info');
       return;
     }
 
@@ -358,7 +360,7 @@ public gridOptions: any = {
     }
 
     if (this.notSavedChanges) {
-      alerts.basicAlert('Proyectos', 'Guarde o deshaga los cambios pendientes antes de agregar todos.', 'info');
+      alerts.basicAlert(this.u18n('projects'), this.u18n('alerts.saveOrUndoBeforeAddingAll'), 'info');
       return;
     }
 
@@ -366,7 +368,7 @@ public gridOptions: any = {
     const idContract = Number(this.signalsService.idContract() || 0);
     const idCompany = Number(this.signalsService.getRootSelectedBySidebar()() || 0);
     if (!currentIdUser || (!this.contractChecked()() && !idCompany) || (this.contractChecked()() && !idContract)) {
-      alerts.basicAlert('Proyectos', 'Seleccione la empresa o el contrato antes de agregar proyectos.', 'info');
+      alerts.basicAlert(this.u18n('projects'), this.u18n('alerts.selectCompanyOrContractFirst'), 'info');
       return;
     }
 
@@ -387,23 +389,23 @@ public gridOptions: any = {
         const missing = projectIds.filter(id => id > 0 && !assigned.has(id));
         if (missing.length === 0) {
           this.bulkAssigning = false;
-          alerts.basicAlert('Proyectos', 'El usuario ya tiene asignados todos los proyectos de esta selección.', 'info');
+          alerts.basicAlert(this.u18n('projects'), this.u18n('alerts.allProjectsAlreadyAssigned'), 'info');
           return;
         }
         try {
           await lastValueFrom(forkJoin(missing.map(idProject => this.usersxprojectsService.addUserxPermission({ idUser: currentIdUser, idPermission: idProject, type: this.permissionType, active: 1 }))));
-          alerts.basicAlert('Proyectos', `${missing.length} proyecto(s) asignado(s).`, 'success');
+          alerts.basicAlert(this.u18n('projects'), this.u18n('alerts.projectsAssigned', { count: missing.length }), 'success');
           this.filteredData();
         } catch (error) {
           console.error('Error agregando proyectos:', error);
-          alerts.basicAlert('Proyectos', 'No fue posible asignar todos los proyectos.', 'error');
+          alerts.basicAlert(this.u18n('projects'), this.u18n('alerts.couldNotAssignAllProjects'), 'error');
         } finally {
           this.bulkAssigning = false;
         }
       },
       error: () => {
         this.bulkAssigning = false;
-        alerts.basicAlert('Proyectos', 'No fue posible consultar los proyectos disponibles.', 'error');
+        alerts.basicAlert(this.u18n('projects'), this.u18n('alerts.couldNotLoadAvailableProjects'), 'error');
       }
     });
   }
@@ -432,8 +434,8 @@ public gridOptions: any = {
     const hasEmptyProject = changedRows.some(row => !Number(row.idProject ?? row.idPermission));
     if (hasEmptyProject) {
       alerts.basicAlert(
-        'Proyectos',
-        'Debe seleccionar un proyecto antes de guardar.',
+        this.u18n('projects'),
+        this.u18n('alerts.selectProjectBeforeSaving'),
         'error'
       );
       return;
@@ -443,7 +445,7 @@ public gridOptions: any = {
       .map(row => Number(row.idProject ?? row.idPermission))
       .filter(id => id > 0);
     if (new Set(projectIds).size !== projectIds.length) {
-      alerts.basicAlert('Proyectos', 'No puede asignar dos veces el mismo proyecto al usuario.', 'error');
+      alerts.basicAlert(this.u18n('projects'), this.u18n('alerts.duplicateProjectAssignment'), 'error');
       return;
     }
 

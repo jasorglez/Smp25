@@ -4,6 +4,8 @@ import { NgApexchartsModule } from 'ng-apexcharts';
 import { DailyReportService } from 'app/services/daily-report.service';
 import { SignalsService } from 'app/services/signals.service';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { TranslateModule } from '@ngx-translate/core';
+import { injectWorkOrderTranslator } from '../work-order-i18n';
 
 // Interfaces para los datos
 interface CuadrillaData {
@@ -27,11 +29,12 @@ interface ChartData {
 @Component({
   selector: 'app-unidad',
   standalone: true,
-  imports: [CommonModule, NgApexchartsModule, ReactiveFormsModule],
+  imports: [CommonModule, NgApexchartsModule, ReactiveFormsModule, TranslateModule],
   templateUrl: './unidad.component.html',
   styleUrl: './unidad.component.scss'
 })
 export class UnidadComponent implements OnInit {
+  private readonly t = injectWorkOrderTranslator();
 
   // Servicios
   private dailyReportService = inject(DailyReportService);
@@ -155,7 +158,7 @@ export class UnidadComponent implements OnInit {
     const idRoot = this.signalsService.getRootSelectedBySidebar()();
     
     if (!idRoot) {
-      this.error = 'No hay empresa seleccionada.';
+      this.error = this.t('alerts.noCompanySelected');
       this.isLoading = false;
       return;
     }
@@ -168,13 +171,13 @@ export class UnidadComponent implements OnInit {
           this.rawData = response.data;
           this.processData();
         } else {
-          this.error = response.message || 'No se encontraron datos para la empresa seleccionada en el rango de fechas.';
+          this.error = response.message || this.t('alerts.noCostDataForCompanyAndDates');
         }
         this.isLoading = false;
       },
       error: (error) => {
         console.error('❌ Error al cargar datos:', error);
-        this.error = 'Error al cargar los datos de costos. Intente de nuevo.';
+        this.error = this.t('alerts.costDataLoadFailed');
         this.isLoading = false;
       }
     });
@@ -263,7 +266,7 @@ export class UnidadComponent implements OnInit {
       labels: this.generalChartData.labels,
       colors: generalColors,
       title: {
-        text: 'Resumen General por Cuadrilla',
+        text: this.t('ui.generalCrewSummary'),
         align: 'center',
         style: {
           fontSize: '16px',
@@ -291,7 +294,7 @@ export class UnidadComponent implements OnInit {
 
   Consultar(): void {
     if (this.selectFechas.invalid) {
-      this.error = 'Por favor, seleccione una fecha de inicio y fin válidas.';
+      this.error = this.t('alerts.selectValidStartAndEndDates');
       return;
     }
     const { fechaInicio, fechaFin } = this.selectFechas.value;

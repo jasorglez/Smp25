@@ -4,7 +4,7 @@
             <ul class="nav nav-pills">
                <li class="nav-item" *ngFor="let item of menuItems(); trackBy: trackMenuItem" [style.order]="item.order">
                   <a class="nav-link green-tab" [routerLink]="item.path" routerLinkActive="active">
-                     <i class="bi" [ngClass]="item.icon"></i><span>{{ item.name }}</span>
+                     <i class="bi" [ngClass]="item.icon"></i><span>{{ item.name | translate }}</span>
                   </a>
                </li>
             </ul>

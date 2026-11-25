@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.639 (25 Noviembre 2026 09:22) Avisos y confirmación de edición en préstamos',
+  version: '5.00.640 (25 Noviembre 2026 09:55) Traducción de módulos al inglés',
 };

@@ -2,11 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-select-material-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslateModule],
   template: `
     <div class="material-picker">
       <i class="bi bi-search material-picker-search"></i>
@@ -15,21 +16,21 @@ import { FormsModule } from '@angular/forms';
         (ngModelChange)="showOptions = true"
         (focus)="showOptions = true"
         (keydown.escape)="params?.api?.stopEditing(true)"
-        [placeholder]="selectedLabel || 'Buscar por código o descripción…'"
-        aria-label="Buscar material por código o descripción">
+        [placeholder]="selectedLabel || ('modules.warehouses.ui.entryDetail.materialSearch' | translate)"
+        [attr.aria-label]="'modules.warehouses.ui.entryDetail.materialSearch' | translate">
       <div class="material-picker-options" *ngIf="showOptions">
         <button type="button" *ngFor="let option of filteredOptions" (mousedown)="$event.preventDefault(); selectOption(option)">
           <strong *ngIf="option.code">{{ option.code }}</strong>
           <span>{{ option.description }}</span>
           <small *ngIf="option.brandName" class="material-brand">{{ option.brandName }}</small>
           <small *ngIf="option.availableStock !== undefined" class="material-stock">
-            Existencia: {{ option.availableStock | number:'1.0-2' }}
+            {{ 'modules.warehouses.ui.entryDetail.stock' | translate }}: {{ option.availableStock | number:'1.0-2' }}
           </small>
         </button>
         <button type="button" class="add-material-option" *ngIf="params?.onAddMaterial" (mousedown)="$event.preventDefault(); addMaterial()">
-          <i class="bi bi-plus-lg"></i> Agregar material nuevo
+          <i class="bi bi-plus-lg"></i> {{ 'modules.warehouses.ui.entryDetail.addNewMaterial' | translate }}
         </button>
-        <small *ngIf="filteredOptions.length === 0" class="no-results">Sin coincidencias</small>
+        <small *ngIf="filteredOptions.length === 0" class="no-results">{{ 'modules.warehouses.ui.entryDetail.noMatches' | translate }}</small>
       </div>
     </div>
   `,

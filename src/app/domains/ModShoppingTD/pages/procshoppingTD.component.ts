@@ -25,7 +25,7 @@ export class ProcShoppingTDComponent {
       .filter(([, permission]: [string, any]) => permission?.active === true)
       .map(([identifier, permission]: [string, any]) => ({
         identifier,
-        name: permission.permissionName || permission.description || identifier,
+        name: `modules.shopping.menu.${shoppingRouteForPermission(identifier, permission.permissionName || permission.description)}`,
         order: Number.isFinite(Number(permission.order)) ? Number(permission.order) : 10000,
         path: shoppingRouteForPermission(identifier, permission.permissionName || permission.description),
         icon: shoppingIconForPermission(identifier, permission.permissionName || permission.description),

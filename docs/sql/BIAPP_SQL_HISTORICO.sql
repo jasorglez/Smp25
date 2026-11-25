@@ -7427,3 +7427,26 @@ SET version=N'5.00.638', description=N'El doble clic en un préstamo abre su mod
 WHERE id=324 AND module=N'Cobranza / Préstamos y abonos' AND isActive=1;
 SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates WHERE id=324;
 GO
+
+-- 2026-11-25 | Proyectos, Almacenes TD, Compras TD y Administración | Repositorio: Smp25
+-- Origen: src/assets/i18n/en.json, src/assets/i18n/es.json y componentes de navegación de los módulos
+-- Ejecutar solo este bloque. El anuncio describe el código local; releaseStatus permanece LOCAL hasta confirmar el despliegue.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Proyectos, Almacenes TD, Compras TD y Administración' AND title=N'Interfaz en inglés para módulos operativos'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT INTO administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.640',N'Proyectos, Almacenes TD, Compras TD y Administración','IMPROVEMENT',N'Interfaz en inglés para módulos operativos',
+ N'Se agregaron traducciones de interfaz para Proyectos, Almacenes TD y Compras TD, y traducción para los menús principales de Administración. El idioma se selecciona con el navegador; las opciones activas, permisos y orden de los menús se conservan.',
+ N'Facilita que los usuarios trabajen en inglés sin cambiar el acceso ni la navegación de sus módulos.',
+ N'Usa Proyectos, Almacenes TD, Compras TD y Administración en inglés según el idioma de tu navegador.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PASSED','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Proyectos, Almacenes TD, Compras TD y Administración' AND title=N'Interfaz en inglés para módulos operativos'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+GO

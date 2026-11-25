@@ -1,4 +1,5 @@
 import { Component, computed, effect, HostListener, inject } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
@@ -10,14 +11,16 @@ import { UsersxpermissionsService } from 'app/services/usersxpermissions.service
 import { SignalsService } from 'app/services/signals.service';
 import { ProvidersService } from 'app/services/providers.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { injectUserSetupTranslator } from './user-setup-i18n';
 
 @Component({
   selector: 'app-usersxcompanys',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, TranslateModule, UsersProfileComponent],
   templateUrl: './usersxpermissions.component.html'
 })
 export class UsersxcompanysComponent {
+  private readonly u18n = injectUserSetupTranslator();
 
   private providersService = inject(ProvidersService);
   private usersxcompanysService = inject(UsersxpermissionsService);
@@ -148,12 +151,12 @@ public gridOptions: any = {
     return [
       {
         field: 'idUser',
-        headerName: 'ID del Usuario',
+        headerName: this.u18n('grid.userId'),
         hide: true,
       },
       {
         field: 'idPermission',
-        headerName: 'Contratista',
+        headerName: this.u18n('grid.contractor'),
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => {
           console.log('📋 Companies available for dropdown:', this.companys);

@@ -1,6 +1,6 @@
 import { Component, effect, inject, OnInit } from '@angular/core';
 import { TdConceptsService } from 'app/services/td-concepts.service';
-import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { AG_GRID_LOCALE } from 'assets/i18n/ag-grid.locale';
 import {
   ColDef,
   GridApi,
@@ -31,7 +31,7 @@ import { TrackingService } from 'app/services/tracking.service';
 })
 export class ConceptsComponent implements OnInit, CanComponentDeactivate {
   private trackingService = inject(TrackingService);
-  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE;
   notSavedChanges: boolean = false;
   rowData: any[] = [];
   selectedRowData: any = null;

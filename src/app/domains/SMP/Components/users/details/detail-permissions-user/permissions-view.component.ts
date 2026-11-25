@@ -1,4 +1,5 @@
 import { Component, inject, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RolesService, CrudxDetailedPermission } from 'app/services/roles.service';
@@ -45,7 +46,7 @@ interface MasterPermission {
 @Component({
   selector: 'app-permissions-view-by-user',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslateModule],
   templateUrl: './permissions-view.component.html',
   styleUrls: ['./permissions-view.component.scss']
 })

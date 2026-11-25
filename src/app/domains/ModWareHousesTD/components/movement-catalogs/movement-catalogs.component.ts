@@ -3,7 +3,7 @@ import { Component, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { AG_GRID_LOCALE } from 'assets/i18n/ag-grid.locale';
 import { alerts } from 'app/helpers/alerts';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { CatalogsService } from 'app/services/catalogs.service';
@@ -13,28 +13,30 @@ import { BranchsService } from 'app/services/branchs.service';
 import { WarehousesService } from 'app/services/warehouses.service';
 import { InandoutService } from 'app/services/inandout.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-movement-catalogs',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, TranslateModule],
   templateUrl: './movement-catalogs.component.html',
   styleUrl: './movement-catalogs.component.scss'
 })
 export class MovementCatalogsComponent implements CanComponentDeactivate {
+  private readonly translate = inject(TranslateService);
   private readonly behaviorsForType = (type: 'IN' | 'OUT') => this.behaviorOptions[type];
   private readonly behaviorOptions: Record<'IN' | 'OUT', readonly { value: string; label: string }[]> = {
     IN: [
-      { value: 'STANDARD', label: 'Normal' },
-      { value: 'TRANSFER', label: 'Traspaso' },
-      { value: 'INITIAL_INVENTORY', label: 'Inicio de inventario' },
-      { value: 'INVENTORY_ADJUSTMENT', label: 'Ajuste de inventario' }
+      { value: 'STANDARD', label: this.translate.instant('modules.warehouses.movementCatalogs.normal') },
+      { value: 'TRANSFER', label: this.translate.instant('modules.warehouses.movementCatalogs.transfer') },
+      { value: 'INITIAL_INVENTORY', label: this.translate.instant('modules.warehouses.movementCatalogs.initialInventory') },
+      { value: 'INVENTORY_ADJUSTMENT', label: this.translate.instant('modules.warehouses.movementCatalogs.inventoryAdjustment') }
     ],
     OUT: [
-      { value: 'STANDARD', label: 'Normal' },
-      { value: 'TRANSFER', label: 'Traspaso' },
-      { value: 'INITIAL_INVENTORY', label: 'Inicio de inventario' },
-      { value: 'INVENTORY_ADJUSTMENT', label: 'Ajuste de inventario' }
+      { value: 'STANDARD', label: this.translate.instant('modules.warehouses.movementCatalogs.normal') },
+      { value: 'TRANSFER', label: this.translate.instant('modules.warehouses.movementCatalogs.transfer') },
+      { value: 'INITIAL_INVENTORY', label: this.translate.instant('modules.warehouses.movementCatalogs.initialInventory') },
+      { value: 'INVENTORY_ADJUSTMENT', label: this.translate.instant('modules.warehouses.movementCatalogs.inventoryAdjustment') }
     ]
   };
   private readonly signals = inject(SignalsService);
@@ -45,11 +47,11 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
   private readonly materialsService = inject(MaterialsService);
   private gridApi?: GridApi;
 
-  readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE;
   readonly movementTypes = [
-    { value: 'IN', label: 'Entradas' },
-    { value: 'BRAND', label: 'Marcas' },
-    { value: 'OUT', label: 'Salidas' }
+      { value: 'IN', label: this.translate.instant('modules.warehouses.movementCatalogs.entries') },
+    { value: 'BRAND', label: this.translate.instant('modules.warehouses.movementCatalogs.brands') },
+    { value: 'OUT', label: this.translate.instant('modules.warehouses.movementCatalogs.issues') }
   ] as const;
   idRoot = 0;
   selectedType: 'IN' | 'OUT' | 'BRAND' = 'IN';
@@ -64,20 +66,20 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
     const movementType = this.selectedType !== 'BRAND';
     const behaviorOptions = this.behaviorsForType(this.selectedType === 'OUT' ? 'OUT' : 'IN');
     return [
-      { field: 'description', headerName: movementType ? 'Tipo de movimiento' : 'Marca', editable: true, minWidth: 280 },
+      { field: 'description', headerName: movementType ? this.translate.instant('modules.warehouses.movementCatalogs.movementType') : this.translate.instant('modules.warehouses.movementCatalogs.brand'), editable: true, minWidth: 280 },
       {
-        field: 'valueAddition', headerName: 'Comportamiento', editable: true, minWidth: 220,
+        field: 'valueAddition', headerName: this.translate.instant('modules.warehouses.movementCatalogs.behavior'), editable: true, minWidth: 220,
         hide: !movementType,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
           values: behaviorOptions.map(option => option.value),
           formatValue: (value: string) => behaviorOptions.find(option => option.value === value)?.label || value
         }),
-        valueFormatter: params => behaviorOptions.find(option => option.value === params.value)?.label || params.value || 'Normal'
+        valueFormatter: params => behaviorOptions.find(option => option.value === params.value)?.label || params.value || this.translate.instant('modules.warehouses.movementCatalogs.normal')
       },
       {
-        headerName: 'Estado', field: 'active', width: 130, maxWidth: 150, editable: false,
-        valueFormatter: params => params.value === false || Number(params.value) === 0 ? 'Inactivo' : 'Activo'
+        headerName: this.translate.instant('modules.warehouses.movementCatalogs.status'), field: 'active', width: 130, maxWidth: 150, editable: false,
+        valueFormatter: params => params.value === false || Number(params.value) === 0 ? this.translate.instant('modules.warehouses.movementCatalogs.inactive') : this.translate.instant('modules.warehouses.movementCatalogs.active')
       }
     ];
   }
@@ -128,14 +130,14 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
 
   async save(): Promise<void> {
     if (!this.idRoot) {
-      alerts.basicAlert('Empresa requerida', 'Selecciona una empresa para administrar este catálogo.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.movementCatalogs.companyRequired'), this.translate.instant('modules.warehouses.movementCatalogs.selectCompanyForCatalog'), 'warning');
       return;
     }
     const changedRows = this.rowData.filter(row => row.__isNew || row.__modified);
     if (!changedRows.length) return;
     const emptyRow = changedRows.find(row => !String(row.description || '').trim());
     if (emptyRow) {
-      alerts.basicAlert('Descripción requerida', 'Completa la descripción de cada tipo de movimiento antes de guardar.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.movementCatalogs.descriptionRequired'), this.translate.instant('modules.warehouses.movementCatalogs.completeDescription'), 'warning');
       return;
     }
 
@@ -161,15 +163,15 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
       }
       this.hasUnsavedChanges = false;
       await this.loadCatalogs();
-      alerts.basicAlert('Catálogos actualizados', `${this.catalogLabel} se guardó correctamente.`, 'success');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.movementCatalogs.catalogsUpdated'), `${this.catalogLabel} ${this.translate.instant('modules.warehouses.movementCatalogs.savedSuccessfully')}`, 'success');
     } catch (error) {
       console.error(`Error al guardar ${this.catalogLabel}:`, error);
       const apiMessage = typeof error?.error === 'string'
         ? error.error
         : error?.error?.message || error?.error?.Message;
       alerts.basicAlert(
-        'Error',
-        apiMessage || `No se pudo guardar ${this.catalogLabel}${error?.status ? ` (HTTP ${error.status})` : ''}.`,
+        this.translate.instant('error'),
+        apiMessage || this.translate.instant('modules.warehouses.movementCatalogs.saveFailed', { catalogLabel: this.catalogLabel, status: error?.status ? ` (HTTP ${error.status})` : '' }),
         'error'
       );
     } finally {
@@ -181,7 +183,7 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
     if (this.deleting || this.saving || this.loading) return;
     const selected = this.gridApi?.getSelectedRows() || [];
     if (!selected.length) {
-      alerts.basicAlert('Selecciona un registro', `Elige en el grid el registro de ${this.catalogLabel} que quieres eliminar.`, 'info');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.movementCatalogs.selectRecord'), `${this.translate.instant('modules.warehouses.movementCatalogs.chooseRecord')} ${this.catalogLabel} ${this.translate.instant('modules.warehouses.movementCatalogs.toDelete')}`, 'info');
       return;
     }
     const row = selected[0];
@@ -191,7 +193,7 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
       return;
     }
     if (this.hasUnsavedChanges) {
-      alerts.basicAlert('Guarda los cambios', 'Guarda o descarta los cambios pendientes antes de eliminar un tipo.', 'info');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.movementCatalogs.saveChanges'), this.translate.instant('modules.warehouses.movementCatalogs.saveOrDiscard'), 'info');
       return;
     }
     this.deleting = true;
@@ -200,18 +202,18 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
     try {
       const result = await this.getCatalogUsage(row, catalogType, companyId);
       if (result.inUse) {
-        alerts.basicAlert('No se puede eliminar', result.message, 'warning');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.movementCatalogs.cannotDelete'), result.message, 'warning');
         return;
       }
-      const confirmation = await alerts.confirmAlert(`Eliminar ${this.catalogLabel}`, `¿Quieres eliminar “${row.description}”?`, 'warning', 'Eliminar');
+      const confirmation = await alerts.confirmAlert(`${this.translate.instant('delete')} ${this.catalogLabel}`, `${this.translate.instant('modules.warehouses.movementCatalogs.confirmDelete')} “${row.description}”?`, 'warning', this.translate.instant('delete'));
       if (!confirmation.isConfirmed) return;
       if (this.idRoot !== companyId || this.selectedType !== catalogType) return;
       await lastValueFrom(this.catalogsService.deleteCatalog(Number(row.id)));
       await this.loadCatalogs();
-      alerts.basicAlert('Registro eliminado', `${this.catalogLabel} se eliminó correctamente.`, 'success');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.movementCatalogs.recordDeleted'), `${this.catalogLabel} ${this.translate.instant('modules.warehouses.movementCatalogs.deletedSuccessfully')}`, 'success');
     } catch (error) {
       console.error(`Error al validar/eliminar ${this.catalogLabel}:`, error);
-      alerts.basicAlert('No se pudo validar', 'No se comprobó si el registro está en uso. No se eliminó; vuelve a intentarlo.', 'error');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.movementCatalogs.couldNotValidate'), this.translate.instant('modules.warehouses.movementCatalogs.validationFailed'), 'error');
     } finally {
       this.deleting = false;
     }
@@ -291,18 +293,20 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
     } catch (error) {
       console.error(`Error al cargar ${this.catalogLabel}:`, error);
       this.rowData = [];
-      alerts.basicAlert('Error', `No se pudo cargar ${this.catalogLabel} de la empresa seleccionada.`, 'error');
+      alerts.basicAlert(this.translate.instant('error'), `${this.translate.instant('modules.warehouses.movementCatalogs.couldNotLoad')} ${this.catalogLabel} ${this.translate.instant('modules.warehouses.movementCatalogs.fromSelectedCompany')}`, 'error');
     } finally {
       this.loading = false;
     }
   }
 
   get catalogLabel(): string {
-    return this.selectedType === 'BRAND' ? 'el catálogo de marcas' : 'los tipos de movimiento';
+    return this.translate.instant(this.selectedType === 'BRAND'
+      ? 'modules.warehouses.movementCatalogs.brandsCatalog'
+      : 'modules.warehouses.movementCatalogs.movementTypes');
   }
 
   private async confirmDiscard(): Promise<boolean> {
-    const result = await alerts.confirmAlert('Cambios sin guardar', 'Si cambias de catálogo, se descartarán los cambios pendientes.', 'warning', 'Descartar cambios');
+    const result = await alerts.confirmAlert(this.translate.instant('modules.userSetup.unsavedChanges'), this.translate.instant('modules.warehouses.movementCatalogs.switchCatalogWarning'), 'warning', this.translate.instant('modules.warehouses.movementCatalogs.discardChanges'));
     return result.isConfirmed;
   }
 

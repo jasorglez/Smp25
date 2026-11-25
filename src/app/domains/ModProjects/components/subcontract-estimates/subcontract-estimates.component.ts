@@ -9,7 +9,7 @@ import { CellValueChangedEvent, ColDef, GridApi, GridReadyEvent } from 'ag-grid-
 import * as XLSX from 'xlsx';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
-import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { AG_GRID_LOCALE } from 'assets/i18n/ag-grid.locale';
 import { alerts } from 'app/helpers/alerts';
 import { SignalsService } from 'app/services/signals.service';
 import { SubcontractProgramService } from 'app/services/subcontract-program.service';
@@ -38,7 +38,7 @@ export class SubcontractEstimatesComponent implements OnDestroy {
   private base64Service = inject(Base64EncodeService);
   readonly context = inject(SubcontractorContextService);
 
-  readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE;
   programs: any[] = [];
   savedEstimates: any[] = [];
   rows: any[] = [];

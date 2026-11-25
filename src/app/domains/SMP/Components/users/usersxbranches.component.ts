@@ -1,4 +1,5 @@
 import { Component, computed, effect, HostListener, inject } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
@@ -11,15 +12,17 @@ import { SignalsService } from 'app/services/signals.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { environment } from '@env/environment';
 import { TrackingService } from 'app/services/tracking.service';
+import { injectUserSetupTranslator } from './user-setup-i18n';
 
 @Component({
   selector: 'app-usersxbranches',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, TranslateModule, UsersProfileComponent],
   templateUrl: './usersxpermissions.component.html',
   styleUrl: './usersxpermissions.component.scss'
 })
 export class UsersxbranchesComponent {
+  private readonly u18n = injectUserSetupTranslator();
 
   private signalsService = inject(SignalsService);
   private branchesService = inject(BranchsService);
@@ -157,12 +160,12 @@ export class UsersxbranchesComponent {
     return [
       {
         field: 'idUser',
-        headerName: 'ID del Usuario',
+        headerName: this.u18n('grid.userId'),
         hide: true,
       },
       {
         field: 'name',
-        headerName: 'Sucursal',
+        headerName: this.u18n('grid.branch'),
         editable: true,
         suppressMovable: true,
         filter: false,

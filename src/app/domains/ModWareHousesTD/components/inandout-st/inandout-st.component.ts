@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { AG_GRID_LOCALE } from 'assets/i18n/ag-grid.locale';
 import { SignalsService } from 'app/services/signals.service';
 import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
@@ -30,11 +30,12 @@ import { WarehousesService } from 'app/services/warehouses.service';
 import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-column-widths';
 import { navigateEditableCellOnEnter } from 'app/helpers/ag-grid-enter-navigation';
 import { ProjectsComponent } from 'app/domains/ModProjects/components/projects/projects.component';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-inandout-st',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, DetailCellRendererEntryItemsComponent, PdfButtonCellRendererComponent, ProjectsComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, TranslateModule, DetailCellRendererEntryItemsComponent, PdfButtonCellRendererComponent, ProjectsComponent],
   templateUrl: './inandout-st.component.html',
   styleUrl: './inandout-st.component.scss',
 })
@@ -61,6 +62,7 @@ export class InandoutStComponent implements OnInit {
   private logbookService = inject(LogbookService);
   private branchesService = inject(BranchsService);
   private warehousesService = inject(WarehousesService);
+  private translate = inject(TranslateService);
 
   private isGeneratingReport: boolean = false;
   private warehouseLoadRequest = 0;
@@ -98,7 +100,7 @@ export class InandoutStComponent implements OnInit {
   public rowSelection: 'single' | 'multiple' = 'single';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
-  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE;
 
   constructor() {
     effect(() => {
@@ -236,7 +238,7 @@ export class InandoutStComponent implements OnInit {
         this.warehouses = [];
         this.selectedWarehouse = null;
         this.rowData = [];
-        alerts.basicAlert('Error', 'Error al cargar almacenes', 'error');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.error'), this.translate.instant('modules.warehouses.ui.movements.messages.loadWarehousesFailed'), 'error');
       }
     });
   }
@@ -580,7 +582,7 @@ export class InandoutStComponent implements OnInit {
         `Tipo: ${this.movementType === 'IN' ? 'Entrada' : 'Salida'}`,
         'text', '',
         {
-          inputAttributes: { placeholder: 'Descripción del tipo de movimiento...' },
+          inputAttributes: { placeholder: this.translate.instant('modules.warehouses.ui.movements.messages.movementDescription') },
           confirmButtonText: 'Guardar',
           confirmButtonColor: '#28a745'
         }
@@ -612,11 +614,11 @@ export class InandoutStComponent implements OnInit {
           error: () => resolve()
         });
       });
-      alerts.toastAlert('Tipo de movimiento creado', 'success');
+      alerts.toastAlert(this.translate.instant('modules.warehouses.ui.movements.messages.movementTypeCreated'), 'success');
       return created?.id ?? null;
     } catch (error: any) {
       const msg = error?.error?.message || error?.message || 'Error desconocido';
-      alerts.basicAlert('Error', `No se pudo crear: ${msg}`, 'error');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.error'), `${this.translate.instant('modules.warehouses.ui.movements.messages.createFailed')}: ${msg}`, 'error');
       return null;
     }
   }
@@ -661,7 +663,7 @@ export class InandoutStComponent implements OnInit {
             requestRootId !== Number(this.idRoot)) return;
         console.error(`Error loading entries:`, error);
         const message = error?.error?.message || error?.error?.title || error?.message || 'Error desconocido';
-        alerts.basicAlert('Error', `Error al cargar ${this.movementType === 'IN' ? 'entradas' : 'salidas'}: ${message}`, 'error');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.error'), `${this.translate.instant('modules.warehouses.ui.movements.messages.loadFailed')} ${this.translate.instant(this.movementType === 'IN' ? 'modules.warehouses.ui.movements.receipt' : 'modules.warehouses.ui.movements.issue')}: ${message}`, 'error');
       }
     });
   }
@@ -718,7 +720,7 @@ export class InandoutStComponent implements OnInit {
     this._colMaster = [
       {
         field: 'countrow',
-        headerName: 'Items',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.items'),
         width: 80,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
@@ -730,21 +732,21 @@ export class InandoutStComponent implements OnInit {
       },
       {
         field: 'pdfReport',
-        headerName: 'PDF',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.pdf'),
         width: 70, pinned: 'right', lockPinned: true, suppressMovable: true,
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleReportDetail(node),
           icon: 'bi-file-earmark-pdf',
           iconColor: '#dc3545',
-          title: 'Generar reporte PDF'
+          title: this.translate.instant('modules.warehouses.ui.movements.generatePdf')
         },
         editable: false,
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
       {
         field: 'idProject',
-        headerName: 'Proyecto',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.project'),
         width: 160,
         editable: (params: any) => this.canEditAuthorizedRow(params.data),
         cellEditor: 'agRichSelectCellEditor',
@@ -752,7 +754,7 @@ export class InandoutStComponent implements OnInit {
           values: [this.addNewSentinel, ...this.projectList.map(p => Number(p.id))],
           valueListMaxHeight: 200,
           formatValue: (value: any) => {
-            if (value === this.addNewSentinel) return '+ Crear nuevo proyecto';
+          if (value === this.addNewSentinel) return `+ ${this.translate.instant('modules.warehouses.ui.movements.createProject')}`;
             const p = this.projectList.find(x => Number(x.id) === Number(value));
             return p ? (p.description || p.name || `#${value}`) : `#${value}`;
           }
@@ -764,7 +766,7 @@ export class InandoutStComponent implements OnInit {
       },
       {
         field: 'idWarehouse',
-        headerName: 'Almacén',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.warehouse'),
         width: 140,
         editable: (params: any) => this.canEditAuthorizedRow(params.data),
         cellEditor: 'agRichSelectCellEditor',
@@ -783,7 +785,7 @@ export class InandoutStComponent implements OnInit {
       },
       {
         field: 'idType',
-        headerName: 'Tipo de Movimiento',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.movementType'),
         width: 170,
         editable: (params: any) => this.canEditAuthorizedRow(params.data),
         cellEditor: 'agRichSelectCellEditor',
@@ -791,7 +793,7 @@ export class InandoutStComponent implements OnInit {
           values: [...this.catalogs.map(c => c.id), '__ADD_NEW__'],
           valueListMaxHeight: 200,
           formatValue: (value: any) => {
-            if (value === '__ADD_NEW__') return '+ Agregar Registro';
+            if (value === '__ADD_NEW__') return `+ ${this.translate.instant('modules.warehouses.ui.movements.addRecord')}`;
             return this.getMovementTypeLabel(value);
           }
         }),
@@ -801,7 +803,7 @@ export class InandoutStComponent implements OnInit {
       },
       {
         field: 'idOt',
-        headerName: 'OT',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.workOrder'),
         width: 160,
         hide: this.otList.length === 0,
         editable: (params: any) => this.canEditAuthorizedRow(params.data),
@@ -810,20 +812,20 @@ export class InandoutStComponent implements OnInit {
           values: [0, ...this.otList.map(ot => ot.id)],
           valueListMaxHeight: 220,
           formatValue: (value: any) => {
-            if (!value) return '(Sin OT)';
+          if (!value) return `(${this.translate.instant('modules.warehouses.ui.movements.noWorkOrder')})`;
             const ot = this.otList.find(o => o.id === value);
             return ot ? (ot.description || ot.folio || ot.num || `OT #${ot.id}`) : `OT #${value}`;
           }
         }),
         valueFormatter: (params: any) => {
-          if (!params.value) return '(Sin OT)';
+          if (!params.value) return `(${this.translate.instant('modules.warehouses.ui.movements.noWorkOrder')})`;
           const ot = this.otList.find(o => o.id === params.value);
           return ot ? (ot.description || ot.folio || ot.num || `OT #${ot.id}`) : `OT #${params.value}`;
         }
       },
       {
         field: 'idOc',
-        headerName: 'Orden de Compra',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.purchaseOrder'),
         width: 160,
         hide: this.movementType !== 'IN' || this.isTransferType(this.selectedEntry?.idType) || this.isInventorySetupType(this.selectedEntry?.idType),
         editable: (params: any) => this.canEditAuthorizedRow(params.data),
@@ -832,20 +834,20 @@ export class InandoutStComponent implements OnInit {
           values: [0, ...this.ocList.map(oc => oc.id)],
           valueListMaxHeight: 220,
           formatValue: (value: any) => {
-            if (!value) return '(Sin OC)';
+          if (!value) return `(${this.translate.instant('modules.warehouses.ui.movements.noPurchaseOrder')})`;
             const oc = this.ocList.find(o => o.id === value);
             return oc ? (oc.folio || `OC #${oc.id}`) : `OC #${value}`;
           }
         }),
         valueFormatter: (params: any) => {
-          if (!params.value || params.value === 0) return '(Sin OC)';
+          if (!params.value || params.value === 0) return `(${this.translate.instant('modules.warehouses.ui.movements.noPurchaseOrder')})`;
           const oc = this.ocList.find(o => o.id === params.value);
           return oc ? (oc.folio || `OC #${oc.id}`) : `OC #${params.value}`;
         }
       },
       {
         field: 'idEntry',
-        headerName: 'Vale de Entrada',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.receiptVoucher'),
         width: 160,
         hide: this.movementType !== 'OUT' || this.isTransferType(this.selectedEntry?.idType),
         editable: (params: any) => this.movementType === 'OUT' && this.canEditAuthorizedRow(params.data),
@@ -854,20 +856,20 @@ export class InandoutStComponent implements OnInit {
           values: [0, ...this.entryList.map(entry => Number(entry.id))],
           valueListMaxHeight: 220,
           formatValue: (value: any) => {
-            if (!value) return '(Sin vale)';
+            if (!value) return `(${this.translate.instant('modules.warehouses.ui.movements.noVoucher')})`;
             const entry = this.entryList.find(item => Number(item.id) === Number(value));
             return entry ? (entry.folio || `Entrada #${entry.id}`) : `Entrada #${value}`;
           }
         }),
         valueFormatter: (params: any) => {
-          if (!params.value || params.value === 0) return '(Sin vale)';
+          if (!params.value || params.value === 0) return `(${this.translate.instant('modules.warehouses.ui.movements.noVoucher')})`;
           const entry = this.entryList.find(item => Number(item.id) === Number(params.value));
           return entry ? (entry.folio || `Entrada #${entry.id}`) : `Entrada #${params.value}`;
         }
       },
       {
         field: 'folio',
-        headerName: 'Folio',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.reference'),
         width: 180,
         minWidth: 160,
         filter: true,
@@ -879,7 +881,7 @@ export class InandoutStComponent implements OnInit {
       },
       {
         field: 'date',
-        headerName: 'Fecha',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.date'),
         width: 110,
         editable: (params: any) => this.canEditAuthorizedRow(params.data),
         valueFormatter: (params: any) => {
@@ -893,7 +895,7 @@ export class InandoutStComponent implements OnInit {
       },
       {
         field: 'idWarehouseOrigin',
-        headerName: 'Almacén Destino',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.destinationWarehouse'),
         width: 190,
         hide: !this.isTransferType(this.selectedEntry?.idType),
         editable: (params: any) => this.isTransferType(params.data?.idType) && this.canEditAuthorizedRow(params.data),
@@ -918,7 +920,7 @@ export class InandoutStComponent implements OnInit {
       },
       {
         field: 'numBill',
-        headerName: 'Factura',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.invoice'),
         width: 120,
         hide: this.isTransferType(this.selectedEntry?.idType),
         editable: (params: any) => !this.isTransferType(params.data?.idType) && this.canEditAuthorizedRow(params.data),
@@ -929,7 +931,7 @@ export class InandoutStComponent implements OnInit {
       },
       {
         field: 'deliverName',
-        headerName: 'Entregado Por',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.deliveredBy'),
         width: 180,
         editable: (params: any) => this.canEditAuthorizedRow(params.data),
         valueSetter: (params: any) => {
@@ -939,7 +941,7 @@ export class InandoutStComponent implements OnInit {
       },
       {
         field: 'idAutoriza',
-        headerName: 'Autorizado Por',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.authorizedBy'),
         width: 180,
         editable: (params: any) => this.canEditAuthorizedRow(params.data),
         cellEditor: 'agRichSelectCellEditor',
@@ -957,7 +959,7 @@ export class InandoutStComponent implements OnInit {
         }
       },
       {
-        headerName: 'Abrir', colId: 'authorizationAction', width: 64, editable: false,
+        headerName: this.translate.instant('modules.warehouses.ui.movements.open'), colId: 'authorizationAction', width: 64, editable: false,
         cellRenderer: (params: any) => {
           if (Number(params.data?.idAutoriza) <= 0) {
             return '<span class="text-success" title="Sin autorización; movimiento editable" aria-label="Movimiento editable"><i class="bi bi-unlock-fill"></i></span>';
@@ -978,7 +980,7 @@ export class InandoutStComponent implements OnInit {
       },
       {
         field: 'comment',
-        headerName: 'Comentario',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.comment'),
         width: 300,
         editable: (params: any) => this.canEditAuthorizedRow(params.data),
         valueSetter: (params: any) => {
@@ -1029,11 +1031,11 @@ export class InandoutStComponent implements OnInit {
     const row = event.data;
     if (!Number(row?.idAutoriza)) return;
     if (Number(row.idAutoriza) !== Number(this.trackingService.getId())) {
-      alerts.basicAlert('Autorización asignada', 'Solo la persona asignada para autorizar puede quitar esta autorización.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.authorizationAssigned'), this.translate.instant('modules.warehouses.ui.movements.messages.onlyAssignedCanRemove'), 'warning');
       return;
     }
     const documentLabel = this.movementType === 'IN' ? 'entrada' : 'salida';
-    const confirmation = await alerts.confirmAlert('Quitar autorización', `La ${documentLabel} volverá a quedar editable. ¿Deseas continuar?`, 'warning', 'Sí, quitar');
+    const confirmation = await alerts.confirmAlert(this.translate.instant('modules.warehouses.ui.movements.messages.removeAuthorization'), this.translate.instant('modules.warehouses.ui.movements.messages.willBeEditable', { document: documentLabel }), 'warning', this.translate.instant('modules.warehouses.ui.movements.messages.yesRemove'));
     if (!confirmation.isConfirmed) return;
     try {
       const updatedRow = { ...row, idAutoriza: 0 };
@@ -1042,16 +1044,16 @@ export class InandoutStComponent implements OnInit {
       event.node.setData(persistedRow);
       this.rowData = this.rowData.map(item => Number(item.id) === Number(row.id) ? persistedRow : item);
       this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
-      alerts.basicAlert('Autorización retirada', `La ${documentLabel} volvió a quedar editable.`, 'success');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.authorizationRemoved'), this.translate.instant('modules.warehouses.ui.movements.messages.editableAgain', { document: documentLabel }), 'success');
     } catch (error: any) {
       const message = error?.error?.message || error?.message || 'No fue posible retirar la autorización.';
-      alerts.basicAlert('No se pudo quitar', message, 'error');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.removeFailed'), message, 'error');
     }
   }
 
   toggleCascade(node: any) {
     if (Number(node?.data?.idAutoriza) > 0) {
-      alerts.basicAlert('Movimiento autorizado', 'Quita la autorización desde la fila para modificar sus partidas.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.movementAuthorized'), this.translate.instant('modules.warehouses.ui.movements.messages.removeAuthorizationToEdit'), 'warning');
       return;
     }
     const event = {
@@ -1075,7 +1077,7 @@ export class InandoutStComponent implements OnInit {
     }
 
     if (this.isGeneratingReport) {
-      alerts.basicAlert('Procesando', 'Ya se está generando un reporte. Por favor espere.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.processing'), this.translate.instant('modules.warehouses.ui.movements.messages.reportAlreadyGenerating'), 'warning');
       return;
     }
 
@@ -1112,7 +1114,7 @@ export class InandoutStComponent implements OnInit {
       clearInterval(progressInterval);
       alerts.closeLoading();
       this.isGeneratingReport = false;
-      alerts.basicAlert('Error', 'Ocurrió un error al generar el reporte. Por favor, intente nuevamente.', 'error');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.error'), this.translate.instant('modules.warehouses.ui.movements.messages.reportFailed'), 'error');
       console.error('Error generando reporte:', error);
     }
   }
@@ -1229,10 +1231,10 @@ export class InandoutStComponent implements OnInit {
   onCellValueChanged(event: any): void {
     if (event.colDef.field === 'idAutoriza' && Number(event.newValue) > 0) {
       const authorizer = (this.users || []).find((user: any) => Number(user.id) === Number(event.newValue));
-      const documentLabel = this.movementType === 'IN' ? 'entrada' : 'salida';
+      const documentLabel = this.translate.instant(this.movementType === 'IN' ? 'modules.warehouses.ui.movements.receipt' : 'modules.warehouses.ui.movements.issue');
       alerts.basicAlert(
-        'Autorizador seleccionado',
-        `${authorizer?.displayName || 'El usuario seleccionado'} quedó asignado para autorizar la ${documentLabel}. Guarda los cambios para aplicar la autorización.`,
+        this.translate.instant('modules.warehouses.ui.movements.messages.authorizerSelected'),
+        this.translate.instant('modules.warehouses.ui.movements.messages.authorizerAssigned', { name: authorizer?.displayName || this.translate.instant('modules.warehouses.ui.movements.messages.selectedUser'), document: documentLabel }),
         'success'
       );
     }
@@ -1317,7 +1319,7 @@ export class InandoutStComponent implements OnInit {
       `Tipo: ${this.movementType === 'IN' ? 'Entrada' : 'Salida'}`,
       'text', '',
       {
-        inputAttributes: { placeholder: 'Descripción del tipo de movimiento...' },
+        inputAttributes: { placeholder: this.translate.instant('modules.warehouses.ui.movements.messages.movementDescription') },
         confirmButtonText: 'Guardar',
         confirmButtonColor: '#28a745'
       }
@@ -1397,11 +1399,11 @@ export class InandoutStComponent implements OnInit {
   async deleteEntry(): Promise<void> {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó inandout st', 'ModWareHousesTD', this.trackingService.getEmail());
     if (!this.selectedEntry) {
-      alerts.basicAlert('Selección requerida', 'Por favor seleccione una entrada para eliminar', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.selectionRequired'), this.translate.instant('modules.warehouses.ui.movements.messages.selectMovementToDelete'), 'warning');
       return;
     }
     if (Number(this.selectedEntry?.idAutoriza) > 0) {
-      alerts.basicAlert('Movimiento autorizado', 'Quita la autorización desde la fila antes de eliminarlo.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.movementAuthorized'), this.translate.instant('modules.warehouses.ui.movements.messages.removeAuthorizationToDelete'), 'warning');
       return;
     }
 
@@ -1414,21 +1416,21 @@ export class InandoutStComponent implements OnInit {
         if (!Array.isArray(details)) throw new Error('Respuesta de partidas inválida');
         const activeItems = details.filter((item: any) => item.active !== false && item.active !== 0);
         if (activeItems.length) {
-          alerts.basicAlert('No se puede eliminar', `El vale de ${this.movementType === 'IN' ? 'Entrada' : 'Salida'} contiene partidas. Elimina primero sus partidas.`, 'warning');
+          alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.cannotDelete'), this.translate.instant('modules.warehouses.ui.movements.messages.removeLineItemsFirst', { document: this.translate.instant(this.movementType === 'IN' ? 'modules.warehouses.ui.movements.receipt' : 'modules.warehouses.ui.movements.issue') }), 'warning');
           return;
         }
       } catch (error) {
         console.error('No fue posible validar las partidas del movimiento antes de eliminarlo:', error);
-        alerts.basicAlert('No se pudo validar', 'No se eliminó el movimiento porque no fue posible revisar sus partidas.', 'warning');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.couldNotValidate'), this.translate.instant('modules.warehouses.ui.movements.messages.notDeletedCouldNotCheckItems'), 'warning');
         return;
       }
     }
 
     const result = await alerts.confirmAlert(
-      `¿Eliminar ${movementLabel.toLowerCase()}?`,
-      `¿Está seguro de eliminar la ${movementLabel.toLowerCase()} ${selectedEntry.folio}?`,
+      this.translate.instant('modules.warehouses.ui.movements.messages.deleteTitle', { movement: this.translate.instant(this.movementType === 'IN' ? 'modules.warehouses.ui.movements.receipt' : 'modules.warehouses.ui.movements.issue') }),
+      this.translate.instant('modules.warehouses.ui.movements.messages.confirmDelete', { movement: this.translate.instant(this.movementType === 'IN' ? 'modules.warehouses.ui.movements.receipt' : 'modules.warehouses.ui.movements.issue'), folio: selectedEntry.folio }),
       'warning',
-      'Sí, eliminar'
+      this.translate.instant('modules.warehouses.ui.movements.messages.yesDelete')
     );
 
     if (result.isConfirmed) {
@@ -1442,12 +1444,12 @@ export class InandoutStComponent implements OnInit {
         }
         const entryId = Number(selectedEntry.id);
         await lastValueFrom(this.inandoutService.deleteInAndOut(entryId));
-        alerts.basicAlert('Eliminado', `La ${movementLabel.toLowerCase()} ha sido eliminada correctamente`, 'success');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.deleted'), this.translate.instant('modules.warehouses.ui.movements.messages.movementDeleted', { movement: this.translate.instant(this.movementType === 'IN' ? 'modules.warehouses.ui.movements.receipt' : 'modules.warehouses.ui.movements.issue') }), 'success');
         this.selectedEntry = null;
         this.loadEntries();
       } catch (error: any) {
-        const errorMsg = error?.error?.message || error?.error?.Message || error?.message || 'Error desconocido';
-        alerts.basicAlert('Error', `No se pudo eliminar la ${movementLabel.toLowerCase()}: ${errorMsg}`, 'error');
+        const errorMsg = error?.error?.message || error?.error?.Message || error?.message || this.translate.instant('modules.warehouses.ui.movements.messages.unknownError');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.error'), this.translate.instant('modules.warehouses.ui.movements.messages.deleteMovementFailed', { movement: this.translate.instant(this.movementType === 'IN' ? 'modules.warehouses.ui.movements.receipt' : 'modules.warehouses.ui.movements.issue'), error: errorMsg }), 'error');
       }
     }
   }
@@ -1455,7 +1457,7 @@ export class InandoutStComponent implements OnInit {
   async saveChanges(): Promise<void> {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en inandout st', 'ModWareHousesTD', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
-      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.noChanges'), this.translate.instant('modules.warehouses.ui.movements.messages.noPendingChanges'), 'info');
       return;
     }
 
@@ -1463,7 +1465,7 @@ export class InandoutStComponent implements OnInit {
     const modifiedRows = this.rowData.filter((row: any) => row.__modified && !row.__isNew);
 
     if (newRows.length === 0 && modifiedRows.length === 0) {
-      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.noChanges'), this.translate.instant('modules.warehouses.ui.movements.messages.noPendingChanges'), 'info');
       this.hasUnsavedChanges = false;
       return;
     }
@@ -1473,7 +1475,7 @@ export class InandoutStComponent implements OnInit {
       (!Number(row.idWarehouseOrigin) || Number(row.idWarehouseOrigin) === Number(row.idWarehouse || this.selectedWarehouse?.idAlmacen))
     );
     if (invalidTransfer) {
-      alerts.basicAlert('Almacén destino requerido', 'Selecciona un almacén destino distinto al almacén de origen elegido en la parte superior.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.destinationRequired'), this.translate.instant('modules.warehouses.ui.movements.messages.selectDifferentDestination'), 'warning');
       return;
     }
 
@@ -1497,7 +1499,7 @@ export class InandoutStComponent implements OnInit {
         const entryData = this.prepareEntryData(modifiedRow);
         await lastValueFrom(this.inandoutService.updateInAndOut(modifiedRow.id, entryData));
       }
-      alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.saved'), this.translate.instant('modules.warehouses.ui.movements.messages.changesSaved'), 'success');
       this.hasUnsavedChanges = false;
       this.loadEntries();
     } catch (error: any) {
@@ -1508,7 +1510,7 @@ export class InandoutStComponent implements OnInit {
         response: error?.error,
         error
       });
-      alerts.basicAlert('Error', `No se pudieron guardar los cambios: ${errorMsg}`, 'error');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.error'), `${this.translate.instant('modules.warehouses.ui.movements.messages.saveChangesFailed')}: ${errorMsg}`, 'error');
     }
   }
 
@@ -1546,7 +1548,7 @@ export class InandoutStComponent implements OnInit {
     this.loadEntries();
     this.selectedEntry = null;
     this.hasUnsavedChanges = false;
-    alerts.basicAlert('Recargado', 'Los datos han sido recargados', 'success');
+    alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.refreshed'), this.translate.instant('modules.warehouses.ui.movements.messages.dataRefreshed'), 'success');
   }
 
   // ==================== ITEMS DE ENTRADA ====================
@@ -1636,8 +1638,8 @@ export class InandoutStComponent implements OnInit {
 
     if (dailyReportItems.some((item: any) => Number(item.quantity) <= 0)) {
       alerts.basicAlert(
-        'Cantidad requerida',
-        'Los artículos marcados para Reporte diario deben tener una cantidad mayor a cero.',
+        this.translate.instant('modules.warehouses.ui.movements.messages.quantityRequired'),
+        this.translate.instant('modules.warehouses.ui.movements.messages.dailyReportQuantity'),
         'warning'
       );
       return false;
@@ -1648,10 +1650,10 @@ export class InandoutStComponent implements OnInit {
       const entry = this.rowData.find(item => String(item.id) === String(entryId));
       const date = this.formatDateForDisplay(entry?.date);
       const confirmation = await alerts.confirmAlert(
-        'Agregar materiales al Reporte diario',
-        `Se agregarán ${dailyReportItems.length} artículo(s) al reporte del ${date}. Si no existe para este proyecto, se creará automáticamente.`,
+        this.translate.instant('modules.warehouses.ui.movements.messages.addToDailyReport'),
+        this.translate.instant('modules.warehouses.ui.movements.messages.confirmDailyReportItems', { count: dailyReportItems.length, date }),
         'question',
-        'Sí, agregar'
+        this.translate.instant('modules.warehouses.ui.movements.messages.yesAdd')
       );
       shouldAddToDailyReport = confirmation.isConfirmed;
     }
@@ -1709,16 +1711,16 @@ export class InandoutStComponent implements OnInit {
         if (dailyReportFailed) {
           this.keepItemsDetailOpen(entryId);
           alerts.basicAlert(
-            'Artículos guardados',
-            'La salida se guardó, pero no fue posible agregarla al Reporte diario. La selección quedó marcada para reintentar.',
+            this.translate.instant('modules.warehouses.ui.movements.messages.itemsSaved'),
+            this.translate.instant('modules.warehouses.ui.movements.messages.dailyReportAddFailed'),
             'warning'
           );
           return true;
         }
         this.keepItemsDetailOpen(entryId);
-        alerts.basicAlert('Detalles guardados', 'Se han guardado los items correctamente.', 'success');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.detailsSaved'), this.translate.instant('modules.warehouses.ui.movements.messages.itemsSaved'), 'success');
         if (addedToDailyReport > 0) {
-          alerts.toastAlert(`${addedToDailyReport} material(es) agregado(s) al Reporte diario`, 'success');
+          alerts.toastAlert(this.translate.instant('modules.warehouses.ui.movements.messages.addedToDailyReport', { count: addedToDailyReport }), 'success');
         }
         return true;
       }
@@ -1730,7 +1732,7 @@ export class InandoutStComponent implements OnInit {
         response: error?.error,
         error
       });
-      alerts.basicAlert('Error', 'Error al guardar los items.', 'error');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.error'), this.translate.instant('modules.warehouses.ui.movements.messages.saveItemsFailed'), 'error');
       return false;
     }
   }
@@ -1738,7 +1740,7 @@ export class InandoutStComponent implements OnInit {
   private async saveMasterEntryForItems(entry: any): Promise<number | null> {
     if (!entry) return null;
     if (this.isTransferType(entry.idType) && (!Number(entry.idWarehouseOrigin) || Number(entry.idWarehouseOrigin) === Number(entry.idWarehouse || this.selectedWarehouse?.idAlmacen))) {
-      alerts.basicAlert('Almacén destino requerido', 'Selecciona un almacén destino distinto al almacén de origen antes de guardar sus partidas.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.destinationRequired'), this.translate.instant('modules.warehouses.ui.movements.messages.selectDifferentDestinationForItems'), 'warning');
       return null;
     }
 
@@ -1760,7 +1762,7 @@ export class InandoutStComponent implements OnInit {
       return savedId;
     } catch (error: any) {
       console.error('Error guardando el encabezado antes de sus partidas:', error);
-      alerts.basicAlert('No se pudo guardar el movimiento', error?.error?.message || error?.message || 'Revisa los datos del encabezado e inténtalo de nuevo.', 'error');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.saveMovementFailed'), error?.error?.message || error?.message || this.translate.instant('modules.warehouses.ui.movements.messages.checkHeaderAndRetry'), 'error');
       return null;
     }
   }
@@ -1795,10 +1797,10 @@ export class InandoutStComponent implements OnInit {
     const detailId = params.data.id;
 
     const confirmation = await alerts.confirmAlert(
-      'Eliminar partida',
-      '¿Está seguro de eliminar esta partida? Esto afectará su inventario.',
+      this.translate.instant('modules.warehouses.ui.movements.messages.deleteLineItem'),
+      this.translate.instant('modules.warehouses.ui.movements.messages.confirmDeleteLineItem'),
       'warning',
-      'Sí, eliminar'
+      this.translate.instant('modules.warehouses.ui.movements.messages.yesDelete')
     );
     if (!confirmation.isConfirmed) return;
 
@@ -1811,11 +1813,11 @@ export class InandoutStComponent implements OnInit {
     } else {
       try {
         await lastValueFrom(this.inandoutService.deleteInAndOutItem(detailId));
-        alerts.basicAlert('Item eliminado', 'El item se eliminó correctamente.', 'success');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.itemDeleted'), this.translate.instant('modules.warehouses.ui.movements.messages.itemDeletedSuccessfully'), 'success');
         successCallback();
       } catch (error) {
         console.error('Error deleting detail row:', error);
-        alerts.basicAlert('Error', 'Error al eliminar el item.', 'error');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.error'), this.translate.instant('modules.warehouses.ui.movements.messages.deleteItemFailed'), 'error');
       }
     }
   }

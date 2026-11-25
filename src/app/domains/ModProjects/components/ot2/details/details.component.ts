@@ -7,6 +7,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
+import { injectWorkOrderTranslator } from '../../ot/work-order-i18n';
 
 export interface OtDetails {
   id: number;
@@ -44,6 +45,7 @@ export interface OtDetails {
   styleUrl: './details.component.scss'
 })
 export class DetailsComponent implements OnInit {
+  private readonly t = injectWorkOrderTranslator();
   
   private fb = inject(FormBuilder);
   private otService = inject(OtService);
@@ -142,7 +144,7 @@ export class DetailsComponent implements OnInit {
       error: (error) => {
         console.error('Error al cargar detalles de OT:', error);
         this.isLoading = false;
-        alerts.basicAlert('Error', 'Error al cargar los detalles de la OT', 'error');
+        alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.workOrderDetailsLoadFailed'), 'error');
       }
     });
   }
@@ -217,7 +219,7 @@ export class DetailsComponent implements OnInit {
       }
     } else {
       this.markFormGroupTouched();
-      alerts.basicAlert('Formulario incompleto', 'Por favor complete todos los campos requeridos', 'warning');
+      alerts.basicAlert(this.t('alerts.incompleteFormTitle'), this.t('alerts.completeAllRequiredFields'), 'warning');
     }
   }
 
@@ -270,13 +272,13 @@ export class DetailsComponent implements OnInit {
           'Menu Proyectos OT Detalles',
           this.trackingService.getEmail()
         );
-        alerts.basicAlert('Éxito', 'OT creada exitosamente', 'success');
+        alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.workOrderCreated'), 'success');
         this.router.navigate(['/projects/ot/ordenes']);
       },
       error: (error) => {
         console.error('Error al crear OT:', error);
         this.isLoading = false;
-        alerts.basicAlert('Error', 'Error al crear la OT', 'error');
+        alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.workOrderCreateFailed'), 'error');
       }
     });
   }
@@ -291,13 +293,13 @@ export class DetailsComponent implements OnInit {
           'Menu Proyectos OT Detalles',
           this.trackingService.getEmail()
         );
-        alerts.basicAlert('Éxito', 'OT actualizada exitosamente', 'success');
+        alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.workOrderUpdated'), 'success');
         this.router.navigate(['/projects/ot/ordenes']);
       },
       error: (error) => {
         console.error('Error al actualizar OT:', error);
         this.isLoading = false;
-        alerts.basicAlert('Error', 'Error al actualizar la OT', 'error');
+        alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.workOrderUpdateFailed'), 'error');
       }
     });
   }
@@ -316,9 +318,9 @@ export class DetailsComponent implements OnInit {
   getFieldError(fieldName: string): string {
     const field = this.otForm.get(fieldName);
     if (field?.errors) {
-      if (field.errors['required']) return 'Este campo es requerido';
-      if (field.errors['maxlength']) return `Máximo ${field.errors['maxlength'].requiredLength} caracteres`;
-      if (field.errors['min']) return `El valor mínimo es ${field.errors['min'].min}`;
+      if (field.errors['required']) return this.t('form.requiredField');
+      if (field.errors['maxlength']) return this.t('form.maximumCharacters', { count: field.errors['maxlength'].requiredLength });
+      if (field.errors['min']) return this.t('form.minimumValue', { value: field.errors['min'].min });
     }
     return '';
   }
@@ -326,10 +328,10 @@ export class DetailsComponent implements OnInit {
   onCancel() {
     if (this.otForm.dirty) {
       alerts.confirmAlert(
-        'Confirmar cancelación',
-        '¿Está seguro de que desea cancelar? Se perderán los cambios no guardados.',
+        this.t('alerts.confirmCancelTitle'),
+        this.t('alerts.confirmCancelUnsavedChanges'),
         'warning',
-        'Sí, cancelar'
+        this.t('alerts.yesCancel')
       ).then((result) => {
         if (result.isConfirmed) {
           this.router.navigate(['/projects/ot/ordenes']);
@@ -342,10 +344,10 @@ export class DetailsComponent implements OnInit {
 
   onReset() {
     alerts.confirmAlert(
-      'Confirmar restablecimiento',
-      '¿Está seguro de que desea restablecer el formulario?',
+      this.t('alerts.confirmResetTitle'),
+      this.t('alerts.confirmResetForm'),
       'warning',
-      'Sí, restablecer'
+      this.t('alerts.yesReset')
     ).then((result) => {
       if (result.isConfirmed) {
         if (this.isEditMode && this.otId) {
@@ -379,15 +381,15 @@ export class DetailsComponent implements OnInit {
 
   onDelete() {
     if (!this.isEditMode || !this.otId) {
-      alerts.basicAlert('Error', 'No se puede eliminar una OT que no ha sido guardada', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.cannotDeleteUnsavedWorkOrder'), 'error');
       return;
     }
 
     alerts.confirmAlert(
-      'Confirmar eliminación',
-      '¿Está seguro de que desea eliminar esta OT? Esta acción no se puede deshacer.',
+      this.t('alerts.confirmDeleteTitle'),
+      this.t('alerts.confirmDeleteWorkOrder'),
       'warning',
-      'Sí, eliminar'
+      this.t('alerts.yesDelete')
     ).then((result) => {
       if (result.isConfirmed) {
         this.isLoading = true;
@@ -400,13 +402,13 @@ export class DetailsComponent implements OnInit {
               'Menu Proyectos OT Detalles',
               this.trackingService.getEmail()
             );
-            alerts.basicAlert('Éxito', 'OT eliminada exitosamente', 'success');
+            alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.workOrderDeleted'), 'success');
             this.router.navigate(['/projects/ot/ordenes']);
           },
           error: (error) => {
             console.error('Error al eliminar OT:', error);
             this.isLoading = false;
-            alerts.basicAlert('Error', 'Error al eliminar la OT', 'error');
+            alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.workOrderDeleteFailed'), 'error');
           }
         });
       }

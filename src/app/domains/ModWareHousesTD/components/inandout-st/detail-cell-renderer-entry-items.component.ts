@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ICellRendererComp } from 'ag-grid-enterprise';
-import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { AG_GRID_LOCALE } from 'assets/i18n/ag-grid.locale';
 import { alerts } from 'app/helpers/alerts';
 import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
@@ -18,87 +18,88 @@ import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-
 import { navigateEditableCellOnEnter } from 'app/helpers/ag-grid-enter-navigation';
 import Swal from 'sweetalert2';
 import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, switchMap, toArray } from 'rxjs';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-detail-cell-renderer-entry-items',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, SelectMaterialEditorComponent, PdfReportViewerComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, SelectMaterialEditorComponent, PdfReportViewerComponent, TranslateModule],
   template: `
     <!-- Items Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'items'">
       <div *ngIf="context?.movementType === 'IN' && entryData?.idOc > 0" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-info-circle me-1"></i>
-        Las partidas de la OC se cargan al abrir el detalle. Captura la cantidad recibida y guarda.
+        {{ 'modules.warehouses.ui.entryDetail.poLoadedMessage' | translate }}
       </div>
       <div *ngIf="isLinkedSourceBalanceUnverified()" class="alert alert-warning py-1 px-2 mb-2 small" role="alert">
         <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ context?.getSourceBalanceWarning?.() }}
-        No guardes partidas vinculadas hasta actualizar y comprobar el pendiente.
+        {{ 'modules.warehouses.ui.entryDetail.sourceBalanceMessage' | translate }}
       </div>
       <div *ngIf="isInitialInventoryEntry()" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-info-circle me-1"></i>
-        Agrega cada material buscando por código o descripción y captura su existencia inicial.
+        {{ 'modules.warehouses.ui.entryDetail.initialInventoryMessage' | translate }}
       </div>
       <div *ngIf="isInventoryAdjustmentEntry()" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-info-circle me-1"></i>
-        Los materiales con existencia en este almacén se cargan en el detalle. Captura las cantidades que cambiarán y guarda.
+        {{ 'modules.warehouses.ui.entryDetail.adjustmentMessage' | translate }}
       </div>
       <div *ngIf="isTransferEntry()" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-info-circle me-1"></i>
-        Agrega solo los materiales que vas a transferir; el selector muestra los que tienen existencia en el almacén origen.
+        {{ 'modules.warehouses.ui.entryDetail.transferMessage' | translate }}
       </div>
       <div *ngIf="isStandardOutgoingEntry()" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-exclamation-circle me-1"></i>
-        Esta salida no tiene Vale de Entrada vinculado; no se cargarán partidas automáticamente.
-        <span *ngIf="isProjectStandardOutgoingWithoutEntry()">Vincula un Vale de Entrada para poder agregar partidas.</span>
-        <span *ngIf="!isProjectStandardOutgoingWithoutEntry()">Agrega solo lo que vas a retirar.</span>
+        {{ 'modules.warehouses.ui.entryDetail.unlinkedIssueMessage' | translate }}
+        <span *ngIf="isProjectStandardOutgoingWithoutEntry()">{{ 'modules.warehouses.ui.entryDetail.linkReceiptPrompt' | translate }}</span>
+        <span *ngIf="!isProjectStandardOutgoingWithoutEntry()">{{ 'modules.warehouses.ui.entryDetail.addIssueItemsPrompt' | translate }}</span>
       </div>
       <div *ngIf="(isStockRestrictedEntry() || isStandardOutgoingEntry()) && loadingWarehouseStock" class="alert alert-info py-2 px-2 mb-2 small" role="status" aria-live="polite">
         <div class="d-flex align-items-center gap-2 mb-1">
           <span class="spinner-border spinner-border-sm text-primary" aria-hidden="true"></span>
-          <span>Cargando materiales con inventario y sus marcas...</span>
+          <span>{{ 'modules.warehouses.ui.entryDetail.loadingInventoryItems' | translate }}</span>
         </div>
-        <div class="progress" style="height: 6px;" aria-label="Cargando existencias">
+        <div class="progress" style="height: 6px;" [attr.aria-label]="'modules.warehouses.ui.entryDetail.loadingInventory' | translate">
           <div class="progress-bar progress-bar-striped progress-bar-animated w-100"></div>
         </div>
       </div>
       <div *ngIf="context?.movementType === 'IN' && hasConvertedMaterials" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-info-circle me-1"></i>
-        Los materiales con conversión se capturan en su unidad origen; el inventario se guarda en la unidad destino configurada.
+        {{ 'modules.warehouses.ui.entryDetail.conversionMessage' | translate }}
       </div>
       <div class="detail-actions d-flex justify-content-end mb-2">
         <button *ngIf="!isInventoryAdjustmentEntry()" class="btn btn-primary btn-sm me-2" (click)="addItem()"
           [disabled]="isProjectStandardOutgoingWithoutEntry()"
-          [title]="isProjectStandardOutgoingWithoutEntry() ? 'Vincula un Vale de Entrada para agregar partidas' : 'Agregar partida'">
-          <i class="bi bi-plus-lg"></i> Agregar
+          [title]="isProjectStandardOutgoingWithoutEntry() ? ('modules.warehouses.ui.entryDetail.linkReceiptPrompt' | translate) : ('modules.warehouses.ui.entryDetail.addItem' | translate)">
+          <i class="bi bi-plus-lg"></i> {{ 'modules.warehouses.ui.entryDetail.addItem' | translate }}
         </button>
         <button *ngIf="entryData?.idOc > 0" class="btn btn-secondary btn-sm me-2" (click)="importarItemsDeOC()"
-          title="Importar artículos desde la Orden de Compra">
+          [title]="'modules.warehouses.ui.entryDetail.importPoItems' | translate">
           <i class="bi bi-box-arrow-in-down"></i> OC
         </button>
         <button *ngIf="context?.movementType === 'OUT' && entryData?.idEntry > 0" class="btn btn-secondary btn-sm me-2" (click)="importarItemsDeEntrada()"
-          title="Importar cantidades pendientes desde el vale de Entrada">
-          <i class="bi bi-box-arrow-in-down"></i> Vale de Entrada
+          [title]="'modules.warehouses.ui.entryDetail.importReceiptQuantities' | translate">
+          <i class="bi bi-box-arrow-in-down"></i> {{ 'modules.warehouses.ui.movements.receiptVoucher' | translate }}
         </button>
         <button class="btn btn-warning btn-sm me-2" (click)="discardChanges()">
-          <i class="bi bi-arrow-counterclockwise"></i> Deshacer
+          <i class="bi bi-arrow-counterclockwise"></i> {{ 'undo' | translate }}
         </button>
         <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedItem()">
-          <i class="bi bi-trash"></i> Eliminar
+          <i class="bi bi-trash"></i> {{ 'delete' | translate }}
         </button>
-        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()" title="Guardar partidas (F10)">
-          <i class="bi bi-floppy"></i> Guardar
+        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()" [title]="'modules.warehouses.ui.entryDetail.saveItemsF10' | translate">
+          <i class="bi bi-floppy"></i> {{ 'save' | translate }}
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
             *ngIf="hasUnsavedChanges">
-            <span class="visually-hidden">Hay cambios sin guardar</span>
+            <span class="visually-hidden">{{ 'modules.userSetup.unsavedChanges' | translate }}</span>
           </span>
         </button>
         <button type="button" class="btn btn-outline-secondary btn-sm ms-2" (click)="closeDetail()"
-          title="Cerrar detalle" aria-label="Cerrar detalle">
+          [title]="'modules.warehouses.ui.entryDetail.closeDetail' | translate" [attr.aria-label]="'modules.warehouses.ui.entryDetail.closeDetail' | translate">
           <i class="bi bi-x-lg"></i>
         </button>
       </div>
       <div *ngIf="!masterSaved" class="alert alert-info py-1 px-2 mb-2 small">
-        <i class="bi bi-info-circle me-1"></i> Al guardar las partidas también se guardará la entrada o salida.
+        <i class="bi bi-info-circle me-1"></i> {{ 'modules.warehouses.ui.entryDetail.masterWillSaveMessage' | translate }}
       </div>
       <ag-grid-angular
         #agGrid
@@ -120,20 +121,20 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, switchMap
     <!-- PDF Report View -->
     <div class="report-detail-container" *ngIf="detailType === 'report'">
       <div class="report-header d-flex justify-content-between align-items-center mb-3">
-        <h5 class="mb-0">Vista Previa del Reporte - Folio: {{ entryData?.folio || 'Sin Folio' }}</h5>
+        <h5 class="mb-0">{{ 'modules.warehouses.ui.entryDetail.reportPreview' | translate }} - {{ 'modules.warehouses.ui.entryDetail.folio' | translate }}: {{ entryData?.folio || ('modules.warehouses.ui.entryDetail.noFolio' | translate) }}</h5>
         <div class="d-flex align-items-center gap-2">
 
-          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()"><i class="bi bi-x-lg"></i> Cerrar</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()"><i class="bi bi-x-lg"></i> {{ 'modules.warehouses.ui.entryDetail.closeReport' | translate }}</button>
         </div>
       </div>
       <div class="report-content" style="width:100%; min-width:0; height:920px; margin-top:64px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
-        <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" title="Reporte de entrada" fileName="Reporte_Entrada.pdf"></app-pdf-report-viewer>
+        <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" [title]="'modules.warehouses.ui.entryDetail.receiptReport' | translate" fileName="Receipt_Report.pdf"></app-pdf-report-viewer>
         <div *ngIf="!pdfUrl" class="d-flex justify-content-center align-items-center h-100">
           <div class="text-center">
             <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">Generando reporte...</span>
+              <span class="visually-hidden">{{ 'modules.warehouses.ui.entryDetail.generatingReport' | translate }}</span>
             </div>
-            <p class="mt-2 text-muted">Generando reporte PDF...</p>
+            <p class="mt-2 text-muted">{{ 'modules.warehouses.ui.entryDetail.generatingPdfReport' | translate }}</p>
           </div>
         </div>
       </div>
@@ -146,6 +147,7 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, switchMap
   `]
 })
 export class DetailCellRendererEntryItemsComponent {
+  private translate = inject(TranslateService);
   private trackingService = inject(TrackingService);
   private inventoryService = inject(InventarioWarehouseService);
 
@@ -190,7 +192,7 @@ export class DetailCellRendererEntryItemsComponent {
     );
   }
 
-  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE;
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
@@ -200,7 +202,7 @@ export class DetailCellRendererEntryItemsComponent {
 
     if (this.detailType === 'items') {
       if (this.isStandardOutgoingEntry()) {
-        alerts.toastAlert('Esta salida no tiene Vale de Entrada; no se cargarán partidas automáticamente.', 'warning', 4000);
+        alerts.toastAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.noLinkedReceiptForIssue'), 'warning', 4000);
       }
       this.loadMaterials();
       this.loadData();
@@ -228,7 +230,7 @@ export class DetailCellRendererEntryItemsComponent {
             if (ocItems.length > 0) this.hasUnsavedChanges = true;
             if (this.context.ITEMS.updateCount) this.context.ITEMS.updateCount(entryId, this.rowData.length);
             if (ocItems.length > 0 && this.context.movementType === 'IN') {
-              alerts.toastAlert(`${ocItems.length} partida(s) de la OC cargada(s); captura lo recibido y guarda.`, 'info');
+              alerts.toastAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.purchaseOrderItemsLoaded', { count: ocItems.length }), 'info');
             }
           });
           return;
@@ -239,7 +241,7 @@ export class DetailCellRendererEntryItemsComponent {
             this.gridApi?.setGridOption('rowData', this.rowData);
             if (entryItems.length > 0) this.hasUnsavedChanges = true;
             this.context.ITEMS.updateCount?.(entryId, this.rowData.length);
-            if (entryItems.length > 0) alerts.toastAlert(`${entryItems.length} partida(s) pendiente(s) del vale cargada(s).`, 'info');
+            if (entryItems.length > 0) alerts.toastAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.pendingReceiptItemsLoaded', { count: entryItems.length }), 'info');
           });
           return;
         }
@@ -277,13 +279,13 @@ export class DetailCellRendererEntryItemsComponent {
   importarItemsDeOC() {
     const idOc = this.params.data?.idOc;
     if (!idOc || idOc <= 0) {
-      alerts.basicAlert('Sin OC', 'Esta entrada no tiene una Orden de Compra asignada', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.noPurchaseOrder'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.entryHasNoPurchaseOrder'), 'warning');
       return;
     }
     const entryId = this.params.data.id;
     const loadItems = () => this.context.ITEMS.importFromOC(idOc, entryId, (ocItems: any[]) => {
       if (!ocItems || ocItems.length === 0) {
-        alerts.basicAlert('Sin artículos', 'La OC no tiene artículos activos para importar', 'info');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.noArticles'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.purchaseOrderHasNoActiveArticles'), 'info');
         return;
       }
       const existingProducts = new Set(this.rowData.map(item => this.materialBrandKey(item)).filter(Boolean));
@@ -294,14 +296,14 @@ export class DetailCellRendererEntryItemsComponent {
         return true;
       });
       if (missingItems.length === 0) {
-        alerts.basicAlert('Sin partidas nuevas', 'Los artículos de la OC ya están en el detalle.', 'info');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.noNewItems'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.purchaseOrderItemsAlreadyAdded'), 'info');
         return;
       }
       this.rowData = [...this.rowData, ...missingItems];
       if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
       this.hasUnsavedChanges = true;
       if (this.context.ITEMS.updateCount) this.context.ITEMS.updateCount(entryId, this.rowData.length);
-      alerts.toastAlert(`${missingItems.length} partida(s) nueva(s) agregada(s) desde la OC`, 'success');
+      alerts.toastAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.newItemsAddedFromPurchaseOrder', { count: missingItems.length }), 'success');
     });
     loadItems();
   }
@@ -309,13 +311,13 @@ export class DetailCellRendererEntryItemsComponent {
   importarItemsDeEntrada() {
     const sourceEntryId = Number(this.params.data?.idEntry || 0);
     if (!sourceEntryId) {
-      alerts.basicAlert('Sin vale de Entrada', 'Selecciona un vale de Entrada para cargar sus cantidades pendientes.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.noReceiptVoucher'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.selectReceiptVoucherForPending'), 'warning');
       return;
     }
     const outingId = this.params.data.id;
     this.context.ITEMS.importFromEntry(sourceEntryId, outingId, (items: any[]) => {
       if (!items?.length) {
-        alerts.basicAlert('Sin cantidades pendientes', 'El vale de Entrada ya fue surtido por completo.', 'info');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.noPendingQuantities'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.receiptVoucherFullySupplied'), 'info');
         return;
       }
       const existingProducts = new Set(this.rowData.map(item => this.materialBrandKey(item)).filter(Boolean));
@@ -326,14 +328,14 @@ export class DetailCellRendererEntryItemsComponent {
         return true;
       });
       if (!missingItems.length) {
-        alerts.basicAlert('Sin partidas nuevas', 'Los materiales del vale ya están en el detalle.', 'info');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.noNewItems'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.receiptItemsAlreadyAdded'), 'info');
         return;
       }
       this.rowData = [...this.rowData, ...missingItems];
       this.gridApi?.setGridOption('rowData', this.rowData);
       this.hasUnsavedChanges = true;
       this.context.ITEMS.updateCount?.(outingId, this.rowData.length);
-      alerts.toastAlert(`${missingItems.length} partida(s) pendiente(s) agregada(s) desde el vale de Entrada.`, 'success');
+      alerts.toastAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.pendingItemsAddedFromReceipt', { count: missingItems.length }), 'success');
     });
   }
 
@@ -396,7 +398,7 @@ export class DetailCellRendererEntryItemsComponent {
       },
       {
         field: 'code',
-        headerName: 'Código',
+        headerName: this.translate.instant('modules.warehouses.ui.entryDetail.code'),
         width: this.isInventoryAdjustmentEntry() ? 140 : 100,
         filter: 'agTextColumnFilter',
         editable: (params: any) => (!this.isStockRestrictedEntry() && !this.isStandardOutgoingEntry()) || !params.data?.__autoStockRow,
@@ -407,7 +409,7 @@ export class DetailCellRendererEntryItemsComponent {
       },
       {
         field: 'description',
-        headerName: 'Descripción',
+        headerName: this.translate.instant('modules.warehouses.ui.entryDetail.description'),
         width: this.isInventoryAdjustmentEntry() ? 500 : 430,
         minWidth: this.isInventoryAdjustmentEntry() ? 500 : 430,
         resizable: true,
@@ -504,7 +506,7 @@ export class DetailCellRendererEntryItemsComponent {
       },
       {
         field: 'idBrand',
-        headerName: 'Marca',
+        headerName: this.translate.instant('modules.warehouses.ui.entryDetail.brand'),
         width: 240,
         minWidth: 220,
         filter: 'agTextColumnFilter',
@@ -555,7 +557,7 @@ export class DetailCellRendererEntryItemsComponent {
       },
       {
         field: 'measure',
-        headerName: this.context.movementType === 'OUT' ? 'Unidad de salida' : 'Unidad de entrada',
+        headerName: this.translate.instant(this.context.movementType === 'OUT' ? 'modules.warehouses.ui.entryDetail.issueUnit' : 'modules.warehouses.ui.entryDetail.receiptUnit'),
         width: 100,
         editable: (params: any) => {
           if ((this.isStockRestrictedEntry() || this.isStandardOutgoingEntry()) && params.data?.__autoStockRow) return false;
@@ -594,26 +596,26 @@ export class DetailCellRendererEntryItemsComponent {
       },
       {
         field: 'quantity',
-        headerName: this.isInitialInventoryEntry() ? 'Existencia' : 'Cantidad',
+        headerName: this.translate.instant(this.isInitialInventoryEntry() ? 'modules.warehouses.ui.entryDetail.stock' : 'modules.warehouses.ui.entryDetail.quantity'),
         width: 100,
         editable: true,
         type: 'numericColumn',
         valueSetter: (params: any) => {
           const newValue = Number(params.newValue);
           if (!Number.isFinite(newValue) || newValue < 0) {
-            alerts.basicAlert('Cantidad inválida', 'La cantidad debe ser un número igual o mayor a cero.', 'warning');
+            alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.invalidQuantity'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.quantityMustBeNonNegative'), 'warning');
             return false;
           }
           if (this.context.movementType === 'OUT' && newValue > params.data.pending) {
-            alerts.basicAlert('Cantidad excedida', `La cantidad no puede ser mayor al total de entradas disponibles (${params.data.pending})`, 'warning');
+            alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.quantityExceeded'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.quantityExceedsAvailableReceipts', { pending: params.data.pending }), 'warning');
             return false;
           }
           if (this.isTransferEntry() && newValue > Number(params.data.pending || 0)) {
-            alerts.basicAlert('Cantidad excedida', `La cantidad no puede superar la existencia de la marca seleccionada (${params.data.pending}).`, 'warning');
+            alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.quantityExceeded'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.quantityExceedsSelectedBrandStock', { pending: params.data.pending }), 'warning');
             return false;
           }
           if (this.context.movementType === 'IN' && this.entryData?.idOc > 0 && newValue > Number(params.data.pending || 0)) {
-            alerts.basicAlert('Cantidad excedida', `La cantidad recibida no puede superar la cantidad de la OC (${params.data.pending}).`, 'warning');
+            alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.quantityExceeded'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.quantityExceedsPurchaseOrder', { pending: params.data.pending }), 'warning');
             return false;
           }
           params.data.quantity = newValue;
@@ -624,10 +626,10 @@ export class DetailCellRendererEntryItemsComponent {
       {
         field: 'pending',
         headerName: this.context.movementType === 'OUT'
-          ? (this.entryData?.idEntry > 0 ? 'Pendiente del vale' : 'Existencia')
+          ? (this.entryData?.idEntry > 0 ? this.translate.instant('modules.warehouses.ui.entryDetail.pendingVoucher') : this.translate.instant('modules.warehouses.ui.entryDetail.stock'))
           : ((this.isTransferEntry() || this.isInventoryAdjustmentEntry())
-            ? 'Existencia en almacén'
-            : (this.entryData?.idOc > 0 ? 'Cantidad OC' : 'Pendiente')),
+            ? this.translate.instant('modules.warehouses.ui.entryDetail.warehouseStock')
+            : (this.entryData?.idOc > 0 ? this.translate.instant('modules.warehouses.ui.entryDetail.purchaseOrderQuantity') : this.translate.instant('modules.warehouses.ui.entryDetail.pending'))),
         width: this.context.movementType === 'OUT' ? 135 : 120,
         minWidth: this.context.movementType === 'OUT' ? 135 : 120,
         editable: false,
@@ -635,7 +637,7 @@ export class DetailCellRendererEntryItemsComponent {
       },
       {
         field: 'total',
-        headerName: 'Total',
+        headerName: this.translate.instant('modules.warehouses.ui.entryDetail.total'),
         width: 120,
         minWidth: 120,
         editable: (params: any) => (!this.isStockRestrictedEntry() && !this.isStandardOutgoingEntry()) || !params.data?.__autoStockRow,
@@ -643,7 +645,7 @@ export class DetailCellRendererEntryItemsComponent {
       },
       {
         field: 'comment',
-        headerName: 'Comentario',
+        headerName: this.translate.instant('modules.warehouses.ui.entryDetail.comment'),
         width: 240,
         minWidth: 180,
         editable: true,
@@ -657,13 +659,13 @@ export class DetailCellRendererEntryItemsComponent {
       },
       ...(this.context?.movementType === 'OUT' ? [{
         field: 'addToDailyReport',
-        headerName: 'R. diario',
+        headerName: this.translate.instant('modules.warehouses.ui.entryDetail.dailyReport'),
         width: 100,
         editable: true,
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor',
-        headerTooltip: 'Agregar este material al Reporte diario al guardar la salida',
-        tooltipValueGetter: () => 'Al guardar se pedirá confirmación y se creará el Reporte diario si aún no existe.'
+        headerTooltip: this.translate.instant('modules.warehouses.ui.entryDetail.addMaterialToDailyReportTooltip'),
+        tooltipValueGetter: () => this.translate.instant('modules.warehouses.ui.entryDetail.dailyReportCreationTooltip')
       }] : []),
     ];
   }
@@ -696,7 +698,7 @@ export class DetailCellRendererEntryItemsComponent {
 
   addItem() {
     if (this.isProjectStandardOutgoingWithoutEntry()) {
-      alerts.toastAlert('Vincula un Vale de Entrada antes de agregar partidas a esta salida.', 'warning');
+      alerts.toastAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.linkReceiptBeforeAddingIssueItems'), 'warning');
       return;
     }
     const tempId = `temp_item_${this.tempIdCounter++}`;
@@ -753,7 +755,7 @@ export class DetailCellRendererEntryItemsComponent {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó detail cell renderer entry items', 'ModWareHousesTD', this.trackingService.getEmail());
     const selectedRows = this.gridApi.getSelectedRows();
     if (selectedRows.length === 0) {
-      alerts.basicAlert('Selección requerida', 'Por favor seleccione un item para eliminar', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.selectionRequired'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.selectItemToDelete'), 'warning');
       return;
     }
 
@@ -776,7 +778,7 @@ export class DetailCellRendererEntryItemsComponent {
     const warehouseId = Number(this.entryData?.idWarehouse || this.context?.idWarehouse || 0);
     const stockService = this.context?.inandoutService;
     if (!warehouseId || !stockService?.getStock) {
-      alerts.basicAlert('Almacén requerido', 'Selecciona un almacén antes de guardar materiales de salida.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.warehouseRequired'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.selectWarehouseBeforeSavingIssue'), 'warning');
       return false;
     }
 
@@ -787,7 +789,7 @@ export class DetailCellRendererEntryItemsComponent {
       if (!productId || quantity <= 0) continue;
       const material = this.materials.find(candidate => Number(candidate.id) === productId);
       if ((material?.brands?.length || 0) > 1 && item.idBrand == null && item.brandName !== 'Sin marca') {
-        alerts.basicAlert('Marca requerida', `Selecciona una marca para ${item.description || material.description} antes de guardar la salida.`, 'warning');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.brandRequired'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.selectBrandBeforeSavingIssue', { material: item.description || material.description }), 'warning');
         return false;
       }
       const key = this.materialBrandKey(item);
@@ -821,7 +823,7 @@ export class DetailCellRendererEntryItemsComponent {
           currentStock = this.getStockValue(response);
         }
       } catch {
-        alerts.basicAlert('No se pudo validar existencia', 'No fue posible consultar la existencia del material. Intenta guardar nuevamente.', 'error');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.stockValidationFailed'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.couldNotCheckStock'), 'error');
         return false;
       }
 
@@ -833,8 +835,8 @@ export class DetailCellRendererEntryItemsComponent {
       }
       if (quantity > availableToThisDocument) {
         alerts.basicAlert(
-          'Existencia insuficiente',
-          `${item.description || material?.description || 'El material'} tiene ${availableToThisDocument} disponible(s), pero las partidas de esta salida suman ${quantity}.`,
+          this.translate.instant('modules.warehouses.ui.entryDetail.messages.insufficientStock'),
+          this.translate.instant('modules.warehouses.ui.entryDetail.messages.issueQuantityExceedsStock', { material: item.description || material?.description || this.translate.instant('modules.warehouses.ui.entryDetail.material'), available: availableToThisDocument, quantity }),
           'warning'
         );
         return false;
@@ -846,20 +848,20 @@ export class DetailCellRendererEntryItemsComponent {
   async saveChanges() {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detail cell renderer entry items', 'ModWareHousesTD', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
-      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.noChanges'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.noPendingChangesToSave'), 'info');
       return;
     }
 
     if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
       if (this.isLinkedSourceBalanceUnverified()) {
-        alerts.basicAlert('Pendiente sin verificar', this.context?.getSourceBalanceWarning?.() || 'No se pudo comprobar la cantidad pendiente del documento origen.', 'warning');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.pendingQuantityUnverified'), this.context?.getSourceBalanceWarning?.() || this.translate.instant('modules.warehouses.ui.entryDetail.messages.couldNotCheckSourcePending'), 'warning');
         return;
       }
       if (this.context.movementType === 'OUT' && !(await this.validateOutgoingStock())) return;
       const entryId = this.params.data.id;
       const hasAutoStockRows = this.rowData.some(item => item.__autoStockRow);
       if (this.isStockRestrictedEntry() && hasAutoStockRows && !this.rowData.some(item => item.__autoStockRow && Number(item.quantity) > 0)) {
-        alerts.basicAlert('Sin cantidades', 'Captura una cantidad mayor que cero en al menos un material antes de guardar.', 'info');
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.noQuantities'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.enterPositiveQuantityBeforeSaving'), 'info');
         return;
       }
       const rowsToSave = this.rowData.filter(item => !item.__autoStockRow || Number(item.quantity) > 0);
@@ -887,7 +889,7 @@ export class DetailCellRendererEntryItemsComponent {
 
   discardChanges() {
     if (!this.hasUnsavedChanges) {
-      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por descartar', 'info');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.noChanges'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.noPendingChangesToDiscard'), 'info');
       return;
     }
 
@@ -1339,23 +1341,23 @@ export class DetailCellRendererEntryItemsComponent {
     const idRoot = this.context?.idRoot;
     if (!service || !idRoot) return;
     const result = await Swal.fire({
-      title: '<span style="font-weight:700;color:#20344b">Agregar material</span>',
+      title: `<span style="font-weight:700;color:#20344b">${this.translate.instant('modules.warehouses.ui.entryDetail.messages.addMaterial')}</span>`,
       width: 680,
       showCancelButton: true,
-      confirmButtonText: '<i class="bi bi-check2-circle me-1"></i> Guardar material',
-      cancelButtonText: 'Cancelar',
+      confirmButtonText: `<i class="bi bi-check2-circle me-1"></i> ${this.translate.instant('modules.warehouses.ui.entryDetail.messages.saveMaterial')}`,
+      cancelButtonText: this.translate.instant('modules.warehouses.ui.entryDetail.messages.cancel'),
       buttonsStyling: false,
       customClass: { popup: 'material-quick-create', confirmButton: 'btn btn-primary px-4', cancelButton: 'btn btn-light ms-2 px-4' },
       html: `
         <div style="text-align:left;background:#f7f9fc;border:1px solid #e5ebf3;border-radius:16px;padding:18px;margin-top:8px">
-          <div style="color:#73849a;font-size:12px;font-weight:700;letter-spacing:.08em;margin-bottom:12px">DATOS DEL MATERIAL</div>
-          <label class="form-label small fw-semibold mb-1">Descripción *</label>
-          <div class="input-group mb-3"><span class="input-group-text bg-white"><i class="bi bi-box-seam text-primary"></i></span><input id="quick-material-description" class="form-control" placeholder="Nombre o descripción del material" maxlength="200"></div>
+          <div style="color:#73849a;font-size:12px;font-weight:700;letter-spacing:.08em;margin-bottom:12px">${this.translate.instant('modules.warehouses.ui.entryDetail.messages.materialData')}</div>
+          <label class="form-label small fw-semibold mb-1">${this.translate.instant('modules.warehouses.ui.entryDetail.messages.description')} *</label>
+          <div class="input-group mb-3"><span class="input-group-text bg-white"><i class="bi bi-box-seam text-primary"></i></span><input id="quick-material-description" class="form-control" placeholder="${this.translate.instant('modules.warehouses.ui.entryDetail.messages.materialDescriptionPlaceholder')}" maxlength="200"></div>
           <div class="row g-3">
-            <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Código</label><div class="input-group"><span class="input-group-text bg-white"><i class="bi bi-upc text-primary"></i></span><input id="quick-material-code" class="form-control" placeholder="Código del material" maxlength="35"></div></div>
-            <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Unidad *</label><div class="input-group"><span class="input-group-text bg-white"><i class="bi bi-rulers text-primary"></i></span><input id="quick-material-measure" class="form-control" placeholder="PZA, KG, M…"></div></div>
-            <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Familia</label><div class="input-group"><span class="input-group-text bg-white"><i class="bi bi-collection text-primary"></i></span><input id="quick-material-family" class="form-control" placeholder="Familia del material"></div></div>
-            <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Subfamilia</label><div class="input-group"><span class="input-group-text bg-white"><i class="bi bi-diagram-2 text-primary"></i></span><input id="quick-material-subfamily" class="form-control" placeholder="Subfamilia"></div></div>
+            <div class="col-md-6"><label class="form-label small fw-semibold mb-1">${this.translate.instant('modules.warehouses.ui.entryDetail.messages.code')}</label><div class="input-group"><span class="input-group-text bg-white"><i class="bi bi-upc text-primary"></i></span><input id="quick-material-code" class="form-control" placeholder="${this.translate.instant('modules.warehouses.ui.entryDetail.messages.materialCodePlaceholder')}" maxlength="35"></div></div>
+            <div class="col-md-6"><label class="form-label small fw-semibold mb-1">${this.translate.instant('modules.warehouses.ui.entryDetail.messages.unit')} *</label><div class="input-group"><span class="input-group-text bg-white"><i class="bi bi-rulers text-primary"></i></span><input id="quick-material-measure" class="form-control" placeholder="PZA, KG, M…"></div></div>
+            <div class="col-md-6"><label class="form-label small fw-semibold mb-1">${this.translate.instant('modules.warehouses.ui.entryDetail.messages.family')}</label><div class="input-group"><span class="input-group-text bg-white"><i class="bi bi-collection text-primary"></i></span><input id="quick-material-family" class="form-control" placeholder="${this.translate.instant('modules.warehouses.ui.entryDetail.messages.materialFamilyPlaceholder')}"></div></div>
+            <div class="col-md-6"><label class="form-label small fw-semibold mb-1">${this.translate.instant('modules.warehouses.ui.entryDetail.messages.subfamily')}</label><div class="input-group"><span class="input-group-text bg-white"><i class="bi bi-diagram-2 text-primary"></i></span><input id="quick-material-subfamily" class="form-control" placeholder="${this.translate.instant('modules.warehouses.ui.entryDetail.messages.subfamilyPlaceholder')}"></div></div>
           </div>
         </div>`,
       focusConfirm: false,
@@ -1365,7 +1367,7 @@ export class DetailCellRendererEntryItemsComponent {
         const description = value('quick-material-description');
         const measure = value('quick-material-measure');
         if (!description || !measure) {
-          Swal.showValidationMessage('Captura la descripción y la unidad para guardar el material.');
+          Swal.showValidationMessage(this.translate.instant('modules.warehouses.ui.entryDetail.messages.descriptionAndUnitRequired'));
           return false;
         }
         return { description, code: value('quick-material-code'), measure, family: value('quick-material-family'), subfamily: value('quick-material-subfamily') };
@@ -1376,10 +1378,10 @@ export class DetailCellRendererEntryItemsComponent {
     try {
       await lastValueFrom(service.addMaterial({ idRoot, description, code, measure, family, subfamily, active: true, vigente: true }));
       this.loadMaterials();
-      alerts.basicAlert('Material agregado', 'El material ya está disponible en el combo.', 'success');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.materialAdded'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.materialAvailableInList'), 'success');
     } catch (error) {
       console.error('Error al agregar material rápido:', error);
-      alerts.basicAlert('Error', 'No fue posible agregar el material.', 'error');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.error'), this.translate.instant('modules.warehouses.ui.entryDetail.messages.couldNotAddMaterial'), 'error');
     }
   }
 

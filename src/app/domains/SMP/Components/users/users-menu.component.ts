@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { TrackingService } from 'app/services/tracking.service';
 import { UsersComponent } from './users.component';
 import { UsersxoilfieldsComponent } from './usersxoilfields.component';
@@ -19,7 +20,7 @@ import { AuthService } from 'app/services/auth.service';
 @Component({
   selector: 'app-users-menu',
   standalone: true,
-  imports: [CommonModule, UsersComponent, UsersxoilfieldsComponent,
+  imports: [CommonModule, TranslateModule, UsersComponent, UsersxoilfieldsComponent,
     UsersxcompanysComponent, UsersxprojectsComponent, UsersxcontractsComponent,
     UsersxrootComponent, UsersxwarehousesComponent, UsersxbranchesComponent,
     UsersxMasterPermissions2Component,

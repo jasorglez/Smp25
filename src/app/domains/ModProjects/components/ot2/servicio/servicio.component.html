@@ -4,22 +4,22 @@
     <div class="header-info">
       <h2 class="page-title mb-1">
         <mat-icon class="title-icon">build_circle</mat-icon>
-        {{'service' | translate}}
+        {{ 'modules.projects.workOrders.ui.services' | translate }}
       </h2>
-      <p class="text-muted mb-0">Gestión de servicios y órdenes de trabajo</p>
+      <p class="text-muted mb-0">{{ 'modules.projects.workOrders.ui.serviceManagementDescription' | translate }}</p>
     </div>
     <div class="service-stats d-flex gap-3">
       <div class="stat-card" (click)="filterByPriority('ALTA')" style="cursor: pointer;">
         <div class="stat-number">{{getStatsByPriority('ALTA')}}</div>
-        <div class="stat-label text-danger">Alta Prioridad</div>
+        <div class="stat-label text-danger">{{ 'modules.projects.workOrders.ui.highPriority' | translate }}</div>
       </div>
       <div class="stat-card" (click)="filterByPriority('MEDIA')" style="cursor: pointer;">
         <div class="stat-number">{{getStatsByPriority('MEDIA')}}</div>
-        <div class="stat-label text-warning">Media Prioridad</div>
+        <div class="stat-label text-warning">{{ 'modules.projects.workOrders.ui.mediumPriority' | translate }}</div>
       </div>
       <div class="stat-card" (click)="filterByPriority('NORMAL')" style="cursor: pointer;">
         <div class="stat-number">{{getStatsByPriority('NORMAL')}}</div>
-        <div class="stat-label text-success">Normal</div>
+        <div class="stat-label text-success">{{ 'modules.projects.workOrders.ui.normalPriority' | translate }}</div>
       </div>
     </div>
   </div>
@@ -34,10 +34,10 @@
         type="button" 
         class="btn btn-primary btn-action" 
         (click)="addRow()"
-        [attr.aria-label]="'Agregar nuevo servicio'"
-        matTooltip="Agregar nuevo servicio">
+        [attr.aria-label]="'modules.projects.workOrders.ui.addNewService' | translate"
+        [matTooltip]="'modules.projects.workOrders.ui.addNewService' | translate">
         <mat-icon>add</mat-icon>
-        <span class="d-none d-md-inline ms-1">Nuevo</span>
+        <span class="d-none d-md-inline ms-1">{{ 'modules.projects.workOrders.ui.new' | translate }}</span>
       </button>
       
       <button 
@@ -45,12 +45,12 @@
         class="btn btn-success btn-action position-relative" 
         (click)="saveChanges()"
         [disabled]="isSaving"
-        [attr.aria-label]="'Guardar cambios'"
-        matTooltip="Guardar todos los cambios">
+        [attr.aria-label]="'modules.projects.workOrders.ui.saveChanges' | translate"
+        [matTooltip]="'modules.projects.workOrders.ui.saveAllChanges' | translate">
         <mat-icon *ngIf="!isSaving">save</mat-icon>
         <mat-icon *ngIf="isSaving" class="spinner">sync</mat-icon>
-        <span class="d-none d-md-inline ms-1">{{isSaving ? 'Guardando...' : 'Guardar'}}</span>
-        <span class="changes-indicator" *ngIf="notSavedChanges" aria-label="Hay cambios sin guardar"></span>
+        <span class="d-none d-md-inline ms-1">{{ isSaving ? ('modules.projects.workOrders.ui.saving' | translate) : ('modules.projects.workOrders.ui.save' | translate) }}</span>
+        <span class="changes-indicator" *ngIf="notSavedChanges" [attr.aria-label]="'modules.projects.workOrders.ui.unsavedChanges' | translate"></span>
       </button>
       
       <button 
@@ -58,10 +58,10 @@
         class="btn btn-outline-secondary btn-action" 
         (click)="revert()"
         [disabled]="!notSavedChanges"
-        [attr.aria-label]="'Revertir cambios'"
-        matTooltip="Revertir todos los cambios">
+        [attr.aria-label]="'modules.projects.workOrders.ui.undoChanges' | translate"
+        [matTooltip]="'modules.projects.workOrders.ui.undoAllChanges' | translate">
         <mat-icon>refresh</mat-icon>
-        <span class="d-none d-md-inline ms-1">Revertir</span>
+        <span class="d-none d-md-inline ms-1">{{ 'modules.projects.workOrders.ui.undo' | translate }}</span>
       </button>
       
       <button 
@@ -69,32 +69,32 @@
         class="btn btn-outline-danger btn-action" 
         (click)="deleteEntry()"
         [disabled]="!hasSelection"
-        [attr.aria-label]="'Eliminar registro seleccionado'"
-        matTooltip="Eliminar registro seleccionado">
+        [attr.aria-label]="'modules.projects.workOrders.ui.deleteSelectedRecord' | translate"
+        [matTooltip]="'modules.projects.workOrders.ui.deleteSelectedRecord' | translate">
         <mat-icon>delete</mat-icon>
-        <span class="d-none d-md-inline ms-1">Eliminar</span>
+        <span class="d-none d-md-inline ms-1">{{ 'modules.projects.workOrders.ui.delete' | translate }}</span>
       </button>
     </div>
     
     <!-- Filtros y búsqueda -->
     <div class="search-controls d-flex gap-2">
       <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Buscar servicios</mat-label>
+        <mat-label>{{ 'modules.projects.workOrders.ui.searchServices' | translate }}</mat-label>
         <input matInput 
-               placeholder="Código, descripción..."
+               [placeholder]="'modules.projects.workOrders.ui.searchCodeOrDescription' | translate"
                [(ngModel)]="searchTerm"
                (input)="onQuickFilterChanged($event)">
         <mat-icon matSuffix>search</mat-icon>
       </mat-form-field>
       
       <mat-form-field appearance="outline" class="filter-field">
-        <mat-label>Filtrar por prioridad</mat-label>
+        <mat-label>{{ 'modules.projects.workOrders.ui.filterByPriority' | translate }}</mat-label>
         <mat-select [(value)]="selectedPriorityFilter" (selectionChange)="onPriorityFilterChanged($event)">
-          <mat-option value="">Todas</mat-option>
-          <mat-option value="ALTA">Alta</mat-option>
-          <mat-option value="MEDIA">Media</mat-option>
-          <mat-option value="NORMAL">Normal</mat-option>
-          <mat-option value="BAJA">Baja</mat-option>
+          <mat-option value="">{{ 'modules.projects.workOrders.ui.allFem' | translate }}</mat-option>
+          <mat-option value="ALTA">{{ 'modules.projects.workOrders.ui.high' | translate }}</mat-option>
+          <mat-option value="MEDIA">{{ 'modules.projects.workOrders.ui.medium' | translate }}</mat-option>
+          <mat-option value="NORMAL">{{ 'modules.projects.workOrders.ui.normalPriority' | translate }}</mat-option>
+          <mat-option value="BAJA">{{ 'modules.projects.workOrders.ui.low' | translate }}</mat-option>
         </mat-select>
       </mat-form-field>
     </div>
@@ -107,10 +107,10 @@
     <mat-icon class="me-2" *ngIf="!isSaving">info</mat-icon>
     <mat-icon class="me-2 spinner" *ngIf="isSaving">sync</mat-icon>
     <span *ngIf="notSavedChanges && !isSaving">
-      Tienes cambios sin guardar. No olvides presionar "Guardar" para conservar tus modificaciones.
+      {{ 'modules.projects.workOrders.ui.unsavedChangesHint' | translate }}
     </span>
     <span *ngIf="isSaving">
-      Guardando cambios, por favor espera...
+      {{ 'modules.projects.workOrders.ui.savingPleaseWait' | translate }}
     </span>
   </div>
 </div>
@@ -148,7 +148,7 @@
   <div class="loading-overlay" *ngIf="isLoading" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
     <div class="loading-content">
       <mat-spinner diameter="50"></mat-spinner>
-      <p class="mt-3">Cargando servicios...</p>
+      <p class="mt-3">{{ 'modules.projects.workOrders.ui.loadingServices' | translate }}</p>
     </div>
   </div>
 </div>

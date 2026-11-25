@@ -88,19 +88,19 @@
                     <input type="checkbox"
                            [(ngModel)]="subdetail.principal.canCreate"
                            (ngModelChange)="onCrudChange(subdetail.principal)">
-                    <span class="check-text">Crear</span>
+                    <span class="check-text">{{ 'modules.userSetup.ui.create' | translate }}</span>
                   </label>
                   <label class="check-label">
                     <input type="checkbox"
                            [(ngModel)]="subdetail.principal.canUpdate"
                            (ngModelChange)="onCrudChange(subdetail.principal)">
-                    <span class="check-text">Actualizar</span>
+                    <span class="check-text">{{ 'modules.userSetup.ui.update' | translate }}</span>
                   </label>
                   <label class="check-label">
                     <input type="checkbox"
                            [(ngModel)]="subdetail.principal.canDelete"
                            (ngModelChange)="onCrudChange(subdetail.principal)">
-                    <span class="check-text">Borrar</span>
+                    <span class="check-text">{{ 'modules.userSetup.ui.delete' | translate }}</span>
                   </label>
                 </div>
 
@@ -109,7 +109,7 @@
                   <div class="children-inline-titulo">
                     <span class="children-bloque-icon">⚙</span>
                     <span>{{ subdetail.subdetailedPermissionName }}</span>
-                    <span class="children-bloque-subtitulo">— acciones adicionales</span>
+                    <span class="children-bloque-subtitulo">— {{ 'modules.userSetup.ui.additionalActions' | translate }}</span>
                   </div>
                   <div class="children-secciones-grid" [class.single]="subdetail.children.length === 1">
                     <div *ngFor="let child of subdetail.children" class="child-seccion">
@@ -127,19 +127,19 @@
                           <input type="checkbox"
                                  [(ngModel)]="child.canCreate"
                                  (ngModelChange)="onCrudChange(child)">
-                          <span class="check-text">Crear</span>
+                          <span class="check-text">{{ 'modules.userSetup.ui.create' | translate }}</span>
                         </label>
                         <label class="check-label">
                           <input type="checkbox"
                                  [(ngModel)]="child.canUpdate"
                                  (ngModelChange)="onCrudChange(child)">
-                          <span class="check-text">Actualizar</span>
+                          <span class="check-text">{{ 'modules.userSetup.ui.update' | translate }}</span>
                         </label>
                         <label class="check-label">
                           <input type="checkbox"
                                  [(ngModel)]="child.canDelete"
                                  (ngModelChange)="onCrudChange(child)">
-                          <span class="check-text">Borrar</span>
+                          <span class="check-text">{{ 'modules.userSetup.ui.delete' | translate }}</span>
                         </label>
                       </div>
                     </div>
@@ -210,19 +210,19 @@
               <input type="checkbox"
                      [(ngModel)]="child.canCreate"
                      (ngModelChange)="onCrudChange(child)">
-              <span class="check-text">Crear</span>
+              <span class="check-text">{{ 'modules.userSetup.ui.create' | translate }}</span>
             </label>
             <label class="check-label">
               <input type="checkbox"
                      [(ngModel)]="child.canUpdate"
                      (ngModelChange)="onCrudChange(child)">
-              <span class="check-text">Actualizar</span>
+              <span class="check-text">{{ 'modules.userSetup.ui.update' | translate }}</span>
             </label>
             <label class="check-label">
               <input type="checkbox"
                      [(ngModel)]="child.canDelete"
                      (ngModelChange)="onCrudChange(child)">
-              <span class="check-text">Borrar</span>
+              <span class="check-text">{{ 'modules.userSetup.ui.delete' | translate }}</span>
             </label>
           </div>
 

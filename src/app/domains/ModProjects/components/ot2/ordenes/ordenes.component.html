@@ -5,7 +5,7 @@
         <div class="card-header">
           <h3 class="card-title">
             <i class="bi bi-file-earmark-text"></i> 
-            {{'work_orders' | translate}}
+            {{ 'modules.projects.workOrders.ui.workOrders' | translate }}
           </h3>
         </div>
         <div class="card-body">
@@ -22,7 +22,7 @@
               <button type="button" class="btn btn-info ms-1 me-1 mb-2" (click)="fileInput.click()" [disabled]="isUploading">
                 <i class="bi bi-file-earmark-pdf" *ngIf="!isUploading"></i>
                 <div class="spinner-border spinner-border-sm" role="status" *ngIf="isUploading">
-                  <span class="visually-hidden">Subiendo...</span>
+                  <span class="visually-hidden">{{ 'modules.projects.workOrders.ui.uploading' | translate }}</span>
                 </div>
               </button>
               <input #fileInput type="file" accept=".pdf" style="display: none" (change)="onFileSelected($event)">

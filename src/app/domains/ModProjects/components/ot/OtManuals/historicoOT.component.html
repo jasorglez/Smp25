@@ -5,7 +5,7 @@
         <div class="card-header">
           <h5 class="card-title m-0">
             <i class="bi bi-clock-history"></i> 
-            Histórico de OT
+            {{ 'modules.projects.workOrders.ui.manualHistoryTitle' | translate }}
           </h5>
         </div>
         <div class="card-body p-1">
@@ -18,7 +18,7 @@
                 <button type="button" 
                         class="btn btn-primary ms-1 me-1 mb-2" 
                         (click)="addRow()" 
-                        title="Agregar nueva fila">
+                        [title]="'modules.projects.workOrders.ui.addRow' | translate">
                   <i class="bi bi-plus-lg"></i>
                 </button>
                 
@@ -26,7 +26,7 @@
                         class="btn btn-success ms-1 me-1 mb-2" 
                         (click)="saveChanges()" 
                         [disabled]="!notSavedChanges"
-                        title="Guardar cambios">
+                        [title]="'modules.projects.workOrders.ui.saveChanges' | translate">
                   <i class="bi bi-floppy"></i>
                 </button>
                 
@@ -34,14 +34,14 @@
                         class="btn btn-warning ms-1 me-1 mb-2" 
                         (click)="revert()" 
                         [disabled]="!notSavedChanges"
-                        title="Revertir cambios">
+                        [title]="'modules.projects.workOrders.ui.undoChanges' | translate">
                   <i class="bi bi-arrow-clockwise"></i>
                 </button>
                 
                 <button type="button" 
                         class="btn btn-danger ms-1 me-1 mb-2" 
                         (click)="deleteEntry()" 
-                        title="Eliminar fila seleccionada">
+                        [title]="'modules.projects.workOrders.ui.deleteSelectedRow' | translate">
                   <i class="bi bi-trash"></i>
                 </button>
               </nav>
@@ -58,11 +58,11 @@
                     [(ngModel)]="showOpenOnly"
                     (change)="onOpenOnlyChange()">
                   <label class="form-check-label" for="showOpenOnly">
-                    Ver abiertas
+                    {{ 'modules.projects.workOrders.ui.showOpen' | translate }}
                   </label>
                 </div>
                 <small class="text-muted">
-                  Desactivado: cerradas por defecto
+                  {{ 'modules.projects.workOrders.ui.closedByDefault' | translate }}
                 </small>
               </div>
 
@@ -90,7 +90,7 @@
               <div class="alert alert-warning mt-2 mb-0 py-1" *ngIf="notSavedChanges">
                 <small>
                   <i class="bi bi-exclamation-triangle"></i>
-                  Hay cambios sin guardar
+                  {{ 'modules.projects.workOrders.ui.unsavedChanges' | translate }}
                 </small>
               </div>
             </div>
@@ -105,21 +105,21 @@
 <div *ngIf="showAreaModal" class="area-modal-backdrop" (click)="closeAreaModal()">
   <section class="area-modal" role="dialog" aria-modal="true" aria-labelledby="newAreaTitle" (click)="$event.stopPropagation()">
     <header class="area-modal-header">
-      <h2 id="newAreaTitle"><i class="bi bi-plus-circle me-2"></i>Nueva área</h2>
-      <button type="button" class="btn-close btn-close-white" aria-label="Cerrar" (click)="closeAreaModal()" [disabled]="savingArea"></button>
+      <h2 id="newAreaTitle"><i class="bi bi-plus-circle me-2"></i>{{ 'modules.projects.workOrders.ui.newArea' | translate }}</h2>
+      <button type="button" class="btn-close btn-close-white" [attr.aria-label]="'modules.projects.workOrders.ui.close' | translate" (click)="closeAreaModal()" [disabled]="savingArea"></button>
     </header>
     <div class="area-modal-body">
-      <label for="newAreaName" class="form-label">Nombre del área</label>
+      <label for="newAreaName" class="form-label">{{ 'modules.projects.workOrders.ui.areaName' | translate }}</label>
       <input id="newAreaName" type="text" class="form-control" [(ngModel)]="newAreaName"
-             maxlength="50" placeholder="Escribe el nombre del área"
+             maxlength="50" [placeholder]="'modules.projects.workOrders.ui.enterAreaName' | translate"
              (keydown.enter)="saveNewArea()" [disabled]="savingArea" autofocus>
-      <small class="text-muted">Al guardarla aparecerá en el catálogo y quedará seleccionada en esta OT.</small>
+      <small class="text-muted">{{ 'modules.projects.workOrders.ui.areaSaveDescription' | translate }}</small>
     </div>
     <footer class="area-modal-footer">
-      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeAreaModal()" [disabled]="savingArea">Cancelar</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeAreaModal()" [disabled]="savingArea">{{ 'modules.projects.workOrders.ui.cancel' | translate }}</button>
       <button type="button" class="btn btn-primary btn-sm" (click)="saveNewArea()" [disabled]="savingArea || !newAreaName.trim()">
         <span *ngIf="savingArea" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
-        <i *ngIf="!savingArea" class="bi bi-check-lg me-1"></i>{{ savingArea ? 'Guardando…' : 'Crear área' }}
+        <i *ngIf="!savingArea" class="bi bi-check-lg me-1"></i>{{ savingArea ? ('modules.projects.workOrders.ui.saving' | translate) : ('modules.projects.workOrders.ui.createArea' | translate) }}
       </button>
     </footer>
   </section>

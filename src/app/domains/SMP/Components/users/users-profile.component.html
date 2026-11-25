@@ -1,19 +1,19 @@
 <div class="profile-summary">
     <div class="profile-avatar-wrap">
-        <img [src]="profile.profilePicUser()" alt="Imagen de perfil de {{ profile.nameUser() }}"
+        <img [src]="profile.profilePicUser()" [alt]="'modules.userSetup.ui.profilePictureFor' | translate:{name: profile.nameUser()}"
             class="profile-avatar">
-        <span class="status-dot" title="Usuario seleccionado"></span>
+        <span class="status-dot" [title]="'modules.userSetup.ui.selectedUser' | translate"></span>
     </div>
 
     <div class="profile-copy-row profile-name-row">
         <h6>{{ profile.nameUser() }}</h6>
         <button type="button" class="copy-profile-button" (click)="copyProfileValue(profile.nameUser())"
-            title="Copiar nombre" aria-label="Copiar nombre"><i class="bi bi-copy"></i></button>
+            [title]="'modules.userSetup.ui.copyName' | translate" [attr.aria-label]="'modules.userSetup.ui.copyName' | translate"><i class="bi bi-copy"></i></button>
     </div>
     <div class="profile-copy-row">
         <p class="profile-email" [title]="profile.emailUser()">{{ profile.emailUser() }}</p>
         <button type="button" class="copy-profile-button" (click)="copyProfileValue(profile.emailUser())"
-            title="Copiar correo" aria-label="Copiar correo"><i class="bi bi-copy"></i></button>
+            [title]="'modules.userSetup.ui.copyEmail' | translate" [attr.aria-label]="'modules.userSetup.ui.copyEmail' | translate"><i class="bi bi-copy"></i></button>
     </div>
 
     <div class="profile-role" *ngIf="profile.organizationUser()">
@@ -23,11 +23,11 @@
 
     <div class="profile-context" *ngIf="!showAllAccess && (nameCompany != null || nameContract != null)">
         <div *ngIf="nameCompany != null">
-            <small>Empresa seleccionada</small>
+            <small>{{ 'modules.userSetup.ui.selectedCompany' | translate }}</small>
             <strong>{{ nameCompany }}</strong>
         </div>
         <div *ngIf="nameContract != null">
-            <small>Contrato seleccionado</small>
+            <small>{{ 'modules.userSetup.ui.selectedContract' | translate }}</small>
             <strong>{{ nameContract }}</strong>
         </div>
     </div>
@@ -39,11 +39,11 @@
             <div class="branch-access" *ngFor="let branch of company.branches">
                 <div class="branch-access-title">
                     <i class="bi bi-geo-alt"></i><span>{{ branch.name }}</span>
-                    <small *ngIf="!branch.assigned">contexto</small>
+                    <small *ngIf="!branch.assigned">{{ 'modules.userSetup.ui.context' | translate }}</small>
                 </div>
                 <div class="nested-access" *ngIf="branch.contracts.length || branch.warehouses.length || branch.projects.length">
                     <div class="nested-access-group" *ngIf="branch.contracts.length">
-                        <small>Contratos</small>
+                        <small>{{ 'modules.userSetup.ui.contracts' | translate }}</small>
                         <div class="nested-access-item" *ngFor="let contract of branch.contracts">
                             <i class="bi bi-file-earmark-text"></i><span>{{ contract.name }}</span>
                             <div class="project-access" *ngFor="let project of contract.projects">
@@ -52,10 +52,10 @@
                         </div>
                     </div>
                     <div class="nested-access-group" *ngIf="branch.projects.length">
-                        <small>Proyectos</small><div class="nested-access-item" *ngFor="let project of branch.projects"><i class="bi bi-diagram-3"></i><span>{{ project }}</span></div>
+                        <small>{{ 'modules.userSetup.ui.projects' | translate }}</small><div class="nested-access-item" *ngFor="let project of branch.projects"><i class="bi bi-diagram-3"></i><span>{{ project }}</span></div>
                     </div>
                     <div class="nested-access-group" *ngIf="branch.warehouses.length">
-                        <small>Almacenes</small><div class="nested-access-item" *ngFor="let warehouse of branch.warehouses"><i class="bi bi-box-seam"></i><span>{{ warehouse }}</span></div>
+                        <small>{{ 'modules.userSetup.ui.warehouses' | translate }}</small><div class="nested-access-item" *ngFor="let warehouse of branch.warehouses"><i class="bi bi-box-seam"></i><span>{{ warehouse }}</span></div>
                     </div>
                 </div>
             </div>
@@ -68,7 +68,7 @@
                 <div class="nested-access-item" *ngFor="let project of company.projects"><i class="bi bi-diagram-3"></i><span>{{ project }}</span></div>
                 <div class="nested-access-item" *ngFor="let warehouse of company.warehouses"><i class="bi bi-box-seam"></i><span>{{ warehouse }}</span></div>
             </div>
-            <p class="empty-assignments" *ngIf="!company.branches.length && !company.contracts.length && !company.projects.length && !company.warehouses.length">Sin asignaciones operativas</p>
+            <p class="empty-assignments" *ngIf="!company.branches.length && !company.contracts.length && !company.projects.length && !company.warehouses.length">{{ 'modules.userSetup.ui.noOperationalAssignments' | translate }}</p>
         </div>
 
         <div class="access-section" *ngFor="let section of visibleAccessSections">
@@ -90,7 +90,7 @@
             </div>
         </div>
         <ng-template #noAssignments>
-            <p class="empty-assignments">Sin asignaciones</p>
+            <p class="empty-assignments">{{ 'modules.userSetup.ui.noAssignments' | translate }}</p>
         </ng-template>
     </div>
     </ng-template>

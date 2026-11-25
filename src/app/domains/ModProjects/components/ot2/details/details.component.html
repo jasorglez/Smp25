@@ -6,7 +6,7 @@
           <div>
             <h3 class="card-title mb-0">
               <i class="bi bi-clipboard-data me-2"></i>
-              {{ isEditMode ? ('Editar OT' | translate) : ('Nueva OT' | translate) }}
+              {{ isEditMode ? ('modules.projects.workOrders.form.editWorkOrder' | translate) : ('modules.projects.workOrders.form.newWorkOrder' | translate) }}
             </h3>
           </div>
           <div class="d-flex align-items-center justify-content-end ms-auto">
@@ -15,7 +15,7 @@
             </div>
             <button type="button" class="btn btn-sm btn-secondary" (click)="onCancel()">
               <i class="bi bi-arrow-left me-1"></i>
-              {{ 'Volver' | translate }}
+              {{ 'modules.projects.workOrders.form.back' | translate }}
             </button>
           </div>
         </div>
@@ -28,7 +28,7 @@
               <div class="col-12">
                 <h5 class="section-title">
                   <i class="bi bi-info-circle me-2"></i>
-                  {{ 'Información Básica' | translate }}
+                  {{ 'modules.projects.workOrders.form.basicInformation' | translate }}
                 </h5>
                 <hr>
               </div>
@@ -37,7 +37,7 @@
 
             <div class="row mb-3">
               <div class="col-md-4">
-                <label class="form-label required">{{ 'Fecha de Registro' | translate }}</label>
+                <label class="form-label required">{{ 'modules.projects.workOrders.form.registerDate' | translate }}</label>
                 <input 
                   type="date" 
                   class="form-control" 
@@ -49,7 +49,7 @@
               </div>
 
               <div class="col-md-4">
-                <label class="form-label required">{{ 'Número OT' | translate }}</label>
+                <label class="form-label required">{{ 'modules.projects.workOrders.form.workOrderNumber' | translate }}</label>
                 <input
                   type="text"
                   class="form-control"
@@ -61,7 +61,7 @@
               </div>
 
               <div class="col-md-4">
-                <label class="form-label required">{{ 'Fecha Límite' | translate }}</label>
+                <label class="form-label required">{{ 'modules.projects.workOrders.form.dueDate' | translate }}</label>
                 <input 
                   type="date" 
                   class="form-control" 
@@ -75,7 +75,7 @@
 
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="form-label required">{{ 'Asignado a' | translate }}</label>
+                <label class="form-label required">{{ 'modules.projects.workOrders.form.assignedTo' | translate }}</label>
                 <input 
                   type="text" 
                   class="form-control" 
@@ -87,7 +87,7 @@
               </div>
 
               <div class="col-md-6">
-                <label class="form-label required">{{ 'Descripción' | translate }}</label>
+                <label class="form-label required">{{ 'modules.projects.workOrders.form.description' | translate }}</label>
                 <textarea 
                   class="form-control" 
                   rows="3"
@@ -104,7 +104,7 @@
               <div class="col-12">
                 <h5 class="section-title">
                   <i class="bi bi-person me-2"></i>
-                  {{ 'Información del Consumidor' | translate }}
+                  {{ 'modules.projects.workOrders.form.consumerInformation' | translate }}
                 </h5>
                 <hr>
               </div>
@@ -112,7 +112,7 @@
 
             <div class="row mb-3">
               <div class="col-md-4">
-                <label class="form-label required">{{ 'Nombre Consumidor' | translate }}</label>
+                <label class="form-label required">{{ 'modules.projects.workOrders.form.consumerName' | translate }}</label>
                 <input 
                   type="text" 
                   class="form-control" 
@@ -124,7 +124,7 @@
               </div>
 
               <div class="col-md-4">
-                <label class="form-label">{{ 'Número de Propiedad' | translate }}</label>
+                <label class="form-label">{{ 'modules.projects.workOrders.form.propertyNumber' | translate }}</label>
                 <input 
                   type="text" 
                   class="form-control" 
@@ -132,7 +132,7 @@
               </div>
 
               <div class="col-md-4">
-                <label class="form-label">{{ 'Número de Contrato' | translate }}</label>
+                <label class="form-label">{{ 'modules.projects.workOrders.form.contractNumber' | translate }}</label>
                 <input 
                   type="text" 
                   class="form-control" 
@@ -142,7 +142,7 @@
 
             <div class="row mb-3">
               <div class="col-md-4">
-                <label class="form-label">{{ 'Teléfono Consumidor' | translate }}</label>
+                <label class="form-label">{{ 'modules.projects.workOrders.form.consumerPhone' | translate }}</label>
                 <input 
                   type="tel" 
                   class="form-control" 
@@ -150,7 +150,7 @@
               </div>
 
               <div class="col-md-8">
-                <label class="form-label">{{ 'Dirección' | translate }}</label>
+                <label class="form-label">{{ 'modules.projects.workOrders.form.address' | translate }}</label>
                 <input 
                   type="text" 
                   class="form-control" 
@@ -163,7 +163,7 @@
               <div class="col-12">
                 <h5 class="section-title">
                   <i class="bi bi-geo-alt me-2"></i>
-                  {{ 'Detalles de Dirección' | translate }}
+                  {{ 'modules.projects.workOrders.form.addressDetails' | translate }}
                 </h5>
                 <hr>
               </div>
@@ -171,7 +171,7 @@
 
             <div class="row mb-3">
               <div class="col-md-3">
-                <label class="form-label">{{ 'Número de Dirección' | translate }}</label>
+                <label class="form-label">{{ 'modules.projects.workOrders.form.addressNumber' | translate }}</label>
                 <input 
                   type="text" 
                   class="form-control" 
@@ -179,7 +179,7 @@
               </div>
 
               <div class="col-md-3">
-                <label class="form-label">{{ 'Número Dirección Anterior' | translate }}</label>
+                <label class="form-label">{{ 'modules.projects.workOrders.form.previousAddressNumber' | translate }}</label>
                 <input 
                   type="text" 
                   class="form-control" 
@@ -187,7 +187,7 @@
               </div>
 
               <div class="col-md-6">
-                <label class="form-label">{{ 'Colonia' | translate }}</label>
+                <label class="form-label">{{ 'modules.projects.workOrders.form.neighborhood' | translate }}</label>
                 <input 
                   type="text" 
                   class="form-control" 
@@ -197,7 +197,7 @@
 
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="form-label">{{ 'Referencias de Dirección' | translate }}</label>
+                <label class="form-label">{{ 'modules.projects.workOrders.form.addressReferences' | translate }}</label>
                 <textarea 
                   class="form-control" 
                   rows="2"
@@ -205,7 +205,7 @@
               </div>
 
               <div class="col-md-6">
-                <label class="form-label">{{ 'Cruces de Dirección' | translate }}</label>
+                <label class="form-label">{{ 'modules.projects.workOrders.form.addressCrossings' | translate }}</label>
                 <textarea 
                   class="form-control" 
                   rows="2"
@@ -218,7 +218,7 @@
               <div class="col-12">
                 <h5 class="section-title">
                   <i class="bi bi-tools me-2"></i>
-                  {{ 'Información Técnica' | translate }}
+                  {{ 'modules.projects.workOrders.form.technicalInformation' | translate }}
                 </h5>
                 <hr>
               </div>
@@ -226,7 +226,7 @@
 
             <div class="row mb-3">
               <div class="col-md-3">
-                <label class="form-label">{{ 'Fase de Carga' | translate }}</label>
+                <label class="form-label">{{ 'modules.projects.workOrders.form.chargePhase' | translate }}</label>
                 <input 
                   type="text" 
                   class="form-control" 
@@ -234,7 +234,7 @@
               </div>
 
               <div class="col-md-3">
-                <label class="form-label">{{ 'CDC' | translate }}</label>
+                <label class="form-label">{{ 'modules.projects.workOrders.form.cdc' | translate }}</label>
                 <input 
                   type="text" 
                   class="form-control" 
@@ -242,7 +242,7 @@
               </div>
 
               <div class="col-md-3">
-                <label class="form-label">{{ 'Número Hidrómetro' | translate }}</label>
+                <label class="form-label">{{ 'modules.projects.workOrders.form.meterNumber' | translate }}</label>
                 <input 
                   type="text" 
                   class="form-control" 
@@ -250,7 +250,7 @@
               </div>
 
               <div class="col-md-3">
-                <label class="form-label">{{ 'Período' | translate }}</label>
+                <label class="form-label">{{ 'modules.projects.workOrders.form.period' | translate }}</label>
                 <input 
                   type="text" 
                   class="form-control" 
@@ -260,7 +260,7 @@
 
             <div class="row mb-3">
               <div class="col-md-3">
-                <label class="form-label">{{ 'Lectura Agua' | translate }}</label>
+                <label class="form-label">{{ 'modules.projects.workOrders.form.waterReading' | translate }}</label>
                 <input 
                   type="text" 
                   class="form-control" 
@@ -273,7 +273,7 @@
               <div class="col-12">
                 <h5 class="section-title">
                   <i class="bi bi-chat-square-text me-2"></i>
-                  {{ 'Observaciones y Resultados' | translate }}
+                  {{ 'modules.projects.workOrders.form.observationsAndResults' | translate }}
                 </h5>
                 <hr>
               </div>
@@ -281,21 +281,21 @@
 
             <div class="row mb-4">
               <div class="col-md-6">
-                <label class="form-label">{{ 'Observaciones' | translate }}</label>
+                <label class="form-label">{{ 'modules.projects.workOrders.form.observations' | translate }}</label>
                 <textarea 
                   class="form-control" 
                   rows="4"
                   formControlName="observations"
-                  placeholder="Ingrese observaciones adicionales..."></textarea>
+                  [placeholder]="'modules.projects.workOrders.form.enterAdditionalObservations' | translate"></textarea>
               </div>
 
               <div class="col-md-6">
-                <label class="form-label">{{ 'Resultados' | translate }}</label>
+                <label class="form-label">{{ 'modules.projects.workOrders.form.results' | translate }}</label>
                 <textarea 
                   class="form-control" 
                   rows="4"
                   formControlName="results"
-                  placeholder="Ingrese los resultados del trabajo..."></textarea>
+                  [placeholder]="'modules.projects.workOrders.form.enterWorkResults' | translate"></textarea>
               </div>
             </div>
 
@@ -315,7 +315,7 @@
                       (click)="onDelete()"
                       [disabled]="isLoading">
                       <i class="bi bi-trash me-1"></i>
-                      {{ 'Eliminar' | translate }}
+                      {{ 'modules.projects.workOrders.form.delete' | translate }}
                     </button>
                   </div>
                   
@@ -326,7 +326,7 @@
                       class="btn btn-secondary"
                       (click)="onReset()">
                       <i class="bi bi-arrow-clockwise me-1"></i>
-                      {{ 'Restablecer' | translate }}
+                      {{ 'modules.projects.workOrders.form.reset' | translate }}
                     </button>
 
                     <button
@@ -334,7 +334,7 @@
                       class="btn btn-outline-secondary"
                       (click)="onCancel()">
                       <i class="bi bi-x-lg me-1"></i>
-                      {{ 'Cancelar' | translate }}
+                      {{ 'modules.projects.workOrders.form.cancel' | translate }}
                     </button>
 
                     <button
@@ -342,7 +342,7 @@
                       class="btn btn-primary"
                       [disabled]="otForm.invalid || isLoading">
                       <i class="bi bi-check-lg me-1"></i>
-                      {{ isEditMode ? ('Actualizar' | translate) : ('Crear' | translate) }}
+                      {{ isEditMode ? ('modules.projects.workOrders.form.update' | translate) : ('modules.projects.workOrders.form.create' | translate) }}
                     </button>
                   </div>
                 </div>
@@ -356,9 +356,9 @@
         <div class="card-body text-center" *ngIf="isLoading">
           <div class="d-flex justify-content-center align-items-center" style="min-height: 200px;">
             <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">{{ 'Cargando...' | translate }}</span>
+              <span class="visually-hidden">{{ 'modules.projects.workOrders.form.loading' | translate }}</span>
             </div>
-            <span class="ms-3">{{ 'Cargando...' | translate }}</span>
+            <span class="ms-3">{{ 'modules.projects.workOrders.form.loading' | translate }}</span>
           </div>
         </div>
       </div>

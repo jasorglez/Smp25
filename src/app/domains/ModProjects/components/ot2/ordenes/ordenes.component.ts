@@ -8,6 +8,7 @@ import { OtService } from 'app/services/ot.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
+import { injectWorkOrderTranslator } from '../../ot/work-order-i18n';
 
 interface OrdenesData {
   id: string;
@@ -26,6 +27,7 @@ interface OrdenesData {
   styleUrl: './ordenes.component.scss',
 })
 export class OrdenesComponent {
+  private readonly t = injectWorkOrderTranslator();
   private otService = inject(OtService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
@@ -52,7 +54,7 @@ export class OrdenesComponent {
   public columnDefs: ColDef[] = [
     /*   {
       field: 'id',
-      headerName: 'ID',
+      headerName: this.t('grid.id'),
       sortable: true,
       filter: true,
       resizable: true,
@@ -60,7 +62,7 @@ export class OrdenesComponent {
     }, */
     {
       field: 'otNumber',
-      headerName: 'OT',
+      headerName: this.t('grid.workOrder'),
       sortable: true,
       filter: true,
       resizable: true,
@@ -68,7 +70,7 @@ export class OrdenesComponent {
     },
     {
       field: 'description',
-      headerName: 'Descripción del Servicio',
+      headerName: this.t('grid.serviceDescription'),
       sortable: true,
       filter: true,
       resizable: true,
@@ -76,7 +78,7 @@ export class OrdenesComponent {
     },
     {
       field: 'address',
-      headerName: 'Dirección',
+      headerName: this.t('grid.address'),
       sortable: true,
       filter: true,
       resizable: true,

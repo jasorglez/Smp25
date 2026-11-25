@@ -4,27 +4,27 @@
             <header class="user-assignment-header">
                 <span class="assignment-icon"><i class="bi bi-person-gear"></i></span>
                 <div>
-                    <h5>Asignación de {{ columnDefs[1]?.headerName || 'permisos' }}</h5>
+                    <h5>{{ 'modules.userSetup.ui.assignmentOf' | translate }} {{ columnDefs[1]?.headerName || ('modules.userSetup.ui.permissions' | translate) }}</h5>
                     <p>{{ profile().nameUser() || profile().emailUser() }}</p>
                 </div>
-                <span class="assignment-count">{{ rowData?.length || 0 }} asignados</span>
+                <span class="assignment-count">{{ 'modules.userSetup.ui.assignedCount' | translate:{count: rowData?.length || 0} }}</span>
             </header>
             <div class="row g-0">
             <nav class="col-auto d-flex flex-column align-items-center action-rail">
-                <button type="button" class="btn btn-primary action-button" (click)="addRow()" title="Agregar" aria-label="Agregar">
+                <button type="button" class="btn btn-primary action-button" (click)="addRow()" [title]="'modules.userSetup.ui.add' | translate" [attr.aria-label]="'modules.userSetup.ui.add' | translate">
                     <i class="bi bi-plus-lg"></i>
                 </button>
-                <button type="button" class="btn btn-success action-button position-relative" (click)="saveChanges()" title="Guardar" aria-label="Guardar">
+                <button type="button" class="btn btn-success action-button position-relative" (click)="saveChanges()" [title]="'modules.userSetup.ui.save' | translate" [attr.aria-label]="'modules.userSetup.ui.save' | translate">
                     <i class="bi bi-floppy"></i>
                     <span
                         class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-                        *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
+                        *ngIf="notSavedChanges"><span class="visually-hidden">{{ 'modules.userSetup.ui.unsavedChanges' | translate }}</span>
                     </span>
                 </button>
-                <button type="button" class="btn btn-warning action-button" (click)="revert()" title="Deshacer" aria-label="Deshacer">
+                <button type="button" class="btn btn-warning action-button" (click)="revert()" [title]="'modules.userSetup.ui.undo' | translate" [attr.aria-label]="'modules.userSetup.ui.undo' | translate">
                     <i class="bi bi-arrow-clockwise"></i>
                 </button>
-                <button type="button" class="btn btn-danger action-button" (click)="deleteEntry()" [disabled]="!selectedRowData" title="Borrar" aria-label="Borrar">
+                <button type="button" class="btn btn-danger action-button" (click)="deleteEntry()" [disabled]="!selectedRowData" [title]="'modules.userSetup.ui.delete' | translate" [attr.aria-label]="'modules.userSetup.ui.delete' | translate">
                     <i class="bi bi-trash"></i>
                 </button>
             </nav>

@@ -1,4 +1,5 @@
 import { Component, computed, HostListener, inject } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { OilfieldService } from 'app/services/oilfield.service';
@@ -10,14 +11,16 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { injectUserSetupTranslator } from './user-setup-i18n';
 
 @Component({
   selector: 'app-usersxoilfields',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, TranslateModule, UsersProfileComponent],
   templateUrl: './usersxpermissions.component.html'
 })
 export class UsersxoilfieldsComponent {
+  private readonly u18n = injectUserSetupTranslator();
 
   private signalsService = inject(SignalsService);
   private oilfieldsService = inject(OilfieldService);
@@ -105,12 +108,12 @@ public gridOptions: any = {
     return [
       {
         field: 'idUser',
-        headerName: 'ID del Usuario',
+        headerName: this.u18n('grid.userId'),
         hide: true,
       },
       {
         field: 'idPermission',
-        headerName: 'Campo petrolero',
+        headerName: this.u18n('grid.oilfield'),
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: Object.keys(this.oilfields).sort((a, b) => this.oilfields[a].localeCompare(this.oilfields[b])),

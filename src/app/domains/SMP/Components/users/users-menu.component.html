@@ -4,14 +4,14 @@
       <div class="module-heading">
         <span class="module-icon"><i class="bi bi-people"></i></span>
         <div>
-          <h4>Administración de usuarios</h4>
-          <p>Usuarios, accesos y asignaciones operativas</p>
+          <h4>{{ 'modules.userSetup.ui.title' | translate }}</h4>
+          <p>{{ 'modules.userSetup.ui.description' | translate }}</p>
         </div>
       </div>
       <div class="selected-user" *ngIf="profile().emailUser()">
         <img *ngIf="profile().profilePicUser()" [src]="profile().profilePicUser()" alt="">
         <span>
-          <small>Usuario seleccionado</small>
+          <small>{{ 'modules.userSetup.ui.selectedUser' | translate }}</small>
           <strong>{{ profile().nameUser() || profile().emailUser() }}</strong>
         </span>
       </div>
@@ -19,8 +19,8 @@
         *ngIf="['usersxroot', 'usersxbranches', 'usersxcontracts', 'usersxprojects'].includes(selectedTab)">
         <i class="bi bi-building-check"></i>
         <span>
-          <small>Empresa para asignación</small>
-          <strong>{{ selectedCompany() || 'Selecciona una empresa en la pestaña Empresas' }}</strong>
+          <small>{{ 'modules.userSetup.ui.companyAssignment' | translate }}</small>
+          <strong>{{ selectedCompany() || ('modules.userSetup.ui.selectCompany' | translate) }}</strong>
         </span>
       </div>
     </header>
@@ -33,7 +33,7 @@
           [class.active]="selectedTab === 'users'"
           data-toggle="tab"
           (click)="onUsersSelected('users')"
-          ><i class="bi bi-person-check"></i> Usuarios</a
+          ><i class="bi bi-person-check"></i> {{ 'modules.userSetup.ui.users' | translate }}</a
         >
       </li>
 
@@ -46,7 +46,7 @@
           [class.active]="selectedTab === 'usersxmasterpermissions'"
           data-toggle="tab"
           (click)="onUsersSelected('usersxmasterpermissions')"
-          ><i class="bi bi-shield-check"></i> Permisos maestros</a
+          ><i class="bi bi-shield-check"></i> {{ 'modules.userSetup.ui.masterPermissions' | translate }}</a
         >
       </li>
 
@@ -65,7 +65,7 @@
           [class.active]="selectedTab === 'usersxroot'"
           data-toggle="tab"
           (click)="onUsersSelected('usersxroot')"
-          ><i class="bi bi-building"></i> Empresas</a
+          ><i class="bi bi-building"></i> {{ 'modules.userSetup.ui.companies' | translate }}</a
         >
       </li>
 
@@ -84,7 +84,7 @@
           [class.active]="selectedTab === 'usersxbranches'"
           data-toggle="tab"
           (click)="onUsersSelected('usersxbranches')"
-          ><i class="bi bi-geo-alt"></i> Sucursales</a
+          ><i class="bi bi-geo-alt"></i> {{ 'modules.userSetup.ui.branches' | translate }}</a
         >
       </li>
 
@@ -104,9 +104,9 @@
           [class.active]="selectedTab === 'usersxcontracts'"
           data-toggle="tab"
           (click)="onUsersSelected('usersxcontracts')"
-          ><i class="bi bi-file-earmark-text"></i> Contratos</a
+          ><i class="bi bi-file-earmark-text"></i> {{ 'modules.userSetup.ui.contracts' | translate }}</a
         >
-      </li>  
+      </li>
 
 
       <li
@@ -124,15 +124,15 @@
           [class.active]="selectedTab === 'usersxprojects'"
           data-toggle="tab"
           (click)="onUsersSelected('usersxprojects')"
-          ><i class="bi bi-diagram-3"></i> Proyectos</a
+          ><i class="bi bi-diagram-3"></i> {{ 'modules.userSetup.ui.projects' | translate }}</a
         >
       </li>
 
 
         <li class="nav-item" *ngIf="profile().emailUser()">
         <a class="nav-link" [class.active]="selectedTab === 'usersxwarehouses'" data-toggle="tab"
-          (click)="onUsersSelected('usersxwarehouses')"><i class="bi bi-box-seam"></i> Almacenes</a>
-      </li> 
+          (click)="onUsersSelected('usersxwarehouses')"><i class="bi bi-box-seam"></i> {{ 'modules.userSetup.ui.warehouses' | translate }}</a>
+      </li>
 
       <!--  <li class="nav-item" *ngIf="profile().emailUser()">
         <a class="nav-link" [class.active]="selectedTab === 'usersxstores'" data-toggle="tab"

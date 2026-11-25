@@ -5,7 +5,7 @@
         <div class="card-header">
           <h3 class="card-title">
             <i class="bi bi-cpu"></i> 
-            {{'unit' | translate}}
+            {{ 'modules.projects.workOrders.ui.unitCatalog' | translate }}
           </h3>
         </div>
         <div class="card-body">
@@ -20,7 +20,7 @@
                 <i class="bi bi-floppy"></i>
                 <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
                       *ngIf="notSavedChanges">
-                  <span class="visually-hidden">Hay cambios sin guardar</span>
+                  <span class="visually-hidden">{{ 'modules.projects.workOrders.ui.unsavedChanges' | translate }}</span>
                 </span>
               </button>
               <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()">

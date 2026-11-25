@@ -7,11 +7,11 @@
 
         <!-- Badge convenio vigente -->
         <div class="d-flex align-items-center gap-2">
-          <span class="text-muted small">Convenio vigente:</span>
+          <span class="text-muted small">{{ 'modules.projects.workOrders.ui.currentAgreement' | translate }}:</span>
           <span *ngIf="vigenteConvention" class="badge bg-success fs-6 px-3 py-2">
             <i class="bi bi-bookmark-check-fill me-1"></i>{{ vigenteConvention.name }}
           </span>
-          <span *ngIf="!vigenteConvention" class="badge bg-secondary">Sin convenio vigente</span>
+          <span *ngIf="!vigenteConvention" class="badge bg-secondary">{{ 'modules.projects.workOrders.ui.noCurrentAgreement' | translate }}</span>
         </div>
 
         <!-- Separador -->
@@ -19,16 +19,16 @@
 
         <!-- Copiar Work Program -->
         <div class="d-flex align-items-center gap-2">
-          <label class="text-muted small mb-0">Copiar desde:</label>
+          <label class="text-muted small mb-0">{{ 'modules.projects.workOrders.ui.copyFrom' | translate }}:</label>
           <select class="form-select form-select-sm" style="min-width:220px;"
                   [(ngModel)]="sourceConventionId" [disabled]="!vigenteConvention || isCopying">
-            <option [ngValue]="null">— Selecciona convenio origen —</option>
+            <option [ngValue]="null">— {{ 'modules.projects.workOrders.ui.selectSourceAgreement' | translate }} —</option>
             <option *ngFor="let c of conventions" [value]="c.id">{{ c.name }}</option>
           </select>
           <button class="btn btn-sm btn-warning" (click)="copyWorkProgram()"
                   [disabled]="!sourceConventionId || isCopying">
             <i class="bi bi-copy me-1"></i>
-            {{ isCopying ? 'Copiando...' : 'Copiar Work Program' }}
+            {{ isCopying ? ('modules.projects.workOrders.ui.copyingWorkProgram' | translate) : ('modules.projects.workOrders.ui.copyWorkProgram' | translate) }}
           </button>
         </div>
 
@@ -39,7 +39,7 @@
         <button class="btn btn-sm btn-primary" (click)="loadWorkProgram()"
                 [disabled]="!vigenteConvention || isLoading">
           <i class="bi bi-diagram-3 me-1"></i>
-          {{ isLoading ? 'Cargando...' : 'Ver Work Program' }}
+          {{ isLoading ? ('modules.projects.workOrders.ui.loading' | translate) : ('modules.projects.workOrders.ui.viewWorkProgram' | translate) }}
         </button>
 
       </div>
@@ -51,8 +51,8 @@
     <div class="card-header d-flex justify-content-between align-items-center py-2">
       <span class="fw-semibold">
         <i class="bi bi-table me-1"></i>
-        Programa de Trabajo — {{ vigenteConvention?.name }}
-        <span class="badge bg-primary ms-2">{{ workprogramRows.length }} registros</span>
+        {{ 'modules.projects.workOrders.ui.workProgram' | translate }} — {{ vigenteConvention?.name }}
+        <span class="badge bg-primary ms-2">{{ workprogramRows.length }} {{ 'modules.projects.workOrders.ui.records' | translate }}</span>
       </span>
     </div>
     <div class="card-body p-0">
@@ -70,8 +70,8 @@
   <!-- Placeholder vacío -->
   <div *ngIf="workprogramRows.length === 0 && !isLoading" class="text-center text-muted py-5">
     <i class="bi bi-diagram-3 fs-1 d-block mb-2 opacity-25"></i>
-    Presiona <strong>Ver Work Program</strong> para cargar las tareas del convenio vigente,
-    o <strong>Copiar Work Program</strong> para importar desde otro convenio.
+    {{ 'modules.projects.workOrders.ui.workProgramEmptyHintStart' | translate }} <strong>{{ 'modules.projects.workOrders.ui.viewWorkProgram' | translate }}</strong> {{ 'modules.projects.workOrders.ui.workProgramEmptyHintMiddle' | translate }}
+    <strong>{{ 'modules.projects.workOrders.ui.copyWorkProgram' | translate }}</strong> {{ 'modules.projects.workOrders.ui.workProgramEmptyHintEnd' | translate }}
   </div>
 
 </div>

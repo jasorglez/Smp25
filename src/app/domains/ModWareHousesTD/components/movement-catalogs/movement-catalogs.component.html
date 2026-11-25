@@ -1,27 +1,27 @@
 <section class="movement-catalogs p-3">
   <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
     <div>
-      <h4 class="mb-1"><i class="bi bi-journal-text me-2"></i>Catálogos de Almacenes</h4>
-      <p class="text-muted mb-0">Administra tipos de Entradas y Salidas, y las marcas de tus materiales.</p>
+      <h4 class="mb-1"><i class="bi bi-journal-text me-2"></i>{{ 'modules.warehouses.movementCatalogs.title' | translate }}</h4>
+      <p class="text-muted mb-0">{{ 'modules.warehouses.movementCatalogs.description' | translate }}</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
       <button type="button" class="btn btn-sm btn-success" (click)="add()" [disabled]="!idRoot || loading">
-        <i class="bi bi-plus-lg me-1"></i>Agregar
+        <i class="bi bi-plus-lg me-1"></i>{{ 'add' | translate }}
       </button>
       <button type="button" class="btn btn-sm btn-primary position-relative" (click)="save()" [disabled]="!hasUnsavedChanges || saving">
-        <i class="bi bi-floppy me-1"></i>{{ saving ? 'Guardando…' : 'Guardar' }}
+        <i class="bi bi-floppy me-1"></i>{{ saving ? ('modules.warehouses.movementCatalogs.saving' | translate) : ('save' | translate) }}
         <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
           *ngIf="hasUnsavedChanges">
-          <span class="visually-hidden">Hay cambios sin guardar</span>
+          <span class="visually-hidden">{{ 'modules.userSetup.unsavedChanges' | translate }}</span>
         </span>
       </button>
       <button type="button" class="btn btn-sm btn-danger" (click)="deleteSelected()" [disabled]="loading || saving || deleting">
-        <i class="bi" [ngClass]="deleting ? 'bi-hourglass-split' : 'bi-trash'"></i><span class="ms-1">{{ deleting ? 'Validando…' : 'Eliminar' }}</span>
+        <i class="bi" [ngClass]="deleting ? 'bi-hourglass-split' : 'bi-trash'"></i><span class="ms-1">{{ deleting ? ('modules.warehouses.movementCatalogs.validating' | translate) : ('delete' | translate) }}</span>
       </button>
     </div>
   </div>
 
-  <div class="btn-group btn-group-sm mb-3" role="group" aria-label="Catálogos de Almacenes">
+  <div class="btn-group btn-group-sm mb-3" role="group" [attr.aria-label]="'modules.warehouses.movementCatalogs.title' | translate">
     <button *ngFor="let type of movementTypes" type="button" class="btn"
       [class.btn-success]="selectedType === type.value" [class.btn-outline-success]="selectedType !== type.value"
       [disabled]="deleting || saving"
@@ -30,8 +30,8 @@
     </button>
   </div>
 
-  <div *ngIf="!idRoot" class="alert alert-info py-2">Selecciona primero una empresa en el menú lateral.</div>
-  <div *ngIf="loading" class="text-muted py-3">Cargando catálogo…</div>
+  <div *ngIf="!idRoot" class="alert alert-info py-2">{{ 'modules.warehouses.movementCatalogs.selectCompany' | translate }}</div>
+  <div *ngIf="loading" class="text-muted py-3">{{ 'modules.warehouses.movementCatalogs.loading' | translate }}</div>
   <ag-grid-angular *ngIf="idRoot && !loading" class="ag-theme-quartz small-text-ag-grid"
     style="width: 100%; height: 55vh;" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef"
     [rowData]="rowData" [rowSelection]="'single'" [localeText]="AG_GRID_LOCALE_ES"

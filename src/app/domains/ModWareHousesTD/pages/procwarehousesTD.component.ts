@@ -29,7 +29,7 @@ export class ProcWarehousesTDComponent implements OnInit, OnDestroy {
       .filter(([, permission]: [string, any]) => permission?.active === true)
       .map(([identifier, permission]: [string, any]) => ({
         identifier,
-        name: permission.permissionName || permission.description || identifier,
+        name: `modules.warehouses.menu.${warehouseRouteForPermission(identifier, permission.permissionName || permission.description)}`,
         order: Number.isFinite(Number(permission.order)) ? Number(permission.order) : 10000,
         path: warehouseRouteForPermission(identifier, permission.permissionName || permission.description),
         icon: warehouseIconForPermission(identifier, permission.permissionName || permission.description),

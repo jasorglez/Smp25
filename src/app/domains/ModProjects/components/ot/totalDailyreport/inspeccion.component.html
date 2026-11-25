@@ -16,21 +16,21 @@
                      (click)="setActiveTab('ots')"
                      style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.9rem;">
                     <i class="bi bi-pencil-square" style="font-size: 0.9rem;"></i>
-                    Reporte Diarios
+                    {{ 'modules.projects.workOrders.ui.dailyReports' | translate }}
                   </a>
                 </li>
                 <li class="nav-item" style="flex: 0 0 auto;">
                   <a class="nav-link" [class.active]="activeTab === 'reportes'" (click)="setActiveTab('reportes')"
                      style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.9rem;">
                     <i class="bi bi-calendar3" style="font-size: 0.9rem;"></i>
-                    Costos Trabajos Diarios
+                    {{ 'modules.projects.workOrders.ui.dailyWorkCosts' | translate }}
                   </a>
                 </li>
                 <li class="nav-item" style="flex: 0 0 auto;">
                   <a class="nav-link" [class.active]="activeTab === 'todas'" (click)="setActiveTab('todas')"
                      style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.9rem;">
                     <i class="bi bi-list-task" style="font-size: 0.9rem;"></i>
-                    Todas las OT
+                    {{ 'modules.projects.workOrders.ui.allWorkOrders' | translate }}
                   </a>
                 </li>
               </ul>
@@ -47,10 +47,10 @@
                     <div class="alert alert-info mb-2 py-1">
                       <small>
                         <i class="bi bi-info-circle"></i>
-                        <strong>Reportes Diarios por Fecha:</strong> 
-                        Vista agrupada de todos los reportes diarios de la empresa.
+                        <strong>{{ 'modules.projects.workOrders.ui.dailyReportsByDate' | translate }}</strong>
+                        {{ 'modules.projects.workOrders.ui.groupedCompanyReports' | translate }}
                         <span class="float-end">
-                          <strong>Total registros:</strong> {{groupedReportsData.length}}
+                          <strong>{{ 'modules.projects.workOrders.ui.totalRecords' | translate }}</strong> {{groupedReportsData.length}}
                         </span>
                       </small>
                     </div>
@@ -78,7 +78,7 @@
                   <div class="h-100">
                     <div class="daily-report-layout">
                       <div class="daily-report-list d-flex flex-column">
-                      <small class="text-muted mb-1">👥 Personal · 📦 Materiales · 🚜 Equipos · 📷 Fotos</small>
+                      <small class="text-muted mb-1">{{ 'modules.projects.workOrders.ui.dailyReportContentTypes' | translate }}</small>
                       <div style="flex: 1; min-height: 0;">
                       <ag-grid-angular 
                         style="height: 100%; width: 100%;"

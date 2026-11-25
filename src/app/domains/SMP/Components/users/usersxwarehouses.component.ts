@@ -1,4 +1,5 @@
 import { Component, computed, HostListener, inject, effect } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
@@ -10,15 +11,17 @@ import { UsersxpermissionsService } from 'app/services/usersxpermissions.service
 import { SignalsService } from 'app/services/signals.service';
 import { WarehousesService } from 'app/services/warehouses.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { injectUserSetupTranslator } from './user-setup-i18n';
 
 @Component({
   selector: 'app-usersxwarehouses',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, TranslateModule, UsersProfileComponent],
   templateUrl: './usersxpermissions.component.html',
   styleUrl: './usersxpermissions.component.scss'
 })
 export class UsersxwarehousesComponent {
+  private readonly u18n = injectUserSetupTranslator();
 
   private signalsService = inject(SignalsService);
   private warehousesService = inject(WarehousesService);
@@ -207,12 +210,12 @@ public gridOptions: any = {
     return [
       {
         field: 'idUser',
-        headerName: 'ID del Usuario',
+        headerName: this.u18n('grid.userId'),
         hide: true,
       },
       {
         field: 'idPermission',
-        headerName: 'Almacén',
+        headerName: this.u18n('grid.warehouse'),
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: Object.keys(this.warehouses).sort((a, b) => this.warehouses[a].localeCompare(this.warehouses[b])),

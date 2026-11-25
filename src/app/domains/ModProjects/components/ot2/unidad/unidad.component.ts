@@ -5,6 +5,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
+import { injectWorkOrderTranslator } from '../../ot/work-order-i18n';
 
 interface UnidadData {
   unidad: string;
@@ -20,6 +21,7 @@ interface UnidadData {
   styleUrl: './unidad.component.scss'
 })
 export class UnidadComponent {
+  private readonly t = injectWorkOrderTranslator();
   private trackingService = inject(TrackingService);
   
   // Variables de control
@@ -42,7 +44,7 @@ export class UnidadComponent {
   public columnDefs: ColDef[] = [
     {
       field: 'unidad',
-      headerName: 'Unidad',
+      headerName: this.t('grid.unit'),
       sortable: true,
       filter: true,
       resizable: true,
@@ -51,7 +53,7 @@ export class UnidadComponent {
     },
     {
       field: 'empleado',
-      headerName: 'Empleado',
+      headerName: this.t('grid.employee'),
       sortable: true,
       filter: true,
       resizable: true,
@@ -60,7 +62,7 @@ export class UnidadComponent {
     },
     {
       field: 'fecha',
-      headerName: 'Fecha',
+      headerName: this.t('grid.date'),
       sortable: true,
       filter: true,
       resizable: true,
@@ -206,7 +208,7 @@ export class UnidadComponent {
       return;
     }
     
-    if (confirm('¿Está seguro de que desea eliminar este registro?')) {
+    if (confirm(this.t('alerts.confirmDeleteRecord'))) {
       const selectedData = selectedNodes[0].data;
       this.rowData = this.rowData.filter(row => row !== selectedData);
       this.notSavedChanges = true;

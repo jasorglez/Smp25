@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, effect, HostListener, inject, Injectable, OnDestroy, ViewChild } from '@angular/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
@@ -33,6 +34,7 @@ import { ButtonCellRendererExpenditureComponent } from 'app/domains/ModAdmon/com
   standalone: true,
   imports: [
     CommonModule,
+    TranslateModule,
     FormsModule,
     AgGridModule,
     MatDialogModule,
@@ -56,7 +58,7 @@ export class UsersComponent implements OnDestroy {
   departamentos: any[] = [];
   position: any[] = [];
   rowData: any[] = [];
-  
+
   paginationPageSize = 20;
   pagination = true;
   notSavedChanges: boolean = false;
@@ -92,12 +94,13 @@ export class UsersComponent implements OnDestroy {
   private enterPressed: boolean = false;
 
   usersService                = inject(UsersService);
+  private readonly translate = inject(TranslateService);
   private imageHandlerService = inject(ImageHandlerService);
   private usersxrootService   = inject(UsersxpermissionsService);
   private trackingService     = inject(TrackingService);
   private catalogService      = inject(CatalogsService);
   private signalsService      = inject(SignalsService);
-  private rolesService        = inject(RolesService);  
+  private rolesService        = inject(RolesService);
   private employeeService     = inject(EmployeesService);
   private permitionsService   = inject(PermitionsService);
   private modalService        = inject(ModalService);
@@ -246,21 +249,21 @@ export class UsersComponent implements OnDestroy {
     if (!this.isRootUser || !this.showDeletedUsers) return;
     const selected = this.gridApi?.getSelectedNodes()?.[0]?.data;
     if (!selected || Number(selected.active) !== 0) {
-      alerts.basicAlert('Restaurar usuario', 'Selecciona un usuario borrado.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.restoreUser'), this.translate.instant('modules.userSetup.ui.alerts.selectDeletedUser'), 'warning');
       return;
     }
 
     const confirmation = await alerts.confirmAlert(
-      'Restaurar usuario',
-      `¿Deseas reactivar a ${selected.displayName || selected.email}?`,
+      this.translate.instant('modules.userSetup.ui.alerts.restoreUser'),
+      this.translate.instant('modules.userSetup.ui.alerts.reactivateUser', { name: selected.displayName || selected.email }),
       'question',
-      'Sí, restaurar'
+      this.translate.instant('modules.userSetup.ui.alerts.yesRestore')
     );
     if (!confirmation.isConfirmed) return;
 
     this.usersService.restoreDeletedUser(Number(selected.id), this.idRoot).subscribe({
       next: () => {
-        alerts.basicAlert('Usuario restaurado', 'El usuario quedó activo nuevamente.', 'success');
+        alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.userRestored'), this.translate.instant('modules.userSetup.ui.alerts.userActiveAgain'), 'success');
         this.selectedRowData = null;
         this.obtenerDatos();
         this.trackingService.addLog(
@@ -271,8 +274,8 @@ export class UsersComponent implements OnDestroy {
         );
       },
       error: (error) => {
-        const message = error?.error?.message || 'No se pudo restaurar el usuario.';
-        alerts.basicAlert('Restaurar usuario', message, 'error');
+        const message = error?.error?.message || this.translate.instant('modules.userSetup.ui.alerts.restoreFailed');
+        alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.restoreUser'), message, 'error');
       }
     });
   }
@@ -453,7 +456,7 @@ export class UsersComponent implements OnDestroy {
       { field: 'active', hide: true },
       {
         field: 'displayName',
-        headerName: 'Nombre *',
+        headerName: this.translate.instant('modules.userSetup.ui.grid.nameRequired'),
         editable: () => !this.showDeletedUsers,
         filter: true,
         cellEditor: 'autocompleteEditor',
@@ -470,14 +473,14 @@ export class UsersComponent implements OnDestroy {
         valueSetter: (params) => {
           const newValue = params.newValue?.toUpperCase() ?? '';
           if (newValue.length > 150) {
-            alerts.basicAlert('Nombre demasiado largo', 'Nombre admite máximo 150 caracteres.', 'error');
+            alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.nameTooLong'), this.translate.instant('modules.userSetup.ui.alerts.nameLimit'), 'error');
             return false;
           }
           const duplicateExists = this.rowData.some((row, index) =>
             index !== params.node.rowIndex && row.displayName === newValue
           );
           if (duplicateExists) {
-            alerts.basicAlert('Nombre duplicado', 'Ya existe un usuario con ese nombre.', 'error');
+            alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.duplicateName'), this.translate.instant('modules.userSetup.ui.alerts.nameAlreadyExists'), 'error');
             return false;
           }
           const empleadoInfo = this.empleadoCatalgos?.find(
@@ -496,7 +499,7 @@ export class UsersComponent implements OnDestroy {
       },
       {
         field: 'countEmpresas',
-        headerName: 'Empresas',
+        headerName: this.translate.instant('modules.userSetup.ui.companies'),
         width: 120,
         editable: false,
         cellRenderer: ButtonCellRendererExpenditureComponent,
@@ -509,7 +512,7 @@ export class UsersComponent implements OnDestroy {
       },
       {
         field: 'permisosMaestros',
-        headerName: 'Permisos maestros',
+        headerName: this.translate.instant('modules.userSetup.ui.masterPermissions'),
         width: 140,
         editable: false,
         cellRenderer: ButtonCellRendererExpenditureComponent,
@@ -522,7 +525,7 @@ export class UsersComponent implements OnDestroy {
       },
       {
         field: 'email',
-        headerName: 'Email *',
+        headerName: this.translate.instant('modules.userSetup.ui.grid.emailRequired'),
         cellEditor: 'agTextCellEditor',
         flex: 1,
         editable: () => !this.showDeletedUsers,
@@ -535,14 +538,14 @@ export class UsersComponent implements OnDestroy {
               index !== params.node.rowIndex && row.email === params.newValue
             );
             if (duplicateExists) {
-              alerts.basicAlert('Añadir usuario', 'Ya existe un usuario con ese correo electrónico.', 'error');
+              alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.addUser'), this.translate.instant('modules.userSetup.ui.alerts.emailAlreadyExists'), 'error');
               return false;
             }
             params.data[params.colDef.field] = params.newValue;
             this.assignUsernameFromEmail(params.data, params.newValue);
             return true;
           } else {
-            alerts.basicAlert('Editar usuario', 'Correo electrónico no válido.', 'error');
+            alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.editUser'), this.translate.instant('modules.userSetup.ui.alerts.invalidEmail'), 'error');
             return false;
           }
         },
@@ -550,16 +553,16 @@ export class UsersComponent implements OnDestroy {
       },
       {
         field: 'usersmall',
-        headerName: 'Username',
+        headerName: this.translate.instant('modules.userSetup.ui.grid.username'),
         editable: () => !this.showDeletedUsers,
         width: 150,
         cellEditor: 'agTextCellEditor',
         cellEditorParams: { maxLength: 50 },
-        headerTooltip: 'Nombre de usuario: máximo 50 caracteres',
+        headerTooltip: this.translate.instant('modules.userSetup.ui.grid.usernameTooltip'),
         valueSetter: (params) => {
           const username = String(params.newValue ?? '').toLowerCase().trim();
           if (username.length > 50) {
-            alerts.basicAlert('Username demasiado largo', 'Nombre de usuario admite máximo 50 caracteres.', 'error');
+            alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.usernameTooLong'), this.translate.instant('modules.userSetup.ui.alerts.usernameLimit'), 'error');
             return false;
           }
           params.data.usersmall = username;
@@ -567,7 +570,7 @@ export class UsersComponent implements OnDestroy {
         }
       },
       {
-        headerName: 'Contraseña *',
+        headerName: this.translate.instant('modules.userSetup.ui.grid.passwordRequired'),
         field: 'password',
         flex: 1,
         valueGetter: () => '',
@@ -588,8 +591,8 @@ export class UsersComponent implements OnDestroy {
         cellRenderer: (params) => {
           const online = params.value === true || params.value === 1;
           return online
-            ? `<span class="badge bg-success" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">🟢 Online</span>`
-            : `<span class="badge bg-secondary" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">⚫ Offline</span>`;
+            ? `<span class="badge bg-success" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">🟢 ${this.translate.instant('modules.userSetup.ui.grid.online')}</span>`
+            : `<span class="badge bg-secondary" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">⚫ ${this.translate.instant('modules.userSetup.ui.grid.offline')}</span>`;
         },
         onCellClicked: (params) => {
           if (this.showDeletedUsers) return;
@@ -602,16 +605,16 @@ export class UsersComponent implements OnDestroy {
       },
       {
         field: 'monitorTelegram',
-        headerName: 'Avisos Telegram',
+        headerName: this.translate.instant('modules.userSetup.ui.grid.telegramAlerts'),
         width: 145,
         editable: false,
-        tooltipValueGetter: () => 'Indica si este usuario debe generar avisos de acceso y actividad en Telegram.',
+        tooltipValueGetter: () => this.translate.instant('modules.userSetup.ui.grid.telegramAlertsTooltip'),
         cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
         cellRenderer: (params) => {
           const enabled = params.value === true || params.value === 1 || params.value === 'true';
           return enabled
-            ? '<span class="badge bg-success" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">🔔 Sí</span>'
-            : '<span class="badge bg-secondary" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">🔕 No</span>';
+            ? `<span class="badge bg-success" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">🔔 ${this.translate.instant('modules.userSetup.ui.grid.yes')}</span>`
+            : `<span class="badge bg-secondary" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">🔕 ${this.translate.instant('modules.userSetup.ui.grid.no')}</span>`;
         },
         onCellClicked: (params) => {
           if (this.showDeletedUsers) return;
@@ -624,22 +627,22 @@ export class UsersComponent implements OnDestroy {
       },
       {
         field: 'idRol',
-        headerName: 'Security',
+        headerName: this.translate.instant('modules.userSetup.ui.grid.security'),
         hide: !this.isAdvanced && this.idUser !== 42,
         cellStyle: { backgroundColor: '#d4edda' },
         onCellClicked: this.togglePermissions.bind(this)
       },
       {
         field: 'canAuthorizeProcesses',
-        headerName: 'Autoriza procesos',
+        headerName: this.translate.instant('modules.userSetup.ui.grid.authorizeProcesses'),
         width: 145,
         editable: false,
         cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
         cellRenderer: (params) => {
           const allowed = params.value === true || params.value === 1 || params.value === 'true';
           return allowed
-            ? '<span class="badge bg-success">Sí</span>'
-            : '<span class="badge bg-light text-muted border">No</span>';
+            ? `<span class="badge bg-success">${this.translate.instant('modules.userSetup.ui.grid.yes')}</span>`
+            : `<span class="badge bg-light text-muted border">${this.translate.instant('modules.userSetup.ui.grid.no')}</span>`;
         },
         onCellClicked: (params) => {
           const current = params.data.canAuthorizeProcesses === true || params.data.canAuthorizeProcesses === 1 || params.data.canAuthorizeProcesses === 'true';
@@ -651,15 +654,15 @@ export class UsersComponent implements OnDestroy {
       },
       {
         field: 'isRoot',
-        headerName: 'Root',
+        headerName: this.translate.instant('modules.userSetup.ui.grid.root'),
         width: 100,
         editable: false,
         cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
         cellRenderer: (params) => {
           const isRoot = params.value === 1 || params.value === true;
           return isRoot
-            ? `<span class="badge bg-warning text-dark" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">⭐ Root</span>`
-            : `<span class="badge bg-light text-muted border" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">— Normal</span>`;
+            ? `<span class="badge bg-warning text-dark" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">⭐ ${this.translate.instant('modules.userSetup.ui.grid.root')}</span>`
+            : `<span class="badge bg-light text-muted border" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">— ${this.translate.instant('modules.userSetup.ui.grid.normal')}</span>`;
         },
         onCellClicked: (params) => {
           const current = params.data.isRoot === 1 || params.data.isRoot === true;
@@ -671,10 +674,10 @@ export class UsersComponent implements OnDestroy {
       },
       {
         field: 'picture',
-        headerName: 'Imagen de perfil',
+        headerName: this.translate.instant('modules.userSetup.ui.grid.profilePicture'),
         cellRenderer: (params) => {
           const imgSrc = params.value || './assets/img/profile.png';
-          return `<img src="${imgSrc}" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;" title="Clic para cambiar imagen"/>`;
+          return `<img src="${imgSrc}" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;" title="${this.translate.instant('modules.userSetup.ui.alerts.changePicture')}"/>`;
         },
         onCellClicked: (params) => {
           setTimeout(() => {
@@ -688,19 +691,19 @@ export class UsersComponent implements OnDestroy {
               if (file) {
                 // Validar tipo de archivo
                 if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
-                  alerts.basicAlert('Tipo no válido', 'Solo se permiten imágenes JPG o PNG', 'error');
+                  alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.invalidFileType'), this.translate.instant('modules.userSetup.ui.alerts.imagesOnly'), 'error');
                   document.body.removeChild(input);
                   return;
                 }
                 // Validar tamaño (max 5MB)
                 if (file.size > 5 * 1024 * 1024) {
-                  alerts.basicAlert('Archivo muy grande', 'La imagen no puede superar 5MB', 'error');
+                  alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.fileTooLarge'), this.translate.instant('modules.userSetup.ui.alerts.pictureSizeLimit'), 'error');
                   document.body.removeChild(input);
                   return;
                 }
                 try {
                   // Mostrar indicador de carga
-                  alerts.showLoading('Subiendo imagen', 'Por favor espere mientras se sube la imagen de perfil...');
+                  alerts.showLoading(this.translate.instant('modules.userSetup.ui.alerts.uploadingPicture'), this.translate.instant('modules.userSetup.ui.alerts.waitForPicture'));
                   // Subir imagen a Firebase y obtener la URL
                   const url = await this.imageHandlerService.uploadFileToFirebase(file, 'images/users-profile');
                   params.data.picture = url;
@@ -709,12 +712,12 @@ export class UsersComponent implements OnDestroy {
                   this.notSavedChanges = true;
                   // Cerrar loading y mostrar éxito
                   alerts.closeLoading();
-                  alerts.basicAlert('Imagen subida', 'La imagen de perfil se subió correctamente', 'success');
+                  alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.pictureUploaded'), this.translate.instant('modules.userSetup.ui.alerts.pictureUploadedSuccessfully'), 'success');
                 } catch (error: any) {
                   console.error('Error al subir imagen:', error);
                   alerts.closeLoading();
-                  const msg = error?.code || error?.message || 'No se pudo subir la imagen a Firebase';
-                  alerts.basicAlert('Error', msg, 'error');
+                  const msg = error?.code || error?.message || this.translate.instant('modules.userSetup.ui.alerts.pictureUploadFailed');
+                  alerts.basicAlert(this.translate.instant('error'), msg, 'error');
                 }
               }
               document.body.removeChild(input);
@@ -727,13 +730,13 @@ export class UsersComponent implements OnDestroy {
       },
       {
         field: 'signature',
-        headerName: 'Firma',
+        headerName: this.translate.instant('modules.userSetup.ui.grid.signature'),
         cellRenderer: (params) => {
           const imgSrc = params.value || '';
           if (imgSrc) {
-            return `<img src="${imgSrc}" style="width: 100px; height: 50px; object-fit: contain; cursor: pointer;" title="Clic para cambiar firma"/>`;
+            return `<img src="${imgSrc}" style="width: 100px; height: 50px; object-fit: contain; cursor: pointer;" title="${this.translate.instant('modules.userSetup.ui.alerts.changeSignature')}"/>`;
           } else {
-            return `<div style="width: 100px; height: 50px; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; cursor: pointer;" title="Clic para agregar firma">Firma</div>`;
+            return `<div style="width: 100px; height: 50px; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; cursor: pointer;" title="${this.translate.instant('modules.userSetup.ui.alerts.addSignature')}">${this.translate.instant('modules.userSetup.ui.grid.signature')}</div>`;
           }
         },
         onCellClicked: (params) => {
@@ -748,19 +751,19 @@ export class UsersComponent implements OnDestroy {
               if (file) {
                 // Validar tipo de archivo
                 if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
-                  alerts.basicAlert('Tipo no válido', 'Solo se permiten imágenes JPG o PNG', 'error');
+                  alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.invalidFileType'), this.translate.instant('modules.userSetup.ui.alerts.imagesOnly'), 'error');
                   document.body.removeChild(input);
                   return;
                 }
                 // Validar tamaño (max 2MB para firma)
                 if (file.size > 2 * 1024 * 1024) {
-                  alerts.basicAlert('Archivo muy grande', 'La firma no puede superar 2MB', 'error');
+                  alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.fileTooLarge'), this.translate.instant('modules.userSetup.ui.alerts.signatureSizeLimit'), 'error');
                   document.body.removeChild(input);
                   return;
                 }
                 try {
                   // Mostrar indicador de carga
-                  alerts.showLoading('Subiendo firma', 'Por favor espere mientras se sube la firma...');
+                  alerts.showLoading(this.translate.instant('modules.userSetup.ui.alerts.uploadingSignature'), this.translate.instant('modules.userSetup.ui.alerts.waitForSignature'));
                   // Subir firma a Firebase y obtener la URL
                   const url = await this.imageHandlerService.uploadFileToFirebase(file, 'images/users-signatures');
                   params.data.signature = url;
@@ -769,12 +772,12 @@ export class UsersComponent implements OnDestroy {
                   this.notSavedChanges = true;
                   // Cerrar loading y mostrar éxito
                   alerts.closeLoading();
-                  alerts.basicAlert('Firma subida', 'La firma se subió correctamente', 'success');
+                  alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.signatureUploaded'), this.translate.instant('modules.userSetup.ui.alerts.signatureUploadedSuccessfully'), 'success');
                 } catch (error: any) {
                   console.error('Error al subir firma:', error);
                   alerts.closeLoading();
-                  const msg = error?.code || error?.message || 'No se pudo subir la firma a Firebase';
-                  alerts.basicAlert('Error', msg, 'error');
+                  const msg = error?.code || error?.message || this.translate.instant('modules.userSetup.ui.alerts.signatureUploadFailed');
+                  alerts.basicAlert(this.translate.instant('error'), msg, 'error');
                 }
               }
               document.body.removeChild(input);
@@ -906,10 +909,10 @@ export class UsersComponent implements OnDestroy {
 
     for (const row of [...newRows, ...modifiedRows]) {
       const invalidFields: string[] = [];
-      if (String(row.usersmall ?? '').length > 50) invalidFields.push('Nombre de usuario: máximo 50 caracteres');
-      if (String(row.displayName ?? '').length > 150) invalidFields.push('Nombre: máximo 150 caracteres');
+      if (String(row.usersmall ?? '').length > 50) invalidFields.push(this.translate.instant('modules.userSetup.ui.alerts.usernameLimit'));
+      if (String(row.displayName ?? '').length > 150) invalidFields.push(this.translate.instant('modules.userSetup.ui.alerts.nameLimit'));
       if (invalidFields.length) {
-        alerts.basicAlert('Revisa los límites de los campos', invalidFields.join('. '), 'error');
+        alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.reviewFieldLimits'), invalidFields.join(' '), 'error');
         return;
       }
     }
@@ -918,10 +921,10 @@ export class UsersComponent implements OnDestroy {
     if (invalidNewRows.length > 0) {
       const invalidRow = invalidNewRows[0];
       let missingFields = [];
-      if (!invalidRow.displayName) missingFields.push('Nombre');
-      if (!invalidRow.email) missingFields.push('Correo electrónico');
-      if (!invalidRow.password) missingFields.push('Contraseña');
-      alerts.basicAlert('Validación - Nuevo Usuario', `Faltan campos obligatorios: ${missingFields.join(', ')}`, 'error');
+      if (!invalidRow.displayName) missingFields.push(this.translate.instant('modules.userSetup.ui.fields.name'));
+      if (!invalidRow.email) missingFields.push(this.translate.instant('modules.userSetup.ui.fields.email'));
+      if (!invalidRow.password) missingFields.push(this.translate.instant('modules.userSetup.ui.fields.password'));
+      alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.newUserValidation'), `${this.translate.instant('modules.userSetup.ui.alerts.requiredFieldsMissing')} ${missingFields.join(', ')}`, 'error');
       return;
     }
 
@@ -929,9 +932,9 @@ export class UsersComponent implements OnDestroy {
     if (invalidModifiedRows.length > 0) {
       const invalidRow = invalidModifiedRows[0];
       let missingFields = [];
-      if (!invalidRow.displayName) missingFields.push('Nombre');
-      if (!invalidRow.email) missingFields.push('Correo electrónico');
-      alerts.basicAlert('Validación - Usuario Modificado', `Faltan campos obligatorios: ${missingFields.join(', ')}`, 'error');
+      if (!invalidRow.displayName) missingFields.push(this.translate.instant('modules.userSetup.ui.fields.name'));
+      if (!invalidRow.email) missingFields.push(this.translate.instant('modules.userSetup.ui.fields.email'));
+      alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.updatedUserValidation'), `${this.translate.instant('modules.userSetup.ui.alerts.requiredFieldsMissing')} ${missingFields.join(', ')}`, 'error');
       return;
     }
 
@@ -1006,19 +1009,19 @@ export class UsersComponent implements OnDestroy {
         await lastValueFrom(concat(...permissionRequests.flat()).pipe(toArray()));
       }
 
-      alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
+      alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.dataUpdated'), this.translate.instant('modules.userSetup.ui.alerts.dataUpdatedSuccessfully'), 'success');
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       setTimeout(() => this.obtenerDatos(), 500);
 
     } catch (error) {
       console.error('Error al guardar usuarios:', error);
-      let errorMessage = 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.';
+      let errorMessage = this.translate.instant('modules.userSetup.ui.alerts.updateFailed');
       if (error?.error?.message) errorMessage = error.error.message;
-      else if (error?.status === 400) errorMessage = 'Error de validación: Verifique que todos los campos obligatorios estén completos.';
-      else if (error?.status === 409) errorMessage = 'Conflicto: El correo electrónico ya está en uso.';
-      else if (error?.status === 500) errorMessage = 'Error del servidor: Contacte al administrador.';
-      alerts.basicAlert('Error', errorMessage, 'error');
+      else if (error?.status === 400) errorMessage = this.translate.instant('modules.userSetup.ui.alerts.validationError');
+      else if (error?.status === 409) errorMessage = this.translate.instant('modules.userSetup.ui.alerts.emailConflict');
+      else if (error?.status === 500) errorMessage = this.translate.instant('modules.userSetup.ui.alerts.serverError');
+      alerts.basicAlert(this.translate.instant('error'), errorMessage, 'error');
     }
   }
 
@@ -1026,7 +1029,7 @@ export class UsersComponent implements OnDestroy {
     if (this.showDeletedUsers) return;
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
-      alerts.basicAlert('Eliminar entrada', 'Por favor, seleccione una entrada para eliminar.', 'error');
+      alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.deleteUser'), this.translate.instant('modules.userSetup.ui.alerts.selectUserToDelete'), 'error');
       return;
     }
 
@@ -1034,21 +1037,21 @@ export class UsersComponent implements OnDestroy {
     const id = selectedData.id;
 
     if (selectedData.isRoot === 1 || selectedData.isRoot === true) {
-      alerts.basicAlert('Eliminar entrada', 'No se puede eliminar un usuario administrador', 'error');
+      alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.deleteUser'), this.translate.instant('modules.userSetup.ui.alerts.cannotDeleteAdministrator'), 'error');
       return;
     }
 
-    alerts.confirmAlert('Eliminar empleado', '¿Está seguro que desea eliminar este usuario?', 'warning', 'Sí, eliminar')
+    alerts.confirmAlert(this.translate.instant('modules.userSetup.ui.alerts.deleteEmployee'), this.translate.instant('modules.userSetup.ui.alerts.confirmDeleteUser'), 'warning', this.translate.instant('modules.userSetup.ui.alerts.yesDelete'))
       .then((value) => {
         if (value.isConfirmed) {
           selectedData.active = 0;
           this.usersService.deleteUser(id, selectedData).pipe(
             catchError((error) => {
-              alerts.basicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
+              alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.deleteUser'), this.translate.instant('modules.userSetup.ui.alerts.deleteFailed'), 'error');
               return EMPTY;
             })
           ).subscribe(() => {
-            alerts.basicAlert('Eliminar entrada', 'Entrada eliminada satisfactoriamente.', 'success');
+            alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.deleteUser'), this.translate.instant('modules.userSetup.ui.alerts.userDeleted'), 'success');
             this.obtenerDatos();
             this.trackingService.addLog(
               this.trackingService.getnameComp(),
@@ -1077,7 +1080,7 @@ export class UsersComponent implements OnDestroy {
   togglePermissions() {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
-      alerts.basicAlert('Permisos', 'Por favor, seleccione un usuario para ver sus permisos.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.userSetup.ui.masterPermissions'), this.translate.instant('modules.userSetup.ui.alerts.selectUserPermissions'), 'warning');
       return;
     }
 
@@ -1102,7 +1105,7 @@ export class UsersComponent implements OnDestroy {
 
   openEmpresasCascade(node: any): void {
     if (!Number.isSafeInteger(Number(node?.data?.id)) || Number(node.data.id) <= 0) {
-      alerts.basicAlert('Guarda el usuario', 'Guarda primero el usuario para asignarle empresas, sucursales, contratos, proyectos y almacenes.', 'info');
+      alerts.basicAlert(this.translate.instant('modules.userSetup.ui.alerts.saveUser'), this.translate.instant('modules.userSetup.ui.alerts.saveBeforeAssignments'), 'info');
       return;
     }
     const data = node.data;

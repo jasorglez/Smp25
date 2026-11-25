@@ -8,32 +8,32 @@
             <header class="user-assignment-header">
                 <span class="assignment-icon"><i class="bi bi-file-earmark-text"></i></span>
                 <div>
-                    <h5>Asignación de contratos</h5>
+                    <h5>{{ 'modules.userSetup.ui.contractsAssignment' | translate }}</h5>
                     <p>{{ profile().nameUser() || profile().emailUser() }}</p>
                 </div>
                 <div class="form-check form-switch ms-auto" *ngIf="idCompany != null">
                         <input type="checkbox" name="companyChecked" id="companyChecked" class="form-check-input"
                             [checked]="companyChecked()()" (change)="onCheckboxChange($event)">
-                        <label for="companyChecked" class="form-check-label">Filtrar por contratista</label>
+                        <label for="companyChecked" class="form-check-label">{{ 'modules.userSetup.ui.filterByContractor' | translate }}</label>
                 </div>
                 <span class="assignment-count">{{ rowData?.length || 0 }} asignados</span>
             </header>
             <div class="row g-0">
             <nav class="col-auto d-flex flex-column align-items-center action-rail">
-                <button type="button" class="btn btn-primary action-button" (click)="addRow()" title="Agregar" aria-label="Agregar">
+                <button type="button" class="btn btn-primary action-button" (click)="addRow()" [title]="'modules.userSetup.ui.add' | translate" [attr.aria-label]="'modules.userSetup.ui.add' | translate">
                     <i class="bi bi-plus-lg"></i>
                 </button>
-                <button type="button" class="btn btn-success action-button position-relative" (click)="saveChanges()" title="Guardar" aria-label="Guardar">
+                <button type="button" class="btn btn-success action-button position-relative" (click)="saveChanges()" [title]="'modules.userSetup.ui.save' | translate" [attr.aria-label]="'modules.userSetup.ui.save' | translate">
                     <i class="bi bi-floppy"></i>
                     <span
                         class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-                        *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
+                        *ngIf="notSavedChanges"><span class="visually-hidden">{{ 'modules.userSetup.ui.unsavedChanges' | translate }}</span>
                     </span>
                 </button>
-                <button type="button" class="btn btn-warning action-button" (click)="revert()" title="Deshacer" aria-label="Deshacer">
+                <button type="button" class="btn btn-warning action-button" (click)="revert()" [title]="'modules.userSetup.ui.undo' | translate" [attr.aria-label]="'modules.userSetup.ui.undo' | translate">
                     <i class="bi bi-arrow-clockwise"></i>
                 </button>
-                <button type="button" class="btn btn-danger action-button" (click)="deleteEntry()" [disabled]="!selectedRowData" title="Borrar" aria-label="Borrar">
+                <button type="button" class="btn btn-danger action-button" (click)="deleteEntry()" [disabled]="!selectedRowData" [title]="'modules.userSetup.ui.delete' | translate" [attr.aria-label]="'modules.userSetup.ui.delete' | translate">
                     <i class="bi bi-trash"></i>
                 </button>
             </nav>

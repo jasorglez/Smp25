@@ -5,40 +5,41 @@ import { ActivatedRoute } from '@angular/router';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
-import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { AG_GRID_LOCALE } from 'assets/i18n/ag-grid.locale';
 import { InventarioWarehouseService } from 'app/services/inventario-warehouse.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { PermitionsService } from 'app/services/permitions.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-kardex',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, TranslateModule],
   template: `
     <div class="p-3 kardex-page">
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <div><h5 class="mb-1"><i class="bi bi-journal-arrow-up me-2 text-primary"></i>Kardex de materiales</h5>
-          <small class="text-muted">Historial cronológico de entradas, salidas, traspasos y ajustes por material y marca.</small></div>
-        <button class="btn btn-sm btn-outline-primary" (click)="load()" [disabled]="loading"><i class="bi bi-arrow-clockwise me-1"></i>Actualizar</button>
+        <div><h5 class="mb-1"><i class="bi bi-journal-arrow-up me-2 text-primary"></i>{{ 'modules.warehouses.ui.kardex.title' | translate }}</h5>
+          <small class="text-muted">{{ 'modules.warehouses.ui.kardex.description' | translate }}</small></div>
+        <button class="btn btn-sm btn-outline-primary" (click)="load()" [disabled]="loading"><i class="bi bi-arrow-clockwise me-1"></i>{{ 'modules.warehouses.ui.kardex.refresh' | translate }}</button>
       </div>
       <div class="filters card card-body py-2 mb-2">
         <div class="row g-2 align-items-end">
-          <div class="col-xl-4 col-md-6"><label class="form-label">Material / marca</label><input class="form-control form-control-sm" [(ngModel)]="materialSearch" (ngModelChange)="applyFilters()" placeholder="Buscar por código, descripción o marca"></div>
-          <div class="col-xl-3 col-md-6"><label class="form-label">Almacén</label><select class="form-select form-select-sm" [(ngModel)]="warehouseFilter" (ngModelChange)="applyFilters()"><option value="">Todos los almacenes</option><option *ngFor="let w of warehouses" [value]="warehouseId(w)">{{warehouseName(w)}}</option></select></div>
-          <div class="col-xl-2 col-6"><label class="form-label">Desde</label><input class="form-control form-control-sm" type="date" [(ngModel)]="dateFrom" (ngModelChange)="applyFilters()"></div>
-          <div class="col-xl-2 col-6"><label class="form-label">Hasta</label><input class="form-control form-control-sm" type="date" [(ngModel)]="dateTo" (ngModelChange)="applyFilters()"></div>
-          <div class="col-xl-1 col-12"><button class="btn btn-sm btn-light w-100" (click)="clearFilters()"><i class="bi bi-x-circle me-1"></i>Limpiar</button></div>
+          <div class="col-xl-4 col-md-6"><label class="form-label">{{ 'modules.warehouses.ui.kardex.materialBrand' | translate }}</label><input class="form-control form-control-sm" [(ngModel)]="materialSearch" (ngModelChange)="applyFilters()" [placeholder]="'modules.warehouses.ui.kardex.searchPlaceholder' | translate"></div>
+          <div class="col-xl-3 col-md-6"><label class="form-label">{{ 'modules.warehouses.ui.movements.warehouse' | translate }}</label><select class="form-select form-select-sm" [(ngModel)]="warehouseFilter" (ngModelChange)="applyFilters()"><option value="">{{ 'modules.warehouses.ui.kardex.allWarehouses' | translate }}</option><option *ngFor="let w of warehouses" [value]="warehouseId(w)">{{warehouseName(w)}}</option></select></div>
+          <div class="col-xl-2 col-6"><label class="form-label">{{ 'modules.warehouses.ui.kardex.from' | translate }}</label><input class="form-control form-control-sm" type="date" [(ngModel)]="dateFrom" (ngModelChange)="applyFilters()"></div>
+          <div class="col-xl-2 col-6"><label class="form-label">{{ 'modules.warehouses.ui.kardex.to' | translate }}</label><input class="form-control form-control-sm" type="date" [(ngModel)]="dateTo" (ngModelChange)="applyFilters()"></div>
+          <div class="col-xl-1 col-12"><button class="btn btn-sm btn-light w-100" (click)="clearFilters()"><i class="bi bi-x-circle me-1"></i>{{ 'modules.warehouses.ui.kardex.clear' | translate }}</button></div>
         </div>
       </div>
-      <div class="alert alert-info py-2" *ngIf="materialIdFilter">Kardex filtrado por material seleccionado. <button class="btn btn-link btn-sm p-0 ms-1" (click)="clearMaterialFilter()">Ver todos</button></div>
+      <div class="alert alert-info py-2" *ngIf="materialIdFilter">{{ 'modules.warehouses.ui.kardex.filteredMaterial' | translate }} <button class="btn btn-link btn-sm p-0 ms-1" (click)="clearMaterialFilter()">{{ 'modules.warehouses.ui.kardex.viewAll' | translate }}</button></div>
       <div class="alert alert-warning py-2 small" *ngIf="dataWarnings.length" role="alert">
-        <strong>El Kárdex está incompleto; sus saldos no están conciliados.</strong>
+        <strong>{{ 'modules.warehouses.ui.kardex.incompleteWarning' | translate }}</strong>
         <div *ngFor="let warning of dataWarnings">{{ warning }}</div>
       </div>
-      <div class="text-muted py-5 text-center" *ngIf="loading"><span class="spinner-border spinner-border-sm me-2"></span>Cargando movimientos...</div>
-      <div class="alert alert-light border text-center" *ngIf="!loading && !allRows.length">No se encontraron movimientos de entradas o salidas en los almacenes autorizados de esta empresa.</div>
+      <div class="text-muted py-5 text-center" *ngIf="loading"><span class="spinner-border spinner-border-sm me-2"></span>{{ 'modules.warehouses.ui.kardex.loading' | translate }}</div>
+      <div class="alert alert-light border text-center" *ngIf="!loading && !allRows.length">{{ 'modules.warehouses.ui.kardex.noMovements' | translate }}</div>
       <ag-grid-angular *ngIf="!loading && allRows.length" class="ag-theme-quartz small-text-ag-grid" style="width:100%;height:70vh"
         [rowData]="rowData" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef" [pagination]="true" [paginationPageSize]="50"
         [localeText]="AG_GRID_LOCALE_ES" (gridReady)="onGridReady($event)"></ag-grid-angular>
@@ -50,6 +51,7 @@ import { TrackingService } from 'app/services/tracking.service';
   `]
 })
 export class KardexComponent {
+  private readonly translate = inject(TranslateService);
   private readonly signals = inject(SignalsService);
   private readonly tracking = inject(TrackingService);
   private readonly movementService = inject(InventarioWarehouseService);
@@ -68,20 +70,20 @@ export class KardexComponent {
   dateFrom = '';
   dateTo = '';
   gridApi?: GridApi;
-  readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE;
   readonly defaultColDef: ColDef = { sortable: true, filter: true, resizable: true, flex: 1, minWidth: 105 };
   readonly columnDefs: ColDef[] = [
-    { field: 'fecha', headerName: 'Fecha', minWidth: 150, sort: 'desc', valueFormatter: p => this.formatDate(p.value) },
-    { field: 'folio', headerName: 'Folio', minWidth: 125 },
-    { field: 'tipo', headerName: 'Movimiento', minWidth: 150 },
-    { field: 'codigo', headerName: 'Código', minWidth: 130 },
-    { field: 'material', headerName: 'Material', minWidth: 260, flex: 2 },
-    { field: 'marca', headerName: 'Marca', minWidth: 140 },
-    { field: 'almacen', headerName: 'Almacén', minWidth: 170 },
-    { field: 'entrada', headerName: 'Entrada', type: 'numericColumn', minWidth: 105, valueFormatter: p => this.formatQty(p.value) },
-    { field: 'salida', headerName: 'Salida', type: 'numericColumn', minWidth: 105, valueFormatter: p => this.formatQty(p.value) },
-    { field: 'saldo', headerName: 'Saldo acumulado', type: 'numericColumn', minWidth: 140, valueFormatter: p => this.formatQty(p.value) },
-    { field: 'referencia', headerName: 'Referencia / nota', minWidth: 180 }
+    { field: 'fecha', headerName: this.translate.instant('modules.warehouses.ui.kardex.date'), minWidth: 150, sort: 'desc', valueFormatter: p => this.formatDate(p.value) },
+    { field: 'folio', headerName: this.translate.instant('modules.warehouses.ui.kardex.reference'), minWidth: 125 },
+    { field: 'tipo', headerName: this.translate.instant('modules.warehouses.ui.kardex.movement'), minWidth: 150 },
+    { field: 'codigo', headerName: this.translate.instant('modules.warehouses.ui.kardex.code'), minWidth: 130 },
+    { field: 'material', headerName: this.translate.instant('modules.warehouses.ui.kardex.material'), minWidth: 260, flex: 2 },
+    { field: 'marca', headerName: this.translate.instant('modules.warehouses.ui.kardex.brand'), minWidth: 140 },
+    { field: 'almacen', headerName: this.translate.instant('modules.warehouses.ui.movements.warehouse'), minWidth: 170 },
+    { field: 'entrada', headerName: this.translate.instant('modules.warehouses.ui.kardex.entry'), type: 'numericColumn', minWidth: 105, valueFormatter: p => this.formatQty(p.value) },
+    { field: 'salida', headerName: this.translate.instant('modules.warehouses.ui.kardex.issue'), type: 'numericColumn', minWidth: 105, valueFormatter: p => this.formatQty(p.value) },
+    { field: 'saldo', headerName: this.translate.instant('modules.warehouses.ui.kardex.runningBalance'), type: 'numericColumn', minWidth: 140, valueFormatter: p => this.formatQty(p.value) },
+    { field: 'referencia', headerName: this.translate.instant('modules.warehouses.ui.kardex.note'), minWidth: 180 }
   ];
 
   constructor() {

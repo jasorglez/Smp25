@@ -3,11 +3,11 @@
   <div [class.col-xl-7]="showBudgetDashboard" [class.col-12]="!showBudgetDashboard">
     <div class="d-flex align-items-center justify-content-between mb-3 p-3 rounded border bg-light pmo-budget-launcher">
       <div>
-        <div class="fw-semibold"><i class="bi bi-speedometer2 text-primary me-2"></i>Control del programa por proyecto</div>
-        <small class="text-muted">Distribuye actividades del contrato por fase y controla sus materiales, personal, equipos y cuadrillas.</small>
+        <div class="fw-semibold"><i class="bi bi-speedometer2 text-primary me-2"></i>{{ 'modules.projects.ui.budgetTitle' | translate }}</div>
+        <small class="text-muted">{{ 'modules.projects.ui.budgetDescription' | translate }}</small>
       </div>
       <button type="button" class="btn btn-primary" [disabled]="!selectedRowData" (click)="openBudgetDashboard()">
-        <i class="bi bi-bar-chart-line me-1"></i> Abrir control PMO
+        <i class="bi bi-bar-chart-line me-1"></i> {{ 'modules.projects.ui.openPmo' | translate }}
       </button>
     </div>
     <div class="row g-2">
@@ -16,7 +16,7 @@
         <button type="button" class="btn btn-primary mb-2" (click)="addRow()"><i class="bi bi-plus-lg"></i></button>
         <button type="button" class="btn btn-warning mb-2" (click)="editRow()"><i class="bi bi-pencil-square"></i></button>
         <button type="button" class="btn btn-danger" [disabled]="isDeletingProject" (click)="deleteProject()"><i class="bi bi-trash"></i></button>
-        <button type="button" class="btn btn-info text-white mt-2" [disabled]="!selectedRowData" (click)="openBudgetDashboard()" title="Control presupuestal PMO">
+        <button type="button" class="btn btn-info text-white mt-2" [disabled]="!selectedRowData" (click)="openBudgetDashboard()" [title]="'modules.projects.ui.pmoBudgetControl' | translate">
           <i class="bi bi-bar-chart-line"></i>
         </button>
       </div>
@@ -40,48 +40,48 @@
   <aside class="col-xl-5" *ngIf="showBudgetDashboard">
     <div class="card border-0 shadow-sm pmo-control-card">
       <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-        <div><i class="bi bi-kanban me-2"></i><strong>Programa y recursos</strong><div class="small opacity-75">{{ selectedRowData?.name }}</div></div>
-        <button class="btn btn-sm btn-light" (click)="showBudgetDashboard=false" aria-label="Cerrar">×</button>
+        <div><i class="bi bi-kanban me-2"></i><strong>{{ 'modules.projects.ui.programAndResources' | translate }}</strong><div class="small opacity-75">{{ selectedRowData?.name }}</div></div>
+        <button class="btn btn-sm btn-light" (click)="showBudgetDashboard=false" [attr.aria-label]="'modules.projects.ui.close' | translate">×</button>
       </div>
 
       <div class="card-body" *ngIf="isBudgetLoading">
-        <div class="d-flex align-items-center gap-2 py-5 justify-content-center text-muted"><span class="spinner-border spinner-border-sm"></span> Cargando programa real…</div>
+        <div class="d-flex align-items-center gap-2 py-5 justify-content-center text-muted"><span class="spinner-border spinner-border-sm"></span> {{ 'modules.projects.ui.loadingProgram' | translate }}</div>
       </div>
 
       <div class="card-body pmo-control-body" *ngIf="!isBudgetLoading && budgetDashboard as d">
         <div class="row g-2 mb-3">
-          <div class="col-6"><div class="pmo-kpi"><small>Monto del contrato</small><strong>{{ d.contractLimit | currency:'MXN':'symbol':'1.0-0' }}</strong></div></div>
-          <div class="col-6"><div class="pmo-kpi"><small>Programado en proyectos</small><strong>{{ d.allocatedCost | currency:'MXN':'symbol':'1.0-0' }}</strong></div></div>
-          <div class="col-6"><div class="pmo-kpi"><small>Este proyecto</small><strong>{{ d.projectProgramCost | currency:'MXN':'symbol':'1.0-0' }}</strong></div></div>
-          <div class="col-6"><div class="pmo-kpi" [class.pmo-kpi-danger]="d.availableCost < 0"><small>Disponible del contrato</small><strong>{{ d.availableCost | currency:'MXN':'symbol':'1.0-0' }}</strong></div></div>
+          <div class="col-6"><div class="pmo-kpi"><small>{{ 'modules.projects.ui.contractAmount' | translate }}</small><strong>{{ d.contractLimit | currency:'MXN':'symbol':'1.0-0' }}</strong></div></div>
+          <div class="col-6"><div class="pmo-kpi"><small>{{ 'modules.projects.ui.allocatedAcrossProjects' | translate }}</small><strong>{{ d.allocatedCost | currency:'MXN':'symbol':'1.0-0' }}</strong></div></div>
+          <div class="col-6"><div class="pmo-kpi"><small>{{ 'modules.projects.ui.thisProject' | translate }}</small><strong>{{ d.projectProgramCost | currency:'MXN':'symbol':'1.0-0' }}</strong></div></div>
+          <div class="col-6"><div class="pmo-kpi" [class.pmo-kpi-danger]="d.availableCost < 0"><small>{{ 'modules.projects.ui.contractAvailable' | translate }}</small><strong>{{ d.availableCost | currency:'MXN':'symbol':'1.0-0' }}</strong></div></div>
         </div>
 
         <div class="resource-summary mb-3">
           <div *ngFor="let summary of d.resourceSummary"><span>{{ summary.type }}</span><strong>{{ summary.count }}</strong><small>{{ summary.total | currency:'MXN':'symbol':'1.0-0' }}</small></div>
-          <div><span>CUADRILLAS</span><strong>{{ d.crewCount }}</strong><small>del proyecto</small></div>
+          <div><span>{{ 'modules.projects.ui.crews' | translate }}</span><strong>{{ d.crewCount }}</strong><small>{{ 'modules.projects.ui.ofProject' | translate }}</small></div>
         </div>
 
         <ul class="nav nav-tabs nav-fill mb-3" role="tablist">
-          <li class="nav-item"><button class="nav-link" [class.active]="activeProgramTab === 'contract'" (click)="activeProgramTab='contract'" type="button">Contrato <span class="badge text-bg-secondary">{{ d.contractActivities.length }}</span></button></li>
-          <li class="nav-item"><button class="nav-link" [class.active]="activeProgramTab === 'project'" (click)="activeProgramTab='project'" type="button">Proyecto <span class="badge text-bg-primary">{{ d.projectActivities.length }}</span></button></li>
+          <li class="nav-item"><button class="nav-link" [class.active]="activeProgramTab === 'contract'" (click)="activeProgramTab='contract'" type="button">{{ 'modules.projects.ui.contract' | translate }} <span class="badge text-bg-secondary">{{ d.contractActivities.length }}</span></button></li>
+          <li class="nav-item"><button class="nav-link" [class.active]="activeProgramTab === 'project'" (click)="activeProgramTab='project'" type="button">{{ 'modules.projects.ui.project' | translate }} <span class="badge text-bg-primary">{{ d.projectActivities.length }}</span></button></li>
         </ul>
 
         <div class="tab-content">
           <div *ngIf="activeProgramTab === 'contract'">
             <div class="input-group input-group-sm mb-2">
               <span class="input-group-text"><i class="bi bi-search"></i></span>
-              <input class="form-control" [(ngModel)]="contractActivitySearch" placeholder="Buscar actividad o fase…">
+              <input class="form-control" [(ngModel)]="contractActivitySearch" [placeholder]="'modules.projects.ui.searchActivityOrPhase' | translate">
               <button class="btn btn-outline-secondary" *ngIf="contractActivitySearch" (click)="contractActivitySearch=''">×</button>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-2">
-              <small class="text-muted">Selecciona actividades para asignarlas al proyecto con sus APU.</small>
+              <small class="text-muted">{{ 'modules.projects.ui.selectActivitiesForProject' | translate }}</small>
               <button class="btn btn-sm btn-success" (click)="copySelectedContractActivities()" [disabled]="!selectedContractActivityIds.size || isCopyingActivities">
                 <span class="spinner-border spinner-border-sm" *ngIf="isCopyingActivities"></span>
-                <i class="bi bi-arrow-right-circle" *ngIf="!isCopyingActivities"></i> Agregar ({{ selectedContractActivityIds.size }})
+                <i class="bi bi-arrow-right-circle" *ngIf="!isCopyingActivities"></i> {{ 'modules.projects.ui.add' | translate }} ({{ selectedContractActivityIds.size }})
               </button>
             </div>
             <div class="alert alert-warning py-2 small" *ngIf="d.contractActivitiesWithoutValidPhase.length">
-              <i class="bi bi-exclamation-triangle me-1"></i>{{ d.contractActivitiesWithoutValidPhase.length }} actividad(es) no tienen una de las {{ d.configuredPhases.length }} fases configuradas y no se muestran como una fase adicional.
+              <i class="bi bi-exclamation-triangle me-1"></i>{{ 'modules.projects.ui.contractActivitiesWithoutPhase' | translate:{count: d.contractActivitiesWithoutValidPhase.length, phaseCount: d.configuredPhases.length} }}
             </div>
             <div class="program-scroll">
               <section class="phase-block" *ngFor="let phase of d.contractPhases">
@@ -91,22 +91,22 @@
                     <input type="checkbox" class="form-check-input mt-1" [checked]="selectedContractActivityIds.has(activity.id)" [disabled]="d.linkedSourceIds.has(activity.id)" (change)="toggleContractActivity(activity)">
                     <span class="flex-grow-1">
                       <span class="d-flex justify-content-between gap-2">
-                        <strong>{{ activity.activity || 'Actividad' }}</strong>
+                        <strong>{{ activity.activity || ('modules.projects.ui.activity' | translate) }}</strong>
                         <span class="activity-quantity">{{ activity.quantity | number:'1.0-2' }} {{ activity.measure }}</span>
                       </span>
                       <span class="d-block">{{ activity.text }}</span>
-                      <small class="text-muted">Actividad del contrato</small>
+                      <small class="text-muted">{{ 'modules.projects.ui.contractActivity' | translate }}</small>
                     </span>
-                    <span class="badge text-bg-success align-self-start" *ngIf="d.linkedSourceIds.has(activity.id)">Asignada</span>
+                    <span class="badge text-bg-success align-self-start" *ngIf="d.linkedSourceIds.has(activity.id)">{{ 'modules.projects.ui.assigned' | translate }}</span>
                     <button type="button" class="btn btn-sm btn-outline-success align-self-start" *ngIf="!d.linkedSourceIds.has(activity.id)" (click)="$event.preventDefault(); $event.stopPropagation(); addContractActivity(activity)" [disabled]="addingContractActivityId !== null">
                       <span class="spinner-border spinner-border-sm" *ngIf="addingContractActivityId === activity.id"></span>
-                      <i class="bi bi-plus-lg" *ngIf="addingContractActivityId !== activity.id"></i> Agregar
+                      <i class="bi bi-plus-lg" *ngIf="addingContractActivityId !== activity.id"></i> {{ 'modules.projects.ui.add' | translate }}
                     </button>
                   </label>
                 </ng-container>
               </section>
               <section class="phase-block" *ngIf="d.contractActivitiesWithoutValidPhase.length">
-                <div class="unclassified-title"><i class="bi bi-exclamation-triangle me-2"></i>Actividades pendientes de clasificar</div>
+                <div class="unclassified-title"><i class="bi bi-exclamation-triangle me-2"></i>{{ 'modules.projects.ui.unclassifiedActivities' | translate }}</div>
                 <label class="project-activity contract-project-activity" *ngFor="let activity of d.contractActivitiesWithoutValidPhase" [class.activity-linked]="d.linkedSourceIds.has(activity.id)">
                   <input type="checkbox" class="form-check-input mt-1" [checked]="selectedContractActivityIds.has(activity.id)" [disabled]="d.linkedSourceIds.has(activity.id)" (change)="toggleContractActivity(activity)">
                   <span class="flex-grow-1">
@@ -115,67 +115,67 @@
                       <span class="activity-quantity">{{ activity.quantity | number:'1.0-2' }} {{ activity.measure }}</span>
                     </span>
                     <span class="d-block">{{ activity.text }}</span>
-                    <small class="text-danger">Fase guardada: {{ activity.phase || 'Sin fase' }} — requiere asignar ELECTRICO o ARRANQUE</small>
+                  <small class="text-danger">{{ 'modules.projects.ui.savedPhase' | translate }}: {{ activity.phase || ('modules.projects.ui.noPhase' | translate) }} — {{ 'modules.projects.ui.phaseNeedsCategory' | translate }}</small>
                   </span>
-                  <span class="badge text-bg-success align-self-start" *ngIf="d.linkedSourceIds.has(activity.id)">Asignada</span>
+                  <span class="badge text-bg-success align-self-start" *ngIf="d.linkedSourceIds.has(activity.id)">{{ 'modules.projects.ui.assigned' | translate }}</span>
                   <button type="button" class="btn btn-sm btn-outline-success align-self-start" *ngIf="!d.linkedSourceIds.has(activity.id)" (click)="$event.preventDefault(); $event.stopPropagation(); addContractActivity(activity)" [disabled]="addingContractActivityId !== null">
                     <span class="spinner-border spinner-border-sm" *ngIf="addingContractActivityId === activity.id"></span>
-                    <i class="bi bi-plus-lg" *ngIf="addingContractActivityId !== activity.id"></i> Agregar
+                    <i class="bi bi-plus-lg" *ngIf="addingContractActivityId !== activity.id"></i> {{ 'modules.projects.ui.add' | translate }}
                   </button>
                 </label>
               </section>
-              <div class="empty-state" *ngIf="!d.contractActivities.length">El contrato todavía no tiene actividades en su programa de trabajo.</div>
+              <div class="empty-state" *ngIf="!d.contractActivities.length">{{ 'modules.projects.ui.contractHasNoActivities' | translate }}</div>
             </div>
           </div>
 
           <div *ngIf="activeProgramTab === 'project'">
             <div class="alert alert-warning py-2 small" *ngIf="d.projectActivitiesWithoutValidPhase.length">
-              <i class="bi bi-exclamation-triangle me-1"></i>{{ d.projectActivitiesWithoutValidPhase.length }} actividad(es) requieren corregir su fase en Programa de trabajo.
+              <i class="bi bi-exclamation-triangle me-1"></i>{{ 'modules.projects.ui.activitiesNeedPhaseCorrection' | translate:{count: d.projectActivitiesWithoutValidPhase.length} }}
             </div>
             <div class="program-scroll">
               <section class="phase-block" *ngFor="let phase of d.projectPhases">
                 <div class="phase-title"><i class="bi bi-layers me-2"></i>{{ phase.name }}</div>
                 <div class="project-activity" *ngFor="let activity of phase.activities">
-                  <div class="d-flex justify-content-between gap-2"><strong>{{ activity.activity || 'Actividad' }}</strong><span>{{ activity.quantity | number:'1.0-2' }} {{ activity.measure }}</span></div>
+                  <div class="d-flex justify-content-between gap-2"><strong>{{ activity.activity || ('modules.projects.ui.activity' | translate) }}</strong><span>{{ activity.quantity | number:'1.0-2' }} {{ activity.measure }}</span></div>
                   <div>{{ activity.text }}</div>
-                  <small class="text-muted">{{ activity.idSourceWorkprogram ? 'Vinculada al contrato #' + activity.idSourceWorkprogram : 'Creada directamente en el proyecto' }}</small>
+                  <small class="text-muted">{{ activity.idSourceWorkprogram ? (('modules.projects.ui.linkedToContract' | translate) + ' #' + activity.idSourceWorkprogram) : ('modules.projects.ui.createdDirectlyInProject' | translate) }}</small>
                   <div class="activity-actions mt-2" *ngIf="editingProjectActivityId !== activity.id">
-                    <button class="btn btn-sm btn-outline-primary" (click)="startProjectQuantityEdit(activity)"><i class="bi bi-pencil"></i> Editar cantidad</button>
+                    <button class="btn btn-sm btn-outline-primary" (click)="startProjectQuantityEdit(activity)"><i class="bi bi-pencil"></i> {{ 'modules.projects.ui.editQuantity' | translate }}</button>
                     <button class="btn btn-sm btn-outline-danger" (click)="removeProjectActivity(activity)" [disabled]="removingProjectActivityId !== null">
-                      <span class="spinner-border spinner-border-sm" *ngIf="removingProjectActivityId === activity.id"></span><i class="bi bi-trash" *ngIf="removingProjectActivityId !== activity.id"></i> Quitar
+                      <span class="spinner-border spinner-border-sm" *ngIf="removingProjectActivityId === activity.id"></span><i class="bi bi-trash" *ngIf="removingProjectActivityId !== activity.id"></i> {{ 'modules.projects.ui.remove' | translate }}
                     </button>
                   </div>
                   <div class="quantity-editor mt-2" *ngIf="editingProjectActivityId === activity.id">
-                    <label class="small fw-semibold">Cantidad del proyecto</label>
+                    <label class="small fw-semibold">{{ 'modules.projects.ui.projectQuantity' | translate }}</label>
                     <input type="number" min="0" step="0.01" class="form-control form-control-sm" [(ngModel)]="projectActivityQuantityDraft">
-                    <button class="btn btn-sm btn-primary" (click)="saveProjectQuantity(activity)"><i class="bi bi-floppy"></i> Guardar</button>
-                    <button class="btn btn-sm btn-outline-secondary" (click)="cancelProjectQuantityEdit()">Cancelar</button>
+                    <button class="btn btn-sm btn-primary" (click)="saveProjectQuantity(activity)"><i class="bi bi-floppy"></i> {{ 'modules.projects.ui.save' | translate }}</button>
+                    <button class="btn btn-sm btn-outline-secondary" (click)="cancelProjectQuantityEdit()">{{ 'modules.projects.ui.cancel' | translate }}</button>
                   </div>
                   <div class="d-flex flex-wrap gap-1 mt-1" *ngIf="activity.resources?.length || activity.crews?.length">
                     <span class="badge text-bg-light" *ngFor="let resource of activity.resources">{{ resource.type }}: {{ resource.description }}</span>
-                    <span class="badge text-bg-warning" *ngFor="let crew of activity.crews">Cuadrilla: {{ crew.name }}</span>
+                    <span class="badge text-bg-warning" *ngFor="let crew of activity.crews">{{ 'modules.projects.ui.crew' | translate }}: {{ crew.name }}</span>
                   </div>
                 </div>
               </section>
               <section class="phase-block" *ngIf="d.projectActivitiesWithoutValidPhase.length">
-                <div class="unclassified-title"><i class="bi bi-exclamation-triangle me-2"></i>Actividades pendientes de clasificar</div>
+                <div class="unclassified-title"><i class="bi bi-exclamation-triangle me-2"></i>{{ 'modules.projects.ui.unclassifiedActivities' | translate }}</div>
                 <div class="project-activity" *ngFor="let activity of d.projectActivitiesWithoutValidPhase">
-                  <div class="d-flex justify-content-between gap-2"><strong>{{ activity.activity || 'Actividad' }}</strong><span>{{ activity.quantity | number:'1.0-2' }} {{ activity.measure }}</span></div>
+                  <div class="d-flex justify-content-between gap-2"><strong>{{ activity.activity || ('modules.projects.ui.activity' | translate) }}</strong><span>{{ activity.quantity | number:'1.0-2' }} {{ activity.measure }}</span></div>
                   <div>{{ activity.text }}</div>
-                  <small class="text-danger">Fase guardada: {{ activity.phase || 'Sin fase' }}</small>
+                  <small class="text-danger">{{ 'modules.projects.ui.savedPhase' | translate }}: {{ activity.phase || ('modules.projects.ui.noPhase' | translate) }}</small>
                   <div class="activity-actions mt-2" *ngIf="editingProjectActivityId !== activity.id">
-                    <button class="btn btn-sm btn-outline-primary" (click)="startProjectQuantityEdit(activity)"><i class="bi bi-pencil"></i> Editar cantidad</button>
-                    <button class="btn btn-sm btn-outline-danger" (click)="removeProjectActivity(activity)" [disabled]="removingProjectActivityId !== null"><i class="bi bi-trash"></i> Quitar</button>
+                    <button class="btn btn-sm btn-outline-primary" (click)="startProjectQuantityEdit(activity)"><i class="bi bi-pencil"></i> {{ 'modules.projects.ui.editQuantity' | translate }}</button>
+                    <button class="btn btn-sm btn-outline-danger" (click)="removeProjectActivity(activity)" [disabled]="removingProjectActivityId !== null"><i class="bi bi-trash"></i> {{ 'modules.projects.ui.remove' | translate }}</button>
                   </div>
                   <div class="quantity-editor mt-2" *ngIf="editingProjectActivityId === activity.id">
-                    <label class="small fw-semibold">Cantidad del proyecto</label>
+                    <label class="small fw-semibold">{{ 'modules.projects.ui.projectQuantity' | translate }}</label>
                     <input type="number" min="0" step="0.01" class="form-control form-control-sm" [(ngModel)]="projectActivityQuantityDraft">
-                    <button class="btn btn-sm btn-primary" (click)="saveProjectQuantity(activity)"><i class="bi bi-floppy"></i> Guardar</button>
-                    <button class="btn btn-sm btn-outline-secondary" (click)="cancelProjectQuantityEdit()">Cancelar</button>
+                    <button class="btn btn-sm btn-primary" (click)="saveProjectQuantity(activity)"><i class="bi bi-floppy"></i> {{ 'modules.projects.ui.save' | translate }}</button>
+                    <button class="btn btn-sm btn-outline-secondary" (click)="cancelProjectQuantityEdit()">{{ 'modules.projects.ui.cancel' | translate }}</button>
                   </div>
                 </div>
               </section>
-              <div class="empty-state" *ngIf="!d.projectActivities.length">Este proyecto todavía no tiene actividades. Agrégalas desde la pestaña Contrato o créalas en Programa de trabajo.</div>
+              <div class="empty-state" *ngIf="!d.projectActivities.length">{{ 'modules.projects.ui.projectHasNoActivities' | translate }}</div>
             </div>
           </div>
         </div>
@@ -190,50 +190,50 @@
     <div class="d-flex align-items-center gap-3">
       <span class="project-modal-icon"><i class="bi bi-kanban"></i></span>
       <div>
-        <h3 class="modal-title mb-1">{{ isEditing ? 'Editar proyecto' : 'Nuevo proyecto' }}</h3>
-        <div class="project-modal-subtitle">Información general, fechas y ubicación del proyecto</div>
+        <h3 class="modal-title mb-1">{{ (isEditing ? 'modules.projects.ui.editProject' : 'modules.projects.ui.newProject') | translate }}</h3>
+        <div class="project-modal-subtitle">{{ 'modules.projects.ui.projectFormDescription' | translate }}</div>
       </div>
     </div>
-    <button type="button" class="btn-close btn-close-white" aria-label="Cerrar" (click)="modal.dismiss('Cross click')"></button>
+    <button type="button" class="btn-close btn-close-white" [attr.aria-label]="'modules.projects.ui.close' | translate" (click)="modal.dismiss('Cross click')"></button>
   </div>
   <div class="modal-body project-modal-body">
     <form [formGroup]="addProject" (ngSubmit)="onSubmit()">
       <div class="project-form-section">
-        <div class="project-section-heading"><span class="project-section-icon"><i class="bi bi-card-text"></i></span><div><h4>Datos generales</h4><p>Identificación y descripción del proyecto</p></div></div>
+        <div class="project-section-heading"><span class="project-section-icon"><i class="bi bi-card-text"></i></span><div><h4>{{ 'modules.projects.ui.generalInformation' | translate }}</h4><p>{{ 'modules.projects.ui.projectIdentificationDescription' | translate }}</p></div></div>
         <div class="row g-3">
-          <div class="col-md-3"><label for="idConsecutivo" class="form-label">Identificador de obra</label><input type="number" formControlName="idConsecutivo" id="idConsecutivo" class="form-control" placeholder="Ej. 1024"></div>
-          <div class="col-md-3"><label for="number" class="form-label">Orden de trabajo</label><input type="text" formControlName="number" id="number" class="form-control" placeholder="Ej. OT-001"></div>
-          <div class="col-md-6"><label for="name" class="form-label">Nombre del proyecto</label><input type="text" formControlName="name" id="name" class="form-control" placeholder="Escribe el nombre del proyecto"></div>
-          <div class="col-md-8"><label for="description" class="form-label">Descripción</label><textarea formControlName="description" id="description" class="form-control" placeholder="Describe brevemente el alcance" rows="3"></textarea></div>
-          <div class="col-md-4"><label for="priority" class="form-label">Prioridad</label><select formControlName="priority" id="priority" class="form-select"><option value="0">Prioritario</option><option value="1">Prioridad media</option><option value="2">Prioridad baja</option></select></div>
+          <div class="col-md-3"><label for="idConsecutivo" class="form-label">{{ 'modules.projects.ui.jobIdentifier' | translate }}</label><input type="number" formControlName="idConsecutivo" id="idConsecutivo" class="form-control" [placeholder]="'modules.projects.ui.exampleIdentifier' | translate"></div>
+          <div class="col-md-3"><label for="number" class="form-label">{{ 'modules.projects.ui.workOrder' | translate }}</label><input type="text" formControlName="number" id="number" class="form-control" placeholder="Example: WO-001"></div>
+          <div class="col-md-6"><label for="name" class="form-label">{{ 'modules.projects.ui.projectName' | translate }}</label><input type="text" formControlName="name" id="name" class="form-control" [placeholder]="'modules.projects.ui.enterProjectName' | translate"></div>
+          <div class="col-md-8"><label for="description" class="form-label">{{ 'modules.projects.ui.description' | translate }}</label><textarea formControlName="description" id="description" class="form-control" [placeholder]="'modules.projects.ui.describeScope' | translate" rows="3"></textarea></div>
+          <div class="col-md-4"><label for="priority" class="form-label">{{ 'modules.projects.ui.priority' | translate }}</label><select formControlName="priority" id="priority" class="form-select"><option value="0">{{ 'modules.projects.ui.highPriority' | translate }}</option><option value="1">{{ 'modules.projects.ui.mediumPriority' | translate }}</option><option value="2">{{ 'modules.projects.ui.lowPriority' | translate }}</option></select></div>
         </div>
       </div>
 
       <div class="project-form-section">
-        <div class="project-section-heading"><span class="project-section-icon"><i class="bi bi-calendar-range"></i></span><div><h4>Fechas y seguimiento</h4><p>Programa y pronósticos del proyecto</p></div></div>
+        <div class="project-section-heading"><span class="project-section-icon"><i class="bi bi-calendar-range"></i></span><div><h4>{{ 'modules.projects.ui.datesAndTracking' | translate }}</h4><p>{{ 'modules.projects.ui.projectScheduleAndForecasts' | translate }}</p></div></div>
         <div class="row g-3">
-          <div class="col-md-3"><label for="programStart" class="form-label">Inicio programado</label><input type="date" formControlName="programStart" id="programStart" class="form-control"></div>
-          <div class="col-md-3"><label for="programEnd" class="form-label">Fin programado</label><input type="date" formControlName="programEnd" id="programEnd" class="form-control"></div>
-          <div class="col-md-3"><label for="realPronosticLPO" class="form-label">Pronóstico LPO</label><input type="date" formControlName="realPronosticLPO" id="realPronosticLPO" class="form-control"></div>
-          <div class="col-md-3"><label for="realPronosticTTT" class="form-label">Pronóstico TTT</label><input type="date" formControlName="realPronosticTTT" id="realPronosticTTT" class="form-control"></div>
-          <div class="col-md-4"><label for="state" class="form-label">Estado del proyecto</label><select formControlName="state" id="state" class="form-select"><option value="Ejecucion">Ejecución</option><option value="Cancelado">Cancelado</option><option value="Concluido">Concluido</option><option value="TTT">Todo Trabajo Terminado</option><option value="Suspendido">Suspendido</option></select></div>
-          <div class="col-md-4"><label for="classification" class="form-label">Clasificación</label><select formControlName="classification" id="classification" class="form-select"><option value="" disabled>Seleccione una clasificación</option><option value="Externa">Externa</option><option value="Interna">Interna</option><option value="Marina">Marina</option><option value="Terrestre">Terrestre</option></select></div>
-          <div class="col-md-4"><label for="idContrato" class="form-label">Contrato</label><select formControlName="idContrato" id="idContrato" class="form-select"><option value="Seleccione un contrato" disabled>Seleccione un contrato</option><option *ngFor="let contract of contracts" [value]="contract.idContrato">{{ contract.numberContract }} - {{ contract.description }}</option></select></div>
+          <div class="col-md-3"><label for="programStart" class="form-label">{{ 'modules.projects.ui.scheduledStart' | translate }}</label><input type="date" formControlName="programStart" id="programStart" class="form-control"></div>
+          <div class="col-md-3"><label for="programEnd" class="form-label">{{ 'modules.projects.ui.scheduledEnd' | translate }}</label><input type="date" formControlName="programEnd" id="programEnd" class="form-control"></div>
+          <div class="col-md-3"><label for="realPronosticLPO" class="form-label">{{ 'modules.projects.ui.lpoForecast' | translate }}</label><input type="date" formControlName="realPronosticLPO" id="realPronosticLPO" class="form-control"></div>
+          <div class="col-md-3"><label for="realPronosticTTT" class="form-label">{{ 'modules.projects.ui.tttForecast' | translate }}</label><input type="date" formControlName="realPronosticTTT" id="realPronosticTTT" class="form-control"></div>
+          <div class="col-md-4"><label for="state" class="form-label">{{ 'modules.projects.ui.projectStatus' | translate }}</label><select formControlName="state" id="state" class="form-select"><option value="Ejecucion">{{ 'modules.projects.ui.inProgress' | translate }}</option><option value="Cancelado">{{ 'modules.projects.ui.cancelled' | translate }}</option><option value="Concluido">{{ 'modules.projects.ui.completed' | translate }}</option><option value="TTT">{{ 'modules.projects.ui.allWorkComplete' | translate }}</option><option value="Suspendido">{{ 'modules.projects.ui.suspended' | translate }}</option></select></div>
+          <div class="col-md-4"><label for="classification" class="form-label">{{ 'modules.projects.ui.classification' | translate }}</label><select formControlName="classification" id="classification" class="form-select"><option value="" disabled>{{ 'modules.projects.ui.selectClassification' | translate }}</option><option value="Externa">{{ 'modules.projects.ui.external' | translate }}</option><option value="Interna">{{ 'modules.projects.ui.internal' | translate }}</option><option value="Marina">{{ 'modules.projects.ui.marine' | translate }}</option><option value="Terrestre">{{ 'modules.projects.ui.onshore' | translate }}</option></select></div>
+          <div class="col-md-4"><label for="idContrato" class="form-label">{{ 'modules.projects.ui.contract' | translate }}</label><select formControlName="idContrato" id="idContrato" class="form-select"><option value="Seleccione un contrato" disabled>{{ 'modules.projects.ui.selectContract' | translate }}</option><option *ngFor="let contract of contracts" [value]="contract.idContrato">{{ contract.numberContract }} - {{ contract.description }}</option></select></div>
         </div>
       </div>
 
       <div class="project-form-section project-location-section">
-        <div class="project-section-heading"><span class="project-section-icon"><i class="bi bi-geo-alt"></i></span><div><h4>Ubicación</h4><p>Selecciona la ubicación del proyecto y su referencia geográfica</p></div></div>
+        <div class="project-section-heading"><span class="project-section-icon"><i class="bi bi-geo-alt"></i></span><div><h4>{{ 'modules.projects.ui.location' | translate }}</h4><p>{{ 'modules.projects.ui.selectProjectLocation' | translate }}</p></div></div>
         <div class="row g-3">
-          <div class="col-md-6"><label for="typeConstruction" class="form-label">Ubicación del proyecto</label><div class="input-group"><select formControlName="typeConstruction" id="typeConstruction" class="form-select"><option value="Seleccione un tipo de construcción" disabled>Selecciona una ubicación</option><option *ngFor="let location of locations" [ngValue]="location.valueAddition || location.description">{{ location.description }}</option></select><button type="button" class="btn btn-outline-primary" (click)="addLocation()" title="Agregar ubicación"><i class="bi bi-plus-lg me-1"></i>Agregar</button></div><div class="form-text">Catálogo de ubicaciones de la empresa.</div></div>
-          <div class="col-md-6"><label for="idOilfield" class="form-label">Estado de la República Mexicana</label><div class="input-group"><select formControlName="idOilfield" id="idOilfield" class="form-select"><option value="Seleccione Ubicacion" disabled>Seleccione un estado</option><option *ngFor="let oilfield of oilfieldCatalog" [value]="oilfield.valueAddition || oilfield.ValueAddition">{{ oilfield.description || oilfield.Description }}</option></select><button type="button" class="btn btn-outline-primary" (click)="addState()" title="Agregar estado"><i class="bi bi-plus-lg me-1"></i>Agregar</button></div><div class="form-text">Estados guardados en el catálogo de la empresa.</div></div>
+          <div class="col-md-6"><label for="typeConstruction" class="form-label">{{ 'modules.projects.ui.projectLocation' | translate }}</label><div class="input-group"><select formControlName="typeConstruction" id="typeConstruction" class="form-select"><option value="Seleccione un tipo de construcción" disabled>{{ 'modules.projects.ui.selectLocation' | translate }}</option><option *ngFor="let location of locations" [ngValue]="location.valueAddition || location.description">{{ location.description }}</option></select><button type="button" class="btn btn-outline-primary" (click)="addLocation()" [title]="'modules.projects.ui.addLocation' | translate"><i class="bi bi-plus-lg me-1"></i>{{ 'modules.projects.ui.add' | translate }}</button></div><div class="form-text">{{ 'modules.projects.ui.companyLocationCatalog' | translate }}</div></div>
+          <div class="col-md-6"><label for="idOilfield" class="form-label">{{ 'modules.projects.ui.mexicanState' | translate }}</label><div class="input-group"><select formControlName="idOilfield" id="idOilfield" class="form-select"><option value="Seleccione Ubicacion" disabled>{{ 'modules.projects.ui.selectState' | translate }}</option><option *ngFor="let oilfield of oilfieldCatalog" [value]="oilfield.valueAddition || oilfield.ValueAddition">{{ oilfield.description || oilfield.Description }}</option></select><button type="button" class="btn btn-outline-primary" (click)="addState()" [title]="'modules.projects.ui.addState' | translate"><i class="bi bi-plus-lg me-1"></i>{{ 'modules.projects.ui.add' | translate }}</button></div><div class="form-text">{{ 'modules.projects.ui.companyStateCatalog' | translate }}</div></div>
         </div>
       </div>
     </form>
   </div>
   <div class="modal-footer project-modal-footer">
-    <span class="text-muted me-auto"><i class="bi bi-info-circle me-1"></i>Revisa los datos antes de guardar.</span>
-    <button type="button" class="btn btn-light border" (click)="modal.dismiss('Close click')">Cancelar</button>
-    <button type="button" class="btn btn-primary px-4" (click)="onSubmit()"><i class="bi bi-check2-circle me-1"></i>{{ isEditing ? 'Guardar cambios' : 'Crear proyecto' }}</button>
+    <span class="text-muted me-auto"><i class="bi bi-info-circle me-1"></i>{{ 'modules.projects.ui.reviewBeforeSave' | translate }}</span>
+    <button type="button" class="btn btn-light border" (click)="modal.dismiss('Close click')">{{ 'modules.projects.ui.cancel' | translate }}</button>
+    <button type="button" class="btn btn-primary px-4" (click)="onSubmit()"><i class="bi bi-check2-circle me-1"></i>{{ (isEditing ? 'modules.projects.ui.saveChanges' : 'modules.projects.ui.createProject') | translate }}</button>
   </div>
 </ng-template>

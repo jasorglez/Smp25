@@ -5,41 +5,41 @@
                 <div class="assignment-title">
                     <span class="title-icon"><i class="bi bi-diagram-3"></i></span>
                     <div>
-                        <h5>Asignación de proyectos</h5>
+                        <h5>{{ 'modules.userSetup.ui.projectsAssignment' | translate }}</h5>
                         <p *ngIf="profile().nameUser()">Permisos de {{ profile().nameUser() }}</p>
                     </div>
                 </div>
                 <div class="context-badges">
                     <span class="context-badge">
                         <i class="bi bi-building"></i>
-                        <span><small>Empresa</small>{{ companyName() }}</span>
+                        <span><small>{{ 'modules.userSetup.ui.company' | translate }}</small>{{ companyName() }}</span>
                     </span>
                     <span class="context-badge" *ngIf="contractChecked()()">
                         <i class="bi bi-file-earmark-text"></i>
-                        <span><small>Contrato</small>{{ contractName() }}</span>
+                        <span><small>{{ 'modules.userSetup.ui.contract' | translate }}</small>{{ contractName() }}</span>
                     </span>
                 </div>
             </header>
 
             <div class="assignment-toolbar">
-                <div class="summary-list" aria-label="Resumen de proyectos">
-                    <span class="summary-item summary-available"><strong>{{ availableProjectCount }}</strong> disponibles</span>
-                    <span class="summary-item summary-assigned"><strong>{{ assignedProjectCount }}</strong> asignados</span>
-                    <span class="summary-item summary-pending"><strong>{{ pendingProjectCount }}</strong> pendientes</span>
+                <div class="summary-list" [attr.aria-label]="'modules.userSetup.ui.projectsSummary' | translate">
+                    <span class="summary-item summary-available"><strong>{{ availableProjectCount }}</strong> {{ 'modules.userSetup.ui.available' | translate }}</span>
+                    <span class="summary-item summary-assigned"><strong>{{ assignedProjectCount }}</strong> {{ 'modules.userSetup.ui.assigned' | translate }}</span>
+                    <span class="summary-item summary-pending"><strong>{{ pendingProjectCount }}</strong> {{ 'modules.userSetup.ui.pending' | translate }}</span>
                 </div>
                 <div class="toolbar-controls">
                     <div class="form-check form-switch mb-0" *ngIf="idContract != null">
                         <input type="checkbox" name="contractChecked" id="contractChecked" class="form-check-input"
                             [checked]="contractChecked()()" (change)="onCheckboxChange($event)">
-                        <label for="contractChecked" class="form-check-label">Filtrar por contrato</label>
+                        <label for="contractChecked" class="form-check-label">{{ 'modules.userSetup.ui.filterByContract' | translate }}</label>
                     </div>
                     <div class="search-box">
                         <i class="bi bi-search"></i>
-                        <input type="search" class="form-control form-control-sm" placeholder="Buscar proyecto"
+                        <input type="search" class="form-control form-control-sm" [placeholder]="'modules.userSetup.ui.searchProjects' | translate"
                             [ngModel]="searchTerm" (ngModelChange)="onQuickFilterChanged($event)"
-                            aria-label="Buscar proyecto">
+                            [attr.aria-label]="'modules.userSetup.ui.searchProjects' | translate">
                         <button *ngIf="searchTerm" type="button" class="btn-clear-search" (click)="clearSearch()"
-                            title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
+                            [title]="'modules.userSetup.ui.clearSearch' | translate" [attr.aria-label]="'modules.userSetup.ui.clearSearch' | translate">
                             <i class="bi bi-x-lg"></i>
                         </button>
                     </div>
@@ -49,30 +49,30 @@
             <div class="row g-0 assignment-content">
                 <nav class="col-auto d-flex flex-column align-items-center action-rail">
                     <button type="button" class="btn btn-primary action-button" (click)="addRow()"
-                        title="Agregar proyecto" aria-label="Agregar proyecto">
+                        [title]="'modules.userSetup.ui.addProject' | translate" [attr.aria-label]="'modules.userSetup.ui.addProject' | translate">
                         <i class="bi bi-plus-lg"></i>
                     </button>
                     <button type="button" class="btn btn-info action-button" (click)="addAllProjects()"
-                        [disabled]="bulkAssigning || pendingProjectCount === 0" title="Agregar todos los proyectos pendientes"
-                        aria-label="Agregar todos los proyectos disponibles">
+                        [disabled]="bulkAssigning || pendingProjectCount === 0" [title]="'modules.userSetup.ui.addAllPendingProjects' | translate"
+                        [attr.aria-label]="'modules.userSetup.ui.addAllAvailableProjects' | translate">
                         <i class="bi" [ngClass]="bulkAssigning ? 'bi-hourglass-split' : 'bi-plus-square'"></i>
                     </button>
                     <div class="action-divider"></div>
                     <button type="button" class="btn btn-success action-button position-relative"
-                        (click)="saveChanges()" [disabled]="!notSavedChanges" title="Guardar cambios"
-                        aria-label="Guardar cambios">
+                        (click)="saveChanges()" [disabled]="!notSavedChanges" [title]="'modules.userSetup.ui.saveChanges' | translate"
+                        [attr.aria-label]="'modules.userSetup.ui.saveChanges' | translate">
                         <i class="bi bi-floppy"></i>
                         <span
                             class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-                            *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
+                            *ngIf="notSavedChanges"><span class="visually-hidden">{{ 'modules.userSetup.ui.unsavedChanges' | translate }}</span>
                         </span>
                     </button>
                     <button type="button" class="btn btn-warning action-button" (click)="revert()"
-                        title="Deshacer cambios" aria-label="Deshacer cambios">
+                        [title]="'modules.userSetup.ui.undoChanges' | translate" [attr.aria-label]="'modules.userSetup.ui.undoChanges' | translate">
                         <i class="bi bi-arrow-clockwise"></i>
                     </button>
                     <button type="button" class="btn btn-danger action-button" (click)="deleteEntry()"
-                        [disabled]="!selectedRowData" title="Borrar proyecto" aria-label="Borrar proyecto">
+                        [disabled]="!selectedRowData" [title]="'modules.userSetup.ui.deleteProject' | translate" [attr.aria-label]="'modules.userSetup.ui.deleteProject' | translate">
                         <i class="bi bi-trash"></i>
                     </button>
                 </nav>

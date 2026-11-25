@@ -1,4 +1,5 @@
 import { Component, computed, effect, HostListener, inject } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { ContractsService } from 'app/services/contracts.service';
@@ -10,15 +11,17 @@ import { catchError, concat, EMPTY, forkJoin, lastValueFrom, map, toArray } from
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { injectUserSetupTranslator } from './user-setup-i18n';
 
 @Component({
   selector: 'app-usersxcontracts',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, TranslateModule, UsersProfileComponent],
   templateUrl: './usersxcontracts.component.html',
   styleUrl: './usersxpermissions.component.scss'
 })
 export class UsersxcontractsComponent {
+  private readonly u18n = injectUserSetupTranslator();
 
   private signalsService = inject(SignalsService);
   private contractsService = inject(ContractsService);
@@ -185,12 +188,12 @@ public gridOptions: any = {
     return [
       {
         field: 'idUser',
-        headerName: 'ID del Usuario',
+        headerName: this.u18n('grid.userId'),
         hide: true,
       },
       {
         field: 'idPermission',
-        headerName: 'Contrato',
+        headerName: this.u18n('grid.contract'),
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: Object.keys(this.contracts).sort((a, b) => this.contracts[a].localeCompare(this.contracts[b])),

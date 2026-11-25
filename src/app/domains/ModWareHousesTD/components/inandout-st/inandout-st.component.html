@@ -1,23 +1,23 @@
 <div class="container-fluid mt-2">
   <app-projects class="d-none" (projectCreated)="onProjectCreated($event)"></app-projects>
   <div class="d-flex align-items-center flex-wrap gap-3 mb-3 px-1">
-    <label class="form-label mb-0 fw-semibold">Almacén</label>
+    <label class="form-label mb-0 fw-semibold">{{ 'modules.warehouses.ui.movements.warehouse' | translate }}</label>
     <div class="warehouse-picker">
       <span class="warehouse-picker-icon"><i class="bi bi-building-fill-gear"></i></span>
       <ng-select
         class="warehouse-select"
-        aria-label="Almacén"
+        [attr.aria-label]="'modules.warehouses.ui.movements.warehouse' | translate"
         [items]="warehouses"
         bindLabel="nombreAlmacen"
         bindValue="idAlmacen"
         [ngModel]="selectedWarehouse?.idAlmacen || null"
         (ngModelChange)="onWarehouseChange($event)"
-        placeholder="Selecciona el almacén"
+        [placeholder]="'modules.warehouses.ui.movements.selectWarehouse' | translate"
         [clearable]="false"
         [searchable]="true">
       </ng-select>
     </div>
-    <small class="text-muted" *ngIf="!warehouses.length">No tienes almacenes autorizados.</small>
+    <small class="text-muted" *ngIf="!warehouses.length">{{ 'modules.warehouses.ui.movements.noAuthorizedWarehouses' | translate }}</small>
   </div>
   <div class="row">
     <!-- Left Panel: CRUD Buttons -->
@@ -26,11 +26,11 @@
         <i class="bi bi-plus-lg" style="font-size: 1rem;"></i>
       </button>
 
-      <button type="button" class="btn btn-success position-relative mb-2" (click)="saveChanges()" title="Guardar cambios (F10)">
+      <button type="button" class="btn btn-success position-relative mb-2" (click)="saveChanges()" [title]="'modules.warehouses.ui.movements.saveChangesF10' | translate">
         <i class="bi bi-floppy" style="font-size: 1rem;"></i>
         <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
           *ngIf="hasUnsavedChanges">
-          <span class="visually-hidden">Hay cambios sin guardar</span>
+          <span class="visually-hidden">{{ 'modules.warehouses.ui.movements.unsavedChanges' | translate }}</span>
         </span>
       </button>
 

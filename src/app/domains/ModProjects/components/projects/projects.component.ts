@@ -1,5 +1,6 @@
 
 import { Component, effect, inject, TemplateRef, ViewChild, Output, EventEmitter } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgbModal, NgbModalOptions } from '@ng-bootstrap/ng-bootstrap';
@@ -67,6 +68,7 @@ export function noDefaultValueValidator(): ValidatorFn {
 export class ProjectsComponent {
   @Output() projectCreated = new EventEmitter<any>();
   private trackingService = inject(TrackingService);
+  private readonly translate = inject(TranslateService);
   constructor() {
 
     this.initForm();
@@ -165,27 +167,27 @@ export class ProjectsComponent {
         },
         {
           field: 'name',
-          headerName: 'Nombre',
+          headerName: this.translate.instant('modules.projects.ui.grid.name'),
           flex: 2
         },
         {
           field: 'role',
-          headerName: 'Rol/Puesto',
+          headerName: this.translate.instant('modules.projects.ui.grid.rolePosition'),
           flex: 2
         },
         {
           field: 'email',
-          headerName: 'Email',
+          headerName: this.translate.instant('modules.projects.ui.grid.email'),
           flex: 2
         },
         {
           field: 'phone',
-          headerName: 'Teléfono',
+          headerName: this.translate.instant('modules.projects.ui.grid.phone'),
           flex: 1
         },
         {
           field: 'active',
-          headerName: 'Activo',
+          headerName: this.translate.instant('modules.projects.ui.grid.active'),
           cellRenderer: 'agCheckboxCellRenderer',
           width: 80
         }
@@ -245,7 +247,7 @@ export class ProjectsComponent {
         }},
     {
       colId: 'projectDataPresence',
-      headerName: 'Datos',
+      headerName: this.translate.instant('modules.projects.ui.grid.data'),
       width: 132,
       minWidth: 116,
       maxWidth: 145,
@@ -274,13 +276,13 @@ export class ProjectsComponent {
       },
       tooltipValueGetter: (params) => params.value || ''
     },
-    { field: 'idConsecutivo', headerName: 'Id Obra', flex: 1 },
-    { field: 'number', headerName: 'Formato Reporte', width: 150, flex: 2 },
-    { field: 'name', headerName: 'Nombre Proyecto', width: 100, filter: true, flex: 2 },
+    { field: 'idConsecutivo', headerName: this.translate.instant('modules.projects.ui.grid.jobId'), flex: 1 },
+    { field: 'number', headerName: this.translate.instant('modules.projects.ui.grid.reportFormat'), width: 150, flex: 2 },
+    { field: 'name', headerName: this.translate.instant('modules.projects.ui.grid.projectName'), width: 100, filter: true, flex: 2 },
     
-    { field: 'year', headerName: 'Año', flex: 1 },
+    { field: 'year', headerName: this.translate.instant('modules.projects.ui.grid.year'), flex: 1 },
     {
-      headerName: 'Ubicación',
+      headerName: this.translate.instant('modules.projects.ui.grid.location'),
       flex: 2,
       valueGetter: (params: any) => {
         if (!params.data?.idOilfield || !this.oilfields?.length) return '';
@@ -288,10 +290,10 @@ export class ProjectsComponent {
         return oil ? oil.name : '';
       }
     },
-    { field: 'description', headerName: 'Descripcion', flex: 4 },
+    { field: 'description', headerName: this.translate.instant('modules.projects.ui.grid.description'), flex: 4 },
     {
       field: 'personal',
-      headerName: 'Personal',
+      headerName: this.translate.instant('modules.projects.ui.grid.staff'),
       flex: 1.5,
       cellRenderer: (params) => {
         const cantidadList = params.context.componentParent.cantidadPersonal;
@@ -307,8 +309,8 @@ export class ProjectsComponent {
         `;
       }
     },
-    { field: 'state', headerName: 'Estado', flex: 1 },
-    { field: 'classification', headerName: 'Clasificación', width: 100, filter: true, flex: 2 }
+    { field: 'state', headerName: this.translate.instant('modules.projects.ui.grid.status'), flex: 1 },
+    { field: 'classification', headerName: this.translate.instant('modules.projects.ui.grid.classification'), width: 100, filter: true, flex: 2 }
   ];
 
   ngOnInit(): void {
@@ -406,7 +408,7 @@ export class ProjectsComponent {
       },
       error: error => {
         console.error('Error loading project dependencies:', error);
-        alerts.basicAlert('Indicadores no disponibles', 'No se pudieron cargar las requisiciones y movimientos de los proyectos.', 'warning');
+        alerts.basicAlert(this.translate.instant('modules.projects.ui.alerts.indicatorsUnavailable'), this.translate.instant('modules.projects.ui.alerts.indicatorsLoadFailed'), 'warning');
       }
     });
   }
@@ -457,7 +459,7 @@ export class ProjectsComponent {
 
   async openBudgetDashboard(): Promise<void> {
     if (!this.selectedRowData?.id || !this.idConvention) {
-      alerts.basicAlert('Selecciona un convenio', 'Selecciona el convenio vigente en el sidebar para consultar y distribuir el programa.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.projects.ui.alerts.selectAgreement'), this.translate.instant('modules.projects.ui.alerts.selectCurrentAgreement'), 'warning');
       return;
     }
     this.isBudgetLoading = true;
@@ -573,11 +575,11 @@ export class ProjectsComponent {
         Array.from(this.selectedContractActivityIds),
         this.idConvention
       ));
-      alerts.basicAlert('Programa del proyecto', response.message, 'success');
+      alerts.basicAlert(this.translate.instant('modules.projects.ui.alerts.projectProgram'), response.message, 'success');
       await this.openBudgetDashboard();
     } catch (error: any) {
       console.error('Error copiando actividades del contrato', error);
-      alerts.basicAlert('Programa del proyecto', this.apiErrorMessage(error), 'error');
+      alerts.basicAlert(this.translate.instant('modules.projects.ui.alerts.projectProgram'), this.apiErrorMessage(error), 'error');
     } finally {
       this.isCopyingActivities = false;
     }
@@ -594,15 +596,15 @@ export class ProjectsComponent {
         this.idConvention
       ));
       if (response.copied <= 0) {
-        alerts.basicAlert('Programa del proyecto', 'La actividad ya estaba asignada al proyecto.', 'info');
+        alerts.basicAlert(this.translate.instant('modules.projects.ui.alerts.projectProgram'), this.translate.instant('modules.projects.ui.alerts.activityAlreadyAssigned'), 'info');
       } else {
-        alerts.basicAlert('Programa del proyecto', 'Actividad agregada correctamente.', 'success');
+        alerts.basicAlert(this.translate.instant('modules.projects.ui.alerts.projectProgram'), this.translate.instant('modules.projects.ui.alerts.activityAdded'), 'success');
       }
       await this.openBudgetDashboard();
       this.activeProgramTab = 'project';
     } catch (error: any) {
       console.error('Error agregando actividad al proyecto', error);
-      alerts.basicAlert('Programa del proyecto', this.apiErrorMessage(error), 'error');
+      alerts.basicAlert(this.translate.instant('modules.projects.ui.alerts.projectProgram'), this.apiErrorMessage(error), 'error');
     } finally {
       this.addingContractActivityId = null;
     }
@@ -620,7 +622,7 @@ export class ProjectsComponent {
   async saveProjectQuantity(activity: any): Promise<void> {
     const quantity = Number(this.projectActivityQuantityDraft);
     if (!Number.isFinite(quantity) || quantity < 0) {
-      alerts.basicAlert('Cantidad', 'Captura una cantidad válida mayor o igual a cero.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.projects.ui.alerts.quantity'), this.translate.instant('modules.projects.ui.alerts.enterValidQuantity'), 'warning');
       return;
     }
     try {
@@ -630,12 +632,12 @@ export class ProjectsComponent {
         idSourceWorkprogram: activity.idSourceWorkprogram ?? null
       }));
       this.editingProjectActivityId = null;
-      alerts.basicAlert('Programa del proyecto', 'Cantidad actualizada.', 'success');
+      alerts.basicAlert(this.translate.instant('modules.projects.ui.alerts.projectProgram'), this.translate.instant('modules.projects.ui.alerts.quantityUpdated'), 'success');
       await this.openBudgetDashboard();
       this.activeProgramTab = 'project';
     } catch (error: any) {
       console.error('Error actualizando cantidad del proyecto', error);
-      alerts.basicAlert('Programa del proyecto', this.apiErrorMessage(error), 'error');
+      alerts.basicAlert(this.translate.instant('modules.projects.ui.alerts.projectProgram'), this.apiErrorMessage(error), 'error');
     }
   }
 
@@ -644,12 +646,12 @@ export class ProjectsComponent {
     this.removingProjectActivityId = Number(activity.id);
     try {
       await lastValueFrom(this.workprogramsService.deleteWorkProgram(Number(activity.id)));
-      alerts.basicAlert('Programa del proyecto', 'Actividad quitada del proyecto. El contrato no fue modificado.', 'success');
+      alerts.basicAlert(this.translate.instant('modules.projects.ui.alerts.projectProgram'), this.translate.instant('modules.projects.ui.alerts.activityRemoved'), 'success');
       await this.openBudgetDashboard();
       this.activeProgramTab = 'project';
     } catch (error: any) {
       console.error('Error quitando actividad del proyecto', error);
-      alerts.basicAlert('Programa del proyecto', this.apiErrorMessage(error), 'error');
+      alerts.basicAlert(this.translate.instant('modules.projects.ui.alerts.projectProgram'), this.apiErrorMessage(error), 'error');
     } finally {
       this.removingProjectActivityId = null;
     }

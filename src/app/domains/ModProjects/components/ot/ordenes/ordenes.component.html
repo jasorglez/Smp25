@@ -25,7 +25,7 @@
                       <span
                         class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
                         *ngIf="masterNotSavedChanges">
-                        <span class="visually-hidden">Hay cambios sin guardar</span>
+                        <span class="visually-hidden">{{ 'modules.projects.workOrders.ui.unsavedChanges' | translate }}</span>
                       </span>
                    </button>
         
@@ -33,7 +33,7 @@
                     <button type="button" class="btn btn-info ms-1 me-1 mb-2" (click)="fileInput.click()" [disabled]="isUploading">
                       <i class="bi bi-file-earmark-pdf" *ngIf="!isUploading"></i>
                       <div class="spinner-border spinner-border-sm" role="status" *ngIf="isUploading">
-                        <span class="visually-hidden">Subiendo...</span>
+                        <span class="visually-hidden">{{ 'modules.projects.workOrders.ui.uploading' | translate }}</span>
                       </div>
                     </button>
                     <input #fileInput type="file" accept=".pdf" style="display: none" (change)="onFileSelected($event)">
@@ -74,15 +74,15 @@
                 <div class="col ps-0">
                   <div class="ot-content-legend mb-1">
                     <span class="ot-content-legend-swatch"></span>
-                    <span>Completa (5 tipos)</span>
+                    <span>{{ 'modules.projects.workOrders.ui.completeFiveTypes' | translate }}</span>
                     <span class="ot-content-legend-swatch ot-content-legend-swatch--mixed ms-2"></span>
-                    <span>Varios tipos</span>
-                    <span class="ms-2">Un tipo: color de su icono</span>
-                    <span class="ms-2 text-success"><i class="bi bi-people-fill"></i> Personal</span>
-                    <span class="ms-2" style="color:#7c3aed"><i class="bi bi-images"></i> Fotos</span>
-                    <span class="ms-2" style="color:#c2410c"><i class="bi bi-hammer"></i> Trabajos</span>
-                    <span class="ms-2 text-primary"><i class="bi bi-box-seam-fill"></i> Materiales</span>
-                    <span class="ms-2 text-warning-emphasis"><i class="bi bi-tools"></i> Equipos</span>
+                    <span>{{ 'modules.projects.workOrders.ui.multipleTypes' | translate }}</span>
+                    <span class="ms-2">{{ 'modules.projects.workOrders.ui.oneTypeUsesIconColor' | translate }}</span>
+                    <span class="ms-2 text-success"><i class="bi bi-people-fill"></i> {{ 'modules.projects.workOrders.ui.personnel' | translate }}</span>
+                    <span class="ms-2" style="color:#7c3aed"><i class="bi bi-images"></i> {{ 'modules.projects.workOrders.ui.photos' | translate }}</span>
+                    <span class="ms-2" style="color:#c2410c"><i class="bi bi-hammer"></i> {{ 'modules.projects.workOrders.ui.workItems' | translate }}</span>
+                    <span class="ms-2 text-primary"><i class="bi bi-box-seam-fill"></i> {{ 'modules.projects.workOrders.ui.materials' | translate }}</span>
+                    <span class="ms-2 text-warning-emphasis"><i class="bi bi-tools"></i> {{ 'modules.projects.workOrders.ui.equipment' | translate }}</span>
                   </div>
                   <ag-grid-angular
                     [ngStyle]="{ height: captureMode ? gridHeight : 'calc(95vh - 190px)' }"
@@ -104,14 +104,14 @@
                 <!-- Label con información de la OT seleccionada -->
                 <div class="alert alert-info mb-1 py-1 d-flex flex-wrap align-items-center justify-content-between gap-2" *ngIf="selectedOt">
                   <small>
-                    <strong><i class="bi bi-info-circle"></i> CDC:</strong> {{selectedOt.cdc}} - {{selectedOt.description}}
+                    <strong><i class="bi bi-info-circle"></i> {{ 'modules.projects.workOrders.ui.cdcLabel' | translate }}</strong> {{selectedOt.cdc}} - {{selectedOt.description}}
                     <span class="ms-2" *ngIf="selectedReporteFecha; else soloOT">
-                      <strong>Reporte diario:</strong> {{selectedReporteFecha | date:'dd-MM-yyyy'}}
+                      <strong>{{ 'modules.projects.workOrders.ui.dailyReportLabel' | translate }}</strong> {{selectedReporteFecha | date:'dd-MM-yyyy'}}
                       <strong class="ms-1">{{selectedReporteHoraInicio}}-{{selectedReporteHoraTermino}}</strong>
                       <span class="badge bg-primary ms-1">{{selectedReporteTipo}}</span>
                     </span>
                     <ng-template #soloOT>
-                      <span class="ms-2"><strong>Registro:</strong> {{selectedOt.registerDate | date:'dd-MM-yyyy'}}</span>
+                      <span class="ms-2"><strong>{{ 'modules.projects.workOrders.ui.recordLabel' | translate }}</strong> {{selectedOt.registerDate | date:'dd-MM-yyyy'}}</span>
                     </ng-template>
                   </small>
                   <button *ngIf="selectedReporteId && selectedReporteFecha" type="button" class="btn btn-primary btn-sm"
@@ -124,33 +124,33 @@
                   </button>
                 </div>
                 <div *ngIf="selectedReporteId && !canSaveReportDetails" class="alert alert-info py-1 px-2 mb-2 small">
-                  <i class="bi bi-info-circle me-1"></i> Al guardar una partida, también se guardará el reporte diario.
+                  <i class="bi bi-info-circle me-1"></i> {{ 'modules.projects.workOrders.ui.savingAnItemAlsoSavesDailyReport' | translate }}
                 </div>
                 <!-- Pestañas de navegación -->
                 <ul class="nav nav-tabs mb-2" style="flex-wrap: nowrap; overflow-x: auto; white-space: nowrap;">
                   <li class="nav-item" style="flex: 0 0 auto;">
-                    <a class="nav-link" [class.active]="activeTab === 'reportes'" (click)="setActiveTab('reportes')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-calendar3" style="font-size: 0.8rem;"></i> Reportes</a>
+                    <a class="nav-link" [class.active]="activeTab === 'reportes'" (click)="setActiveTab('reportes')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-calendar3" style="font-size: 0.8rem;"></i> {{ 'modules.projects.workOrders.ui.reports' | translate }}</a>
                   </li>
                   <li class="nav-item" style="flex: 0 0 auto;">
-                    <a class="nav-link" [class.active]="activeTab === 'personal'" (click)="setActiveTab('personal')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-people" style="font-size: 0.8rem;"></i> Personal</a>
+                    <a class="nav-link" [class.active]="activeTab === 'personal'" (click)="setActiveTab('personal')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-people" style="font-size: 0.8rem;"></i> {{ 'modules.projects.workOrders.ui.personnel' | translate }}</a>
                   </li>
                   <li class="nav-item" style="flex: 0 0 auto;">
-                    <a class="nav-link" [class.active]="activeTab === 'fotos'" (click)="setActiveTab('fotos')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-images" style="font-size: 0.8rem;"></i> Fotos</a>
+                    <a class="nav-link" [class.active]="activeTab === 'fotos'" (click)="setActiveTab('fotos')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-images" style="font-size: 0.8rem;"></i> {{ 'modules.projects.workOrders.ui.photos' | translate }}</a>
                   </li>
                   <li class="nav-item" style="flex: 0 0 auto;">
-                    <a class="nav-link" [class.active]="activeTab === 'videos'" (click)="setActiveTab('videos')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-play-circle" style="font-size: 0.8rem;"></i> Videos</a>
+                    <a class="nav-link" [class.active]="activeTab === 'videos'" (click)="setActiveTab('videos')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-play-circle" style="font-size: 0.8rem;"></i> {{ 'modules.projects.workOrders.ui.videos' | translate }}</a>
                   </li>
                   <li class="nav-item" style="flex: 0 0 auto;">
-                    <a class="nav-link" [class.active]="activeTab === 'material'" (click)="setActiveTab('material')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-box-seam" style="font-size: 0.8rem;"></i> Material</a>
+                    <a class="nav-link" [class.active]="activeTab === 'material'" (click)="setActiveTab('material')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-box-seam" style="font-size: 0.8rem;"></i> {{ 'modules.projects.workOrders.ui.material' | translate }}</a>
                   </li>
                   <li class="nav-item" style="flex: 0 0 auto;">
-                    <a class="nav-link" [class.active]="activeTab === 'equipos'" (click)="setActiveTab('equipos')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-tools" style="font-size: 0.8rem;"></i> Equipos</a>
+                    <a class="nav-link" [class.active]="activeTab === 'equipos'" (click)="setActiveTab('equipos')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-tools" style="font-size: 0.8rem;"></i> {{ 'modules.projects.workOrders.ui.equipment' | translate }}</a>
                   </li>
                   <li class="nav-item" style="flex: 0 0 auto;">
-                    <a class="nav-link" [class.active]="activeTab === 'conceptos'" (click)="setActiveTab('conceptos')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-lightbulb" style="font-size: 0.8rem;"></i> Trabajo</a>
+                    <a class="nav-link" [class.active]="activeTab === 'conceptos'" (click)="setActiveTab('conceptos')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-lightbulb" style="font-size: 0.8rem;"></i> {{ 'modules.projects.workOrders.ui.work' | translate }}</a>
                   </li>
                   <li class="nav-item" style="flex: 0 0 auto;">
-                    <a class="nav-link" [class.active]="activeTab === 'notas'" (click)="setActiveTab('notas')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-journal-text" style="font-size: 0.8rem;"></i> Notas</a>
+                    <a class="nav-link" [class.active]="activeTab === 'notas'" (click)="setActiveTab('notas')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-journal-text" style="font-size: 0.8rem;"></i> {{ 'modules.projects.workOrders.ui.notes' | translate }}</a>
                   </li>
                 </ul>
 
@@ -162,7 +162,7 @@
                     <div *ngIf="selectedOt; else noOtSelected" class="row h-85">
                       <nav class="col-auto d-flex flex-column align-items-start">
                         <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addReporte()"><i class="bi bi-plus-lg"></i></button>
-                        <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                        <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedChanges"><span class="visually-hidden">{{ 'modules.projects.workOrders.ui.unsavedChanges' | translate }}</span></span></button>
                         <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertReportes()"><i class="bi bi-arrow-clockwise"></i></button>
                         <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteReporte()"><i class="bi bi-trash"></i></button>
                       </nav>
@@ -183,8 +183,8 @@
                       <div class="h-100 d-flex align-items-center justify-content-center">
                         <div class="text-center text-muted">
                           <i class="bi bi-calendar3 display-4"></i>
-                          <h6 class="mt-3">Reportes Diarios</h6>
-                          <p class="mt-2"><i class="bi bi-arrow-left"></i> Selecciona una OT para ver los reportes diarios</p>
+                          <h6 class="mt-3">{{ 'modules.projects.workOrders.ui.dailyReports' | translate }}</h6>
+                          <p class="mt-2"><i class="bi bi-arrow-left"></i> {{ 'modules.projects.workOrders.ui.selectOtToViewDailyReports' | translate }}</p>
                         </div>
                       </div>
                     </ng-template>
@@ -193,11 +193,11 @@
                   <!-- Pestaña Personal -->
                   <div class="tab-pane" [class.show]="activeTab === 'personal'" [class.active]="activeTab === 'personal'">
                     <div *ngIf="selectedOt; else noOtSelectedPersonal">
-                      <h6><i class="bi bi-people"></i> Personal Asignado <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                      <h6><i class="bi bi-people"></i> {{ 'modules.projects.workOrders.ui.assignedPersonnel' | translate }} <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">{{ 'modules.projects.workOrders.ui.filteredBy' | translate }}: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
                       <div class="row">
                         <nav class="col-auto d-flex flex-column align-items-start">
                           <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addPersonal()" [disabled]="savingResourceDetails || signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
-                          <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="savePersonalChanges()" [disabled]="savingResourceDetails || signalsService.getClosedReport()()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedPersonalChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                          <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="savePersonalChanges()" [disabled]="savingResourceDetails || signalsService.getClosedReport()()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedPersonalChanges"><span class="visually-hidden">{{ 'modules.projects.workOrders.ui.unsavedChanges' | translate }}</span></span></button>
                           <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertPersonal()" [disabled]="savingResourceDetails || signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
                           <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deletePersonal()" [disabled]="savingResourceDetails || signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                         </nav>
@@ -217,8 +217,8 @@
                       <div class="h-100 d-flex align-items-center justify-content-center">
                         <div class="text-center text-muted">
                           <i class="bi bi-people display-4"></i>
-                          <h6 class="mt-3">Personal Asignado</h6>
-                          <p class="mt-2"><i class="bi bi-arrow-left"></i> Selecciona una OT para ver el personal asignado</p>
+                          <h6 class="mt-3">{{ 'modules.projects.workOrders.ui.assignedPersonnel' | translate }}</h6>
+                          <p class="mt-2"><i class="bi bi-arrow-left"></i> {{ 'modules.projects.workOrders.ui.selectOtToViewAssignedPersonnel' | translate }}</p>
                         </div>
                       </div>
                     </ng-template>
@@ -227,15 +227,15 @@
                   <!-- Pestaña Fotografías -->
                   <div class="tab-pane" [class.show]="activeTab === 'fotos'" [class.active]="activeTab === 'fotos'">
                     <div *ngIf="selectedOt; else noOtSelectedFotos">
-                      <h6><i class="bi bi-images"></i> Fotografías del Trabajo <span *ngIf="selectedReporteFecha" 
-                        class="badge bg-secondary ">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                      <h6><i class="bi bi-images"></i> {{ 'modules.projects.workOrders.ui.workPhotos' | translate }} <span *ngIf="selectedReporteFecha"
+                        class="badge bg-secondary ">{{ 'modules.projects.workOrders.ui.filteredBy' | translate }}: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
                       <div class="row">
                       
                       <!-- Columna de Botones (Ajustada para flexibilidad) -->
                       <div class="col-auto">
                         <nav class="d-flex flex-column align-items-start">
                           <button type="button" class="btn btn-primary  mb-2" (click)="addFotografia()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
-                          <button type="button" class="btn btn-success  position-relative mb-2" (click)="saveFotografiasChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedFotografiaChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                          <button type="button" class="btn btn-success  position-relative mb-2" (click)="saveFotografiasChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedFotografiaChanges"><span class="visually-hidden">{{ 'modules.projects.workOrders.ui.unsavedChanges' | translate }}</span></span></button>
                           <button type="button" class="btn btn-warning  mb-2" (click)="revertFotografias()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
                           <button type="button" class="btn btn-danger  mb-2" (click)="deleteFotografia()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                         </nav>
@@ -273,7 +273,7 @@
                             <div class="flex-grow-1 h-100 d-flex align-items-center justify-content-center">
                               <div class="text-center text-muted">
                                 <i class="bi bi-camera-reels display-2"></i>
-                                <p class="mt-2">Selecciona una foto para ver la vista previa</p>
+                                <p class="mt-2">{{ 'modules.projects.workOrders.ui.selectPhotoForPreview' | translate }}</p>
                               </div>
                             </div>
                           </ng-template>
@@ -287,8 +287,8 @@
                       <div class="h-100 d-flex align-items-center justify-content-center">
                         <div class="text-center text-muted">
                           <i class="bi bi-images display-4"></i>
-                          <h6 class="mt-3">Fotografías del Trabajo</h6>
-                          <p class="mt-2"><i class="bi bi-arrow-left"></i> Selecciona una OT para ver las fotografías</p>
+                          <h6 class="mt-3">{{ 'modules.projects.workOrders.ui.workPhotos' | translate }}</h6>
+                          <p class="mt-2"><i class="bi bi-arrow-left"></i> {{ 'modules.projects.workOrders.ui.selectOtToViewPhotos' | translate }}</p>
                         </div>
                       </div>
                     </ng-template>
@@ -297,7 +297,7 @@
                   <!-- Pestaña Videos -->
                   <div class="tab-pane" [class.show]="activeTab === 'videos'" [class.active]="activeTab === 'videos'">
                     <div *ngIf="selectedOt; else noOtSelectedVideos">
-                      <h6><i class="bi bi-play-circle"></i> Videos del Trabajo <span *ngIf="selectedReporteFecha" class="badge bg-secondary ">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                      <h6><i class="bi bi-play-circle"></i> {{ 'modules.projects.workOrders.ui.workVideos' | translate }} <span *ngIf="selectedReporteFecha" class="badge bg-secondary ">{{ 'modules.projects.workOrders.ui.filteredBy' | translate }}: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
                       <div class="row">
                       
                       <!-- Columna de Botones (Ajustada para flexibilidad) -->
@@ -305,7 +305,7 @@
                         <nav class="d-flex flex-column align-items-start">
                           <button type="button" class="btn btn-primary  mb-2" (click)="addVideo()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
                           
-                          <button type="button" class="btn btn-success  position-relative mb-2" (click)="saveVideosChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedVideoChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                          <button type="button" class="btn btn-success  position-relative mb-2" (click)="saveVideosChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedVideoChanges"><span class="visually-hidden">{{ 'modules.projects.workOrders.ui.unsavedChanges' | translate }}</span></span></button>
                           <button type="button" class="btn btn-warning  mb-2" (click)="revertVideos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
                           <button type="button" class="btn btn-danger  mb-2" (click)="deleteVideo()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                         </nav>
@@ -337,7 +337,7 @@
                               class="rounded"
                               style="max-height: 100%; max-width: 100%; object-fit: contain;"
                               preload="metadata">
-                              Su navegador no soporta el elemento de video.
+                              {{ 'modules.projects.workOrders.ui.browserDoesNotSupportVideo' | translate }}
                             </video>
                             <div class="mt-2 w-100">
                               <small class="text-muted">{{selectedVideo.descripcion}}</small>
@@ -347,7 +347,7 @@
                             <div class="flex-grow-1 h-100 d-flex align-items-center justify-content-center">
                               <div class="text-center text-muted">
                                 <i class="bi bi-play-circle display-4"></i>
-                                <p class="mt-2">Selecciona un video para ver la vista previa</p>
+                                <p class="mt-2">{{ 'modules.projects.workOrders.ui.selectVideoForPreview' | translate }}</p>
                               </div>
                             </div>
                           </ng-template>
@@ -361,8 +361,8 @@
                       <div class="h-100 d-flex align-items-center justify-content-center">
                         <div class="text-center text-muted">
                           <i class="bi bi-play-circle display-4"></i>
-                          <h6 class="mt-3">Videos del Trabajo</h6>
-                          <p class="mt-2"><i class="bi bi-arrow-left"></i> Selecciona una OT para ver los videos</p>
+                          <h6 class="mt-3">{{ 'modules.projects.workOrders.ui.workVideos' | translate }}</h6>
+                          <p class="mt-2"><i class="bi bi-arrow-left"></i> {{ 'modules.projects.workOrders.ui.selectOtToViewVideos' | translate }}</p>
                         </div>
                       </div>
                     </ng-template>
@@ -371,12 +371,12 @@
                   <!-- Pestaña Material -->
                   <div class="tab-pane" [class.show]="activeTab === 'material'" [class.active]="activeTab === 'material'">
                     <div *ngIf="selectedOt; else noOtSelectedMaterial">
-                      <h6><i class="bi bi-box-seam"></i> Material Utilizado <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                      <h6><i class="bi bi-box-seam"></i> {{ 'modules.projects.workOrders.ui.materialUsed' | translate }} <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">{{ 'modules.projects.workOrders.ui.filteredBy' | translate }}: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
                       <div class="row">
                         <div class="col-auto">
                           <nav class="d-flex flex-column align-items-start">
                             <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addMaterial()" [disabled]="savingResourceDetails || signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
-                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesMaterial()" [disabled]="savingResourceDetails || signalsService.getClosedReport()()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedMaterialChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesMaterial()" [disabled]="savingResourceDetails || signalsService.getClosedReport()()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedMaterialChanges"><span class="visually-hidden">{{ 'modules.projects.workOrders.ui.unsavedChanges' | translate }}</span></span></button>
                             <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertMaterial()" [disabled]="savingResourceDetails || signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
                             <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteMaterial()" [disabled]="savingResourceDetails || signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                           </nav>
@@ -390,8 +390,8 @@
                       <div class="h-100 d-flex align-items-center justify-content-center">
                         <div class="text-center text-muted">
                           <i class="bi bi-box-seam display-4"></i>
-                          <h6 class="mt-3">Material Utilizado</h6>
-                          <p class="mt-2"><i class="bi bi-arrow-left"></i> Selecciona una OT para ver el material utilizado</p>
+                          <h6 class="mt-3">{{ 'modules.projects.workOrders.ui.materialUsed' | translate }}</h6>
+                          <p class="mt-2"><i class="bi bi-arrow-left"></i> {{ 'modules.projects.workOrders.ui.selectOtToViewMaterials' | translate }}</p>
                         </div>
                       </div>
                     </ng-template>
@@ -400,12 +400,12 @@
                   <!-- Pestaña Equipos -->
                   <div class="tab-pane" [class.show]="activeTab === 'equipos'" [class.active]="activeTab === 'equipos'">
                     <div *ngIf="selectedOt; else noOtSelectedEquipos">
-                      <h6><i class="bi bi-tools"></i> Equipos Utilizados <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                      <h6><i class="bi bi-tools"></i> {{ 'modules.projects.workOrders.ui.equipmentUsed' | translate }} <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">{{ 'modules.projects.workOrders.ui.filteredBy' | translate }}: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
                       <div class="row">
                         <div class="col-auto">
                           <nav class="d-flex flex-column align-items-start">
                             <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addEquipos()" [disabled]="savingResourceDetails || signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
-                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesEquipos()" [disabled]="savingResourceDetails || signalsService.getClosedReport()()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedEquipoChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesEquipos()" [disabled]="savingResourceDetails || signalsService.getClosedReport()()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedEquipoChanges"><span class="visually-hidden">{{ 'modules.projects.workOrders.ui.unsavedChanges' | translate }}</span></span></button>
                             <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertEquipos()" [disabled]="savingResourceDetails || signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
                             <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteEquipo()" [disabled]="savingResourceDetails || signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                           </nav>
@@ -419,8 +419,8 @@
                       <div class="h-100 d-flex align-items-center justify-content-center">
                         <div class="text-center text-muted">
                           <i class="bi bi-tools display-4"></i>
-                          <h6 class="mt-3">Equipos Utilizados</h6>
-                          <p class="mt-2"><i class="bi bi-arrow-left"></i> Selecciona una OT para ver los equipos utilizados</p>
+                          <h6 class="mt-3">{{ 'modules.projects.workOrders.ui.equipmentUsed' | translate }}</h6>
+                          <p class="mt-2"><i class="bi bi-arrow-left"></i> {{ 'modules.projects.workOrders.ui.selectOtToViewEquipment' | translate }}</p>
                         </div>
                       </div>
                     </ng-template>
@@ -429,12 +429,12 @@
                   <!-- Pestaña Conceptos -->
                   <div class="tab-pane" [class.show]="activeTab === 'conceptos'" [class.active]="activeTab === 'conceptos'">
                     <div *ngIf="selectedOt; else noOtSelectedConceptos">
-                      <h6><i class="bi bi-lightbulb"></i> Conceptos del Reporte <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                      <h6><i class="bi bi-lightbulb"></i> {{ 'modules.projects.workOrders.ui.reportConcepts' | translate }} <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">{{ 'modules.projects.workOrders.ui.filteredBy' | translate }}: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
                       <div class="row g-1">
                         <div class="col-auto">
                           <nav class="d-flex flex-column align-items-start">
                             <button type="button" class="btn btn-primary mb-2" (click)="addConcepto()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
-                            <button type="button" class="btn btn-success position-relative mb-2" (click)="saveConceptosChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedConceptoChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                            <button type="button" class="btn btn-success position-relative mb-2" (click)="saveConceptosChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedConceptoChanges"><span class="visually-hidden">{{ 'modules.projects.workOrders.ui.unsavedChanges' | translate }}</span></span></button>
                             <button type="button" class="btn btn-warning mb-2" (click)="revertConceptos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
                             <button type="button" class="btn btn-danger mb-2" (click)="deleteConcepto()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                           </nav>
@@ -448,8 +448,8 @@
                       <div class="h-100 d-flex align-items-center justify-content-center">
                         <div class="text-center text-muted">
                           <i class="bi bi-lightbulb display-4"></i>
-                          <h6 class="mt-3">Trabajo Realizado</h6>
-                          <p class="mt-2"><i class="bi bi-arrow-left"></i> Selecciona una OT para ver el trabajo realizado</p>
+                          <h6 class="mt-3">{{ 'modules.projects.workOrders.ui.workPerformed' | translate }}</h6>
+                          <p class="mt-2"><i class="bi bi-arrow-left"></i> {{ 'modules.projects.workOrders.ui.selectOtToViewWork' | translate }}</p>
                         </div>
                       </div>
                     </ng-template>
@@ -458,12 +458,12 @@
                   <!-- Pestaña Notas -->
                   <div class="tab-pane" [class.show]="activeTab === 'notas'" [class.active]="activeTab === 'notas'">
                     <div *ngIf="selectedOt; else noOtSelectedNotas">
-                      <h6><i class="bi bi-journal-text"></i> Notas del Reporte <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                      <h6><i class="bi bi-journal-text"></i> {{ 'modules.projects.workOrders.ui.reportNotes' | translate }} <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">{{ 'modules.projects.workOrders.ui.filteredBy' | translate }}: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
                       <div class="row">
                         <div class="col-auto">
                           <nav class="d-flex flex-column align-items-start">
                             <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addNota()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
-                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveNotasChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedNoteChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveNotasChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedNoteChanges"><span class="visually-hidden">{{ 'modules.projects.workOrders.ui.unsavedChanges' | translate }}</span></span></button>
                             <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertNotas()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
                             <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteNota()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                           </nav>
@@ -477,8 +477,8 @@
                       <div class="h-100 d-flex align-items-center justify-content-center">
                         <div class="text-center text-muted">
                           <i class="bi bi-journal-text display-4"></i>
-                          <h6 class="mt-3">Notas del Reporte</h6>
-                          <p class="mt-2"><i class="bi bi-arrow-left"></i> Selecciona una OT para ver las notas</p>
+                          <h6 class="mt-3">{{ 'modules.projects.workOrders.ui.reportNotes' | translate }}</h6>
+                          <p class="mt-2"><i class="bi bi-arrow-left"></i> {{ 'modules.projects.workOrders.ui.selectOtToViewNotes' | translate }}</p>
                         </div>
                       </div>
                     </ng-template>
@@ -491,7 +491,7 @@
             <!-- COLUMNA 2: Vista previa del reporte PDF -->
             <div *ngIf="showPdfPreviewPanel" class="pdf-preview-floating">
               <div class="d-flex align-items-center justify-content-between mb-2">
-                <h6 class="mb-0"><i class="bi bi-file-earmark-pdf"></i> Vista Previa del Reporte</h6>
+                <h6 class="mb-0"><i class="bi bi-file-earmark-pdf"></i> {{ 'modules.projects.workOrders.ui.reportPreview' | translate }}</h6>
                 <button type="button" class="btn btn-sm btn-outline-secondary" (click)="clearPdfPreview()" aria-label="Cerrar vista previa" title="Cerrar vista previa">
                   <i class="bi bi-x-lg"></i>
                 </button>
@@ -504,29 +504,29 @@
                 <!-- Estado generando PDF -->
                 <div *ngIf="isGeneratingPdf" class="h-100 d-flex align-items-center justify-content-center">
                   <div class="text-center">
-                    <div class="spinner-border text-primary mb-3" role="status"><span class="visually-hidden">Generando PDF...</span></div>
-                    <h6>Generando PDF...</h6>
-                    <p class="text-muted small">Por favor espere</p>
+                    <div class="spinner-border text-primary mb-3" role="status"><span class="visually-hidden">{{ 'modules.projects.workOrders.ui.generatingPdf' | translate }}</span></div>
+                    <h6>{{ 'modules.projects.workOrders.ui.generatingPdf' | translate }}</h6>
+                    <p class="text-muted small">{{ 'modules.projects.workOrders.ui.pleaseWait' | translate }}</p>
                   </div>
                 </div>
                 <!-- Estado inicial con OT seleccionada -->
                 <div *ngIf="selectedOt && !showPdfEmbed && !isGeneratingPdf" class="h-100 d-flex align-items-center justify-content-center">
                   <div class="text-center mt-5">
                     <i class="bi bi-file-earmark-pdf display-4 text-muted"></i>
-                    <h6 class="mt-2">Reporte Diario - CDC: {{selectedOt.cdc}}</h6>
+                    <h6 class="mt-2">{{ 'modules.projects.workOrders.ui.dailyReportCdc' | translate }}: {{selectedOt.cdc}}</h6>
                     <p class="text-muted small">{{selectedOt.description}}</p>
                     <div *ngIf="selectedReporteId && selectedReporteFecha" class="mt-3">
                       <div class="alert alert-light border p-2">
                         <small>
-                          <strong>Fecha:</strong> {{selectedReporteFecha | date:'dd/MM/yyyy'}}<br>
-                          <strong>Tipo:</strong> {{selectedReporteTipo}}<br>
-                          <strong>Horario:</strong> {{selectedReporteHoraInicio}} - {{selectedReporteHoraTermino}}
+                          <strong>{{ 'modules.projects.workOrders.ui.dateLabel' | translate }}</strong> {{selectedReporteFecha | date:'dd/MM/yyyy'}}<br>
+                          <strong>{{ 'modules.projects.workOrders.ui.typeLabel' | translate }}</strong> {{selectedReporteTipo}}<br>
+                          <strong>{{ 'modules.projects.workOrders.ui.scheduleLabel' | translate }}</strong> {{selectedReporteHoraInicio}} - {{selectedReporteHoraTermino}}
                         </small>
                       </div>
-                      <p class="text-muted small mt-3">Usa el botón de previsualización junto a los datos del reporte para abrir el PDF aquí.</p>
+                      <p class="text-muted small mt-3">{{ 'modules.projects.workOrders.ui.usePreviewButtonToOpenPdf' | translate }}</p>
                     </div>
                     <div *ngIf="!selectedReporteId || !selectedReporteFecha" class="mt-4">
-                      <p class="text-muted small"><i class="bi bi-arrow-left"></i> Selecciona un reporte diario en la pestaña "Reportes Diarios" para generar el PDF</p>
+                      <p class="text-muted small"><i class="bi bi-arrow-left"></i> {{ 'modules.projects.workOrders.ui.selectDailyReportTabToGeneratePdf' | translate }}</p>
                     </div>
                   </div>
                 </div>
@@ -534,7 +534,7 @@
                 <div *ngIf="!selectedOt" class="h-100 d-flex align-items-center justify-content-center">
                   <div class="text-center text-muted">
                     <i class="bi bi-arrow-left display-3"></i>
-                    <p class="mt-2 small">Selecciona una OT para ver el reporte</p>
+                    <p class="mt-2 small">{{ 'modules.projects.workOrders.ui.selectOtToViewReport' | translate }}</p>
                   </div>
                 </div>
               </div>
@@ -561,19 +561,19 @@
           <div class="mb-4">
             <h6 class="text-muted mb-3">
               <i class="bi bi-calendar-range me-2"></i>
-              Selecciona el rango de fechas para el reporte
+              {{ 'modules.projects.workOrders.ui.selectReportDateRange' | translate }}
             </h6>
             <div class="form-group g-3">
-              <label for="opcion" class="form-label">Selecciona una opción</label>
+              <label for="opcion" class="form-label">{{ 'modules.projects.workOrders.ui.selectAnOption' | translate }}</label>
               <select class="form-control form-control-lg" id="opcion" formControlName="opcionSeleccionada" (change)="onOpcionSeleccionadaChange()">
-               <option value="" disabled>Seleccionar</option>
-                <option value="oti">Generador OT Interna</option>
-                <option value="ote">Generador OT Externa</option>
-                <option value="ot">Generador OT Mixto</option>
-                <option value="cuadrilla-interna">Cálculo de pago a cuadrilla interna</option>
-                <option value="cuadrilla-externa">Cálculo de pago a cuadrilla externa</option>
-                <option value="cargar-excel-externa">Cargar excel de cuadrilla externa</option>
-                <option value="cargar-excel-interna">Cargar excel de cuadrilla interna</option>
+               <option value="" disabled>{{ 'modules.projects.workOrders.ui.select' | translate }}</option>
+                <option value="oti">{{ 'modules.projects.workOrders.ui.internalWorkOrderGenerator' | translate }}</option>
+                <option value="ote">{{ 'modules.projects.workOrders.ui.externalWorkOrderGenerator' | translate }}</option>
+                <option value="ot">{{ 'modules.projects.workOrders.ui.mixedWorkOrderGenerator' | translate }}</option>
+                <option value="cuadrilla-interna">{{ 'modules.projects.workOrders.ui.internalCrewPaymentCalculation' | translate }}</option>
+                <option value="cuadrilla-externa">{{ 'modules.projects.workOrders.ui.externalCrewPaymentCalculation' | translate }}</option>
+                <option value="cargar-excel-externa">{{ 'modules.projects.workOrders.ui.uploadExternalCrewExcel' | translate }}</option>
+                <option value="cargar-excel-interna">{{ 'modules.projects.workOrders.ui.uploadInternalCrewExcel' | translate }}</option>
               </select>
             </div>
              
@@ -581,7 +581,7 @@
               <div class="col-md-12 mb-3" *ngIf="cuadrillasExternas.length === 0">
                 <div class="alert alert-info" role="alert">
                   <i class="bi bi-info-circle me-2"></i>
-                  Cargando cuadrillas externas...
+                  {{ 'modules.projects.workOrders.ui.loadingExternalCrews' | translate }}
                 </div>
               </div>
               <div class="col-md-3" *ngFor="let cuadrilla of cuadrillasExternas">
@@ -603,10 +603,10 @@
                 >
                   <i class="bi bi-file-earmark-excel" *ngIf="!isUploadingExcel"></i>
                   <div class="spinner-border spinner-border-sm" role="status" *ngIf="isUploadingExcel">
-                    <span class="visually-hidden">Procesando...</span>
+                    <span class="visually-hidden">{{ 'modules.projects.workOrders.ui.processing' | translate }}</span>
                   </div>
-                  <span *ngIf="!isUploadingExcel"> Subir archivo Excel </span>
-                  <span *ngIf="isUploadingExcel"> Procesando... </span>
+                  <span *ngIf="!isUploadingExcel"> {{ 'modules.projects.workOrders.ui.uploadExcelFile' | translate }} </span>
+                  <span *ngIf="isUploadingExcel"> {{ 'modules.projects.workOrders.ui.processing' | translate }} </span>
                 </button>
 
                 <!-- Input de archivo oculto -->
@@ -627,10 +627,10 @@
                 >
                   <i class="bi bi-file-earmark-excel" *ngIf="!isUploadingExcel"></i>
                   <div class="spinner-border spinner-border-sm" role="status" *ngIf="isUploadingExcel">
-                    <span class="visually-hidden">Procesando...</span>
+                    <span class="visually-hidden">{{ 'modules.projects.workOrders.ui.processing' | translate }}</span>
                   </div>
-                  <span *ngIf="!isUploadingExcel"> Subir archivo Excel </span>
-                  <span *ngIf="isUploadingExcel"> Procesando... </span>
+                  <span *ngIf="!isUploadingExcel"> {{ 'modules.projects.workOrders.ui.uploadExcelFile' | translate }} </span>
+                  <span *ngIf="isUploadingExcel"> {{ 'modules.projects.workOrders.ui.processing' | translate }} </span>
                 </button>
 
                 <!-- Input de archivo oculto -->
@@ -647,12 +647,12 @@
               <div class="col-md-5">
                 <label for="fecha1" class="form-label fw-semibold">
                   <i class="bi bi-calendar-check me-1"></i>
-                  Tipo de consulta
+                  {{ 'modules.projects.workOrders.ui.queryType' | translate }}
                 </label>
                 <select class="form-control form-control-lg" id="tipeReporte" formControlName="tipoReporte" (change)="onTipoReporteChange()">
-                <option value="personalizado">Personalizado</option>
-                <option value="semanal">Semanal</option>
-                <option value="mensual">Mensual</option>
+                <option value="personalizado">{{ 'modules.projects.workOrders.ui.custom' | translate }}</option>
+                <option value="semanal">{{ 'modules.projects.workOrders.ui.weekly' | translate }}</option>
+                <option value="mensual">{{ 'modules.projects.workOrders.ui.monthly' | translate }}</option>
               </select>
               </div>
               <div class="col-md-5" *ngIf="tipoReporte === 'personalizado'">
@@ -660,7 +660,7 @@
                   <div class="col-md-6">
                     <label for="fecha1" class="form-label fw-semibold">
                       <i class="bi bi-calendar-check me-1"></i>
-                      Fecha inicio
+                      {{ 'modules.projects.workOrders.ui.startDate' | translate }}
                     </label>
                     <input type="date"
                            class="form-control form-control-lg"
@@ -672,7 +672,7 @@
                   <div class="col-md-6">
                     <label for="fecha2" class="form-label fw-semibold">
                       <i class="bi bi-calendar-x me-1"></i>
-                      Fecha fin
+                      {{ 'modules.projects.workOrders.ui.endDate' | translate }}
                     </label>
                     <input type="date"
                            class="form-control form-control-lg"
@@ -685,7 +685,7 @@
               <div class="col-md-5" *ngIf="tipoReporte === 'semanal'">
                 <label for="semanaSelect" class="form-label fw-semibold">
                     <i class="bi bi-calendar-x me-1"></i>
-                    Seleccionar semana
+                    {{ 'modules.projects.workOrders.ui.selectWeek' | translate }}
                   </label>
                   <input type="week"
                          class="form-control form-control-lg"
@@ -696,7 +696,7 @@
               <div class="col-md-5" *ngIf="tipoReporte === 'mensual'">
                 <label for="mesSelect" class="form-label fw-semibold">
                     <i class="bi bi-calendar-x me-1"></i>
-                    Seleccionar mes
+                    {{ 'modules.projects.workOrders.ui.selectMonth' | translate }}
                   </label>
                   <input type="month"
                          class="form-control form-control-lg"
@@ -717,7 +717,7 @@
       <div class="modal-footer bg-light" *ngIf="mostrarDiv()">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" (click)="cancelar()">
           <i class="bi bi-x-circle me-1"></i>
-          Cancelar
+          {{ 'modules.projects.workOrders.ui.cancel' | translate }}
         </button>
         <button type="submit" form="excelForm" class="btn btn-success" [disabled]="myForm.invalid || isGeneratingReport" (click)="onSubmit()">
           <span *ngIf="isGeneratingReport" class="spinner-border spinner-border-sm me-2" role="status"></span>
@@ -736,7 +736,7 @@
       <div class="modal-header">
         <h5 class="modal-title" id="changeProjectModalLabel">
           <i class="bi bi-arrow-repeat me-2"></i>
-          Cambiar Proyecto
+          {{ 'modules.projects.workOrders.ui.changeProject' | translate }}
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
@@ -745,13 +745,13 @@
         <div class="mb-3">
           <p class="text-muted">
             <i class="bi bi-info-circle me-1"></i>
-            Se cambiarán <strong>{{ getSelectedOTs().length }}</strong> órdenes de trabajo al proyecto seleccionado:
+            {{ 'modules.projects.workOrders.ui.changing' | translate }} <strong>{{ getSelectedOTs().length }}</strong> {{ 'modules.projects.workOrders.ui.workOrdersToSelectedProject' | translate }}
           </p>
           
           <div class="alert alert-light">
             <ul class="mb-0">
               <li *ngFor="let ot of getSelectedOTs()" class="small">
-                OT {{ ot.otNumber }} - {{ ot.description }}
+                {{ 'modules.projects.workOrders.ui.workOrder' | translate }} {{ ot.otNumber }} - {{ ot.description }}
               </li>
             </ul>
           </div>
@@ -760,10 +760,10 @@
         <div class="mb-3">
           <label for="newProjectSelect" class="form-label">
             <i class="bi bi-folder me-1"></i>
-            Nuevo Proyecto:
+            {{ 'modules.projects.workOrders.ui.newProjectLabel' | translate }}
           </label>
           <select class="form-select" id="newProjectSelect" [(ngModel)]="selectedNewProject">
-            <option value="">Seleccione un proyecto...</option>
+            <option value="">{{ 'modules.projects.workOrders.ui.selectProject' | translate }}</option>
             <option *ngFor="let project of projectsList" [value]="project.id">
               {{ project.name }}
             </option>
@@ -774,7 +774,7 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" >
           <i class="bi bi-x-circle me-1"></i>
-          Cancelar
+          {{ 'modules.projects.workOrders.ui.cancel' | translate }}
         </button>
         <button type="button" 
                 class="btn btn-primary" 
@@ -794,12 +794,12 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content shadow-lg border-0 rounded-4">
       <div class="modal-header bg-primary text-white rounded-top-4">
-        <h5 class="modal-title fw-semibold" id="optionModalLabel">Selecciona una opción</h5>
+        <h5 class="modal-title fw-semibold" id="optionModalLabel">{{ 'modules.projects.workOrders.ui.selectAnOption' | translate }}</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
 
       <div class="modal-body text-center">
-        <p class="fs-5 mb-4">¿Qué tipo de archivo deseas subir?</p>
+        <p class="fs-5 mb-4">{{ 'modules.projects.workOrders.ui.chooseFileType' | translate }}</p>
 
         <button
           type="button"
@@ -809,13 +809,13 @@
         >
           <ng-container *ngIf="!isUploading; else uploadingLogo">
             <i class="bi bi-file-earmark-pdf fs-5"></i>
-            <span>Subir PDF con logo</span>
+            <span>{{ 'modules.projects.workOrders.ui.uploadPdfWithLogo' | translate }}</span>
           </ng-container>
           <ng-template #uploadingLogo>
             <div class="spinner-border spinner-border-sm text-primary" role="status">
-              <span class="visually-hidden">Subiendo...</span>
+              <span class="visually-hidden">{{ 'modules.projects.workOrders.ui.uploading' | translate }}</span>
             </div>
-            <span>Subiendo...</span>
+            <span>{{ 'modules.projects.workOrders.ui.uploading' | translate }}</span>
           </ng-template>
         </button>
 
@@ -835,13 +835,13 @@
         >
           <ng-container *ngIf="!isUploading; else uploadingSinLogo">
             <i class="bi bi-file-earmark-pdf fs-5"></i>
-            <span>Subir PDF sin logo</span>
+            <span>{{ 'modules.projects.workOrders.ui.uploadPdfWithoutLogo' | translate }}</span>
           </ng-container>
           <ng-template #uploadingSinLogo>
             <div class="spinner-border spinner-border-sm text-secondary" role="status">
-              <span class="visually-hidden">Subiendo...</span>
+              <span class="visually-hidden">{{ 'modules.projects.workOrders.ui.uploading' | translate }}</span>
             </div>
-            <span>Subiendo...</span>
+            <span>{{ 'modules.projects.workOrders.ui.uploading' | translate }}</span>
           </ng-template>
         </button>
 
@@ -855,7 +855,7 @@
       </div>
 
       <div class="modal-footer border-0 justify-content-center">
-        <small class="text-muted">Puedes cambiar esta opción más adelante</small>
+        <small class="text-muted">{{ 'modules.projects.workOrders.ui.optionCanBeChangedLater' | translate }}</small>
       </div>
     </div>
   </div>

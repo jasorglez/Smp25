@@ -4,39 +4,39 @@
       <ul class="nav nav-pills">
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'get-all-ot')">
           <a class="nav-link green-tab" routerLink="busquedas-ot" routerLinkActive="active">
-            <i class="bi bi-search me-1"></i>Búsquedas OT
+            <i class="bi bi-search me-1"></i>{{ 'modules.projects.workOrders.ui.searchTitle' | translate }}
           </a>
         </li>
 
         <li class="nav-item">
           <a class="nav-link green-tab" routerLink="ordenes" routerLinkActive="active">
-            <i class="bi bi-file-earmark-text me-1"></i>{{'orders' | translate}}
+            <i class="bi bi-file-earmark-text me-1"></i>{{ 'modules.projects.workOrders.ui.workOrders' | translate }}
           </a>
         </li>
 
         <li class="nav-item">
           <a class="nav-link green-tab" routerLink="catastrales" routerLinkActive="active">
-            <i class="bi bi-wrench me-1"></i>OT Manuales
+            <i class="bi bi-wrench me-1"></i>{{ 'modules.projects.workOrders.ui.manualWorkOrders' | translate }}
           </a>
         </li>
 
         <li class="nav-item">
           <a class="nav-link green-tab" routerLink="reportediario" routerLinkActive="active">
-            <i class="bi bi-search me-1"></i>Reportes Diarios
+            <i class="bi bi-search me-1"></i>{{ 'modules.projects.workOrders.ui.dailyReports' | translate }}
           </a>
         </li>
 
         @if (signalsService.getrootChoose() == true) {
           <li class="nav-item">
             <a class="nav-link green-tab" routerLink="unidad" routerLinkActive="active">
-              <i class="bi bi-pie-chart-fill me-1"></i>{{'graphs' | translate}}
+              <i class="bi bi-pie-chart-fill me-1"></i>{{ 'modules.projects.workOrders.ui.costDashboard' | translate }}
             </a>
           </li>
         }
 
         <li class="nav-item">
           <a class="nav-link green-tab" routerLink="conexion" routerLinkActive="active">
-            <i class="bi bi-diagram-3 me-1"></i>Work Program
+            <i class="bi bi-diagram-3 me-1"></i>{{ 'modules.projects.workOrders.ui.workProgram' | translate }}
           </a>
         </li>
 

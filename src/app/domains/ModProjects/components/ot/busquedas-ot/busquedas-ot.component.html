@@ -3,25 +3,25 @@
     <div class="card-header bg-white">
       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
-          <h5 class="mb-0"><i class="bi bi-search me-2"></i>Búsquedas OT</h5>
-          <small class="text-muted">Consulta global de OT por CDC, OT, área y cuadrilla, independiente del sidebar.</small>
+          <h5 class="mb-0"><i class="bi bi-search me-2"></i>{{ 'modules.projects.workOrders.ui.searchTitle' | translate }}</h5>
+          <small class="text-muted">{{ 'modules.projects.workOrders.ui.searchDescription' | translate }}</small>
         </div>
         <div class="d-flex gap-2">
           <button type="button" class="btn btn-outline-primary btn-sm" (click)="refresh()" [disabled]="loading || !searched">
-            <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+            <i class="bi bi-arrow-clockwise me-1"></i>{{ 'modules.projects.workOrders.ui.refresh' | translate }}
           </button>
           <button type="button" class="btn btn-outline-success btn-sm" (click)="exportPage()" [disabled]="!rowData.length">
-            <i class="bi bi-download me-1"></i>Exportar página
+            <i class="bi bi-download me-1"></i>{{ 'modules.projects.workOrders.ui.exportPage' | translate }}
           </button>
           <button type="submit" form="ot-search-form" class="btn btn-primary btn-sm" [disabled]="loading">
             <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
-            <i *ngIf="!loading" class="bi bi-search me-1"></i>Buscar
+            <i *ngIf="!loading" class="bi bi-search me-1"></i>{{ 'modules.projects.workOrders.ui.search' | translate }}
           </button>
           <button type="button" class="btn btn-outline-secondary btn-sm" (click)="clear()" [disabled]="loading">
-            <i class="bi bi-eraser me-1"></i>Limpiar
+            <i class="bi bi-eraser me-1"></i>{{ 'modules.projects.workOrders.ui.clear' | translate }}
           </button>
           <button type="button" class="btn btn-primary btn-sm" (click)="openSelectedOt()" [disabled]="!selectedOt">
-            <i class="bi bi-box-arrow-up-right me-1"></i>Abrir detalle
+            <i class="bi bi-box-arrow-up-right me-1"></i>{{ 'modules.projects.workOrders.ui.openDetails' | translate }}
           </button>
         </div>
       </div>
@@ -30,155 +30,155 @@
     <div class="card-body d-flex flex-column">
       <form id="ot-search-form" class="row g-3 align-items-end mb-3" (ngSubmit)="search(1)">
         <div class="col-sm-6 col-lg-3">
-          <label for="searchCdc" class="form-label">CDC</label>
+          <label for="searchCdc" class="form-label">{{ 'modules.projects.workOrders.grid.cdc' | translate }}</label>
           <input id="searchCdc" name="cdc" type="text" class="form-control"
                  [ngModel]="cdc" (ngModelChange)="onPrimarySearchChanged('cdc', $event)"
-                 placeholder="Buscar por CDC">
+                 [placeholder]="'modules.projects.workOrders.ui.searchByCdc' | translate">
         </div>
         <div class="col-sm-6 col-lg-3">
-          <label for="searchOtNumber" class="form-label">Número OT</label>
+          <label for="searchOtNumber" class="form-label">{{ 'modules.projects.workOrders.grid.otNumber' | translate }}</label>
           <input id="searchOtNumber" name="otNumber" type="text" class="form-control"
                  [ngModel]="otNumber" (ngModelChange)="onPrimarySearchChanged('otNumber', $event)"
-                 placeholder="Buscar por número de OT">
+                 placeholder="{{ 'modules.projects.workOrders.ui.searchByOtNumber' | translate }}">
         </div>
         <div class="col-sm-6 col-lg-3">
-          <label for="searchArea" class="form-label">Área</label>
+          <label for="searchArea" class="form-label">{{ 'modules.projects.workOrders.grid.area' | translate }}</label>
           <select id="searchArea" name="area" class="form-select"
                   [ngModel]="area" (ngModelChange)="onPrimarySearchChanged('area', $event)">
-            <option value="">Todas</option>
-            <option *ngIf="loadingOptions" value="" disabled>Cargando áreas...</option>
+            <option value="">{{ 'modules.projects.workOrders.ui.allFem' | translate }}</option>
+            <option *ngIf="loadingOptions" value="" disabled>{{ 'modules.projects.workOrders.ui.loadingAreas' | translate }}</option>
             <option *ngFor="let option of areaOptions" [value]="option">{{ option }}</option>
           </select>
         </div>
         <div class="col-sm-6 col-lg-3">
-          <label for="searchCuadrilla" class="form-label">Cuadrilla</label>
+          <label for="searchCuadrilla" class="form-label">{{ 'modules.projects.workOrders.grid.crew' | translate }}</label>
           <select id="searchCuadrilla" name="cuadrilla" class="form-select"
                   [ngModel]="cuadrilla" (ngModelChange)="onCuadrillaChanged($event)">
-            <option value="">Todas</option>
-            <option *ngIf="loadingOptions" value="" disabled>Cargando cuadrillas...</option>
+            <option value="">{{ 'modules.projects.workOrders.ui.allFem' | translate }}</option>
+            <option *ngIf="loadingOptions" value="" disabled>{{ 'modules.projects.workOrders.ui.loadingCrews' | translate }}</option>
             <option *ngFor="let option of cuadrillaOptions" [value]="option">{{ option }}</option>
           </select>
         </div>
         <div class="col-sm-6 col-lg-2">
-          <label for="searchStatus" class="form-label">Estado</label>
+          <label for="searchStatus" class="form-label">{{ 'modules.projects.workOrders.grid.status' | translate }}</label>
           <select id="searchStatus" name="status" class="form-select" [(ngModel)]="status">
-            <option value="">Todas</option>
-            <option value="active">Activas</option>
-            <option value="deleted">Borradas</option>
+            <option value="">{{ 'modules.projects.workOrders.ui.allFem' | translate }}</option>
+            <option value="active">{{ 'modules.projects.workOrders.ui.activePlural' | translate }}</option>
+            <option value="deleted">{{ 'modules.projects.workOrders.ui.deletedPlural' | translate }}</option>
           </select>
         </div>
         <div class="col-sm-6 col-lg-2">
-          <label for="searchClosedWeb" class="form-label">Cierre Web</label>
+          <label for="searchClosedWeb" class="form-label">{{ 'modules.projects.workOrders.grid.webClosure' | translate }}</label>
           <select id="searchClosedWeb" name="closedWeb" class="form-select" [(ngModel)]="closedWeb">
-            <option value="">Todos</option>
-            <option value="true">Sí</option>
-            <option value="false">No</option>
+            <option value="">{{ 'modules.projects.workOrders.ui.allMasc' | translate }}</option>
+            <option value="true">{{ 'modules.projects.workOrders.ui.yes' | translate }}</option>
+            <option value="false">{{ 'modules.projects.workOrders.ui.no' | translate }}</option>
           </select>
         </div>
         <div class="col-sm-6 col-lg-2">
-          <label for="searchClosedApp" class="form-label">Cierre App</label>
+          <label for="searchClosedApp" class="form-label">{{ 'modules.projects.workOrders.grid.appClosure' | translate }}</label>
           <select id="searchClosedApp" name="closedApp" class="form-select" [(ngModel)]="closedApp">
-            <option value="">Todos</option>
-            <option value="true">Sí</option>
-            <option value="false">No</option>
+            <option value="">{{ 'modules.projects.workOrders.ui.allMasc' | translate }}</option>
+            <option value="true">{{ 'modules.projects.workOrders.ui.yes' | translate }}</option>
+            <option value="false">{{ 'modules.projects.workOrders.ui.no' | translate }}</option>
           </select>
         </div>
         <div class="col-sm-6 col-lg-2">
-          <label for="searchDateFrom" class="form-label">Desde</label>
+          <label for="searchDateFrom" class="form-label">{{ 'modules.projects.workOrders.ui.from' | translate }}</label>
           <input id="searchDateFrom" name="dateFrom" type="date" class="form-control" [(ngModel)]="dateFrom">
         </div>
         <div class="col-sm-6 col-lg-2">
-          <label for="searchDateTo" class="form-label">Hasta</label>
+          <label for="searchDateTo" class="form-label">{{ 'modules.projects.workOrders.ui.to' | translate }}</label>
           <input id="searchDateTo" name="dateTo" type="date" class="form-control" [(ngModel)]="dateTo">
         </div>
         <div class="col-12">
           <div class="content-toggle-row">
             <label class="toggle-option">
-              <span>Fotos</span>
+              <span>{{ 'modules.projects.workOrders.grid.photos' | translate }}</span>
               <select name="hasPhotos" class="form-select form-select-sm" [(ngModel)]="hasPhotos">
-                <option value="">Todos</option>
-                <option value="true">Con fotos</option>
-                <option value="false">Sin fotos</option>
+                <option value="">{{ 'modules.projects.workOrders.ui.allMasc' | translate }}</option>
+                <option value="true">{{ 'modules.projects.workOrders.ui.withPhotos' | translate }}</option>
+                <option value="false">{{ 'modules.projects.workOrders.ui.withoutPhotos' | translate }}</option>
               </select>
             </label>
             <label class="toggle-option">
-              <span>Personal</span>
+              <span>{{ 'modules.projects.workOrders.grid.personnel' | translate }}</span>
               <select name="hasPersonal" class="form-select form-select-sm" [(ngModel)]="hasPersonal">
-                <option value="">Todos</option>
-                <option value="true">Con personal</option>
-                <option value="false">Sin personal</option>
+                <option value="">{{ 'modules.projects.workOrders.ui.allMasc' | translate }}</option>
+                <option value="true">{{ 'modules.projects.workOrders.ui.withPersonnel' | translate }}</option>
+                <option value="false">{{ 'modules.projects.workOrders.ui.withoutPersonnel' | translate }}</option>
               </select>
             </label>
             <label class="toggle-option">
-              <span>Material</span>
+              <span>{{ 'modules.projects.workOrders.grid.material' | translate }}</span>
               <select name="hasMaterial" class="form-select form-select-sm" [(ngModel)]="hasMaterial">
-                <option value="">Todos</option>
-                <option value="true">Con material</option>
-                <option value="false">Sin material</option>
+                <option value="">{{ 'modules.projects.workOrders.ui.allMasc' | translate }}</option>
+                <option value="true">{{ 'modules.projects.workOrders.ui.withMaterial' | translate }}</option>
+                <option value="false">{{ 'modules.projects.workOrders.ui.withoutMaterial' | translate }}</option>
               </select>
             </label>
             <label class="toggle-option">
-              <span>Equipos</span>
+              <span>{{ 'modules.projects.workOrders.grid.equipment' | translate }}</span>
               <select name="hasEquipment" class="form-select form-select-sm" [(ngModel)]="hasEquipment">
-                <option value="">Todos</option>
-                <option value="true">Con equipos</option>
-                <option value="false">Sin equipos</option>
+                <option value="">{{ 'modules.projects.workOrders.ui.allMasc' | translate }}</option>
+                <option value="true">{{ 'modules.projects.workOrders.ui.withEquipment' | translate }}</option>
+                <option value="false">{{ 'modules.projects.workOrders.ui.withoutEquipment' | translate }}</option>
               </select>
             </label>
           </div>
         </div>
         <div class="col-12">
-          <small class="text-muted">Usa un criterio principal a la vez. Los filtros avanzados de abajo refinan el resultado sin mezclar CDC, OT y Área.</small>
+          <small class="text-muted">{{ 'modules.projects.workOrders.ui.searchGuidance' | translate }}</small>
         </div>
       </form>
 
       <div class="search-meta mb-2">
         <div class="meta-card">
-          <span class="meta-label">Resultados</span>
+          <span class="meta-label">{{ 'modules.projects.workOrders.ui.results' | translate }}</span>
           <strong>{{ totalRecords || rowData.length || 0 }}</strong>
         </div>
         <div class="meta-card">
-          <span class="meta-label">Página</span>
+          <span class="meta-label">{{ 'modules.projects.workOrders.ui.page' | translate }}</span>
           <strong>{{ currentPage || 0 }} / {{ totalPages || 0 }}</strong>
         </div>
         <div class="meta-card">
-          <span class="meta-label">Rango visible</span>
+          <span class="meta-label">{{ 'modules.projects.workOrders.ui.visibleRange' | translate }}</span>
           <strong>{{ pageStart }} - {{ pageEnd }}</strong>
         </div>
         <div class="meta-card flex-grow-1">
-          <span class="meta-label">Contenido faltante</span>
+          <span class="meta-label">{{ 'modules.projects.workOrders.ui.missingContent' | translate }}</span>
           <strong>{{ missingContentLabel }}</strong>
         </div>
       </div>
 
       <div *ngIf="selectedOt" class="assignment-summary mb-2" role="status">
         <div>
-          <span class="summary-label">OT</span>
-          <strong>{{ selectedOt.otNumber || 'Sin número' }}</strong>
+          <span class="summary-label">{{ 'modules.projects.workOrders.ui.workOrder' | translate }}</span>
+          <strong>{{ selectedOt.otNumber || ('modules.projects.workOrders.ui.noNumber' | translate) }}</strong>
         </div>
         <div>
-          <span class="summary-label">CDC</span>
-          <strong>{{ selectedOt.cdc || 'Sin CDC' }}</strong>
+          <span class="summary-label">{{ 'modules.projects.workOrders.grid.cdc' | translate }}</span>
+          <strong>{{ selectedOt.cdc || ('modules.projects.workOrders.ui.noCdc' | translate) }}</strong>
         </div>
         <div class="crew-summary">
-          <span class="summary-label">Cuadrilla a la que pertenece</span>
-          <strong>{{ selectedOt.cuadrilla || 'Sin asignar' }}</strong>
+          <span class="summary-label">{{ 'modules.projects.workOrders.ui.assignedCrew' | translate }}</span>
+          <strong>{{ selectedOt.cuadrilla || ('modules.projects.workOrders.ui.unassigned' | translate) }}</strong>
         </div>
         <span class="badge" [ngClass]="selectedOt.active === false ? 'bg-danger' : 'bg-success'">
-          {{ selectedOt.active === false ? 'BORRADA' : 'ACTIVA' }}
+          {{ (selectedOt.active === false ? 'modules.projects.workOrders.ui.deleted' : 'modules.projects.workOrders.ui.active') | translate }}
         </span>
         <div class="content-summary ms-auto">
           <button type="button" class="content-badge" [ngClass]="contentBadgeClass('photos')" (click)="openContentModal('photos')">
-            <i class="bi bi-camera me-1"></i>Fotos: {{ formatContentCount(selectedOt.photoCount) }}
+            <i class="bi bi-camera me-1"></i>{{ 'modules.projects.workOrders.grid.photos' | translate }}: {{ formatContentCount(selectedOt.photoCount) }}
           </button>
           <button type="button" class="content-badge" [ngClass]="contentBadgeClass('personal')" (click)="openContentModal('personal')">
-            <i class="bi bi-people me-1"></i>Personal: {{ formatContentCount(selectedOt.personalCount) }}
+            <i class="bi bi-people me-1"></i>{{ 'modules.projects.workOrders.grid.personnel' | translate }}: {{ formatContentCount(selectedOt.personalCount) }}
           </button>
           <button type="button" class="content-badge" [ngClass]="contentBadgeClass('material')" (click)="openContentModal('material')">
-            <i class="bi bi-box-seam me-1"></i>Material: {{ formatContentCount(selectedOt.materialCount) }}
+            <i class="bi bi-box-seam me-1"></i>{{ 'modules.projects.workOrders.grid.material' | translate }}: {{ formatContentCount(selectedOt.materialCount) }}
           </button>
           <button type="button" class="content-badge" [ngClass]="contentBadgeClass('equipment')" (click)="openContentModal('equipment')">
-            <i class="bi bi-tools me-1"></i>Equipos: {{ formatContentCount(selectedOt.equipmentCount) }}
+            <i class="bi bi-tools me-1"></i>{{ 'modules.projects.workOrders.grid.equipment' | translate }}: {{ formatContentCount(selectedOt.equipmentCount) }}
           </button>
         </div>
       </div>
@@ -186,31 +186,31 @@
       <div *ngIf="selectedOt" class="semaphore-strip mb-3">
         <span class="semaphore-pill" [ngClass]="semaphoreStatusClass(selectedOt.active)">
           <i class="bi bi-circle-fill"></i>
-          {{ selectedOt.active === false ? 'Borrada' : 'Activa' }}
+          {{ (selectedOt.active === false ? 'modules.projects.workOrders.ui.deleted' : 'modules.projects.workOrders.ui.active') | translate }}
         </span>
         <span class="semaphore-pill" [ngClass]="semaphoreClosureClass(selectedOt.closed)">
           <i class="bi bi-circle-fill"></i>
-          Cierre Web: {{ selectedOt.closed ? 'Sí' : 'No' }}
+          {{ 'modules.projects.workOrders.grid.webClosure' | translate }}: {{ selectedOt.closed ? ('modules.projects.workOrders.ui.yes' | translate) : ('modules.projects.workOrders.ui.no' | translate) }}
         </span>
         <span class="semaphore-pill" [ngClass]="semaphoreClosureClass(selectedOt.closedApp)">
           <i class="bi bi-circle-fill"></i>
-          Cierre App: {{ selectedOt.closedApp ? 'Sí' : 'No' }}
+          {{ 'modules.projects.workOrders.grid.appClosure' | translate }}: {{ selectedOt.closedApp ? ('modules.projects.workOrders.ui.yes' | translate) : ('modules.projects.workOrders.ui.no' | translate) }}
         </span>
         <span class="semaphore-pill" [ngClass]="semaphoreContentClass(selectedOt.photoCount)">
           <i class="bi bi-circle-fill"></i>
-          Fotos: {{ selectedOt.photoCount || 0 }}
+          {{ 'modules.projects.workOrders.grid.photos' | translate }}: {{ selectedOt.photoCount || 0 }}
         </span>
         <span class="semaphore-pill" [ngClass]="semaphoreContentClass(selectedOt.personalCount)">
           <i class="bi bi-circle-fill"></i>
-          Personal: {{ selectedOt.personalCount || 0 }}
+          {{ 'modules.projects.workOrders.grid.personnel' | translate }}: {{ selectedOt.personalCount || 0 }}
         </span>
         <span class="semaphore-pill" [ngClass]="semaphoreContentClass(selectedOt.materialCount)">
           <i class="bi bi-circle-fill"></i>
-          Material: {{ selectedOt.materialCount || 0 }}
+          {{ 'modules.projects.workOrders.grid.material' | translate }}: {{ selectedOt.materialCount || 0 }}
         </span>
         <span class="semaphore-pill" [ngClass]="semaphoreContentClass(selectedOt.equipmentCount)">
           <i class="bi bi-circle-fill"></i>
-          Equipos: {{ selectedOt.equipmentCount || 0 }}
+          {{ 'modules.projects.workOrders.grid.equipment' | translate }}: {{ selectedOt.equipmentCount || 0 }}
         </span>
       </div>
 
@@ -229,7 +229,7 @@
 
       <div class="pager-bar mt-3">
         <div class="d-flex align-items-center gap-2">
-          <span class="text-muted small">Tamaño de página</span>
+          <span class="text-muted small">{{ 'modules.projects.workOrders.ui.pageSize' | translate }}</span>
           <select class="form-select form-select-sm page-size-select" [(ngModel)]="pageSize" name="pageSize" (change)="search(1)">
             <option [ngValue]="25">25</option>
             <option [ngValue]="50">50</option>
@@ -241,7 +241,7 @@
           <button type="button" class="btn btn-outline-secondary btn-sm" (click)="previousPage()" [disabled]="loading || currentPage <= 1">
             <i class="bi bi-chevron-left"></i>
           </button>
-          <span class="page-indicator">Página {{ currentPage || 0 }} de {{ totalPages || 0 }}</span>
+          <span class="page-indicator">{{ 'modules.projects.workOrders.ui.page' | translate }} {{ currentPage || 0 }} {{ 'modules.projects.workOrders.ui.of' | translate }} {{ totalPages || 0 }}</span>
           <button type="button" class="btn btn-outline-secondary btn-sm" (click)="nextPage()" [disabled]="loading || currentPage >= totalPages">
             <i class="bi bi-chevron-right"></i>
           </button>
@@ -254,14 +254,14 @@
     <div class="content-modal-shell shadow-lg" (click)="$event.stopPropagation()">
       <div class="content-modal-header">
         <div>
-          <div class="content-modal-kicker">Detalle de contenido OT</div>
+          <div class="content-modal-kicker">{{ 'modules.projects.workOrders.ui.contentDetailsTitle' | translate }}</div>
           <h5 class="mb-0">
-            OT {{ contentModalOt?.otNumber || 'Sin número' }}
+            {{ 'modules.projects.workOrders.ui.workOrder' | translate }} {{ contentModalOt?.otNumber || ('modules.projects.workOrders.ui.noNumber' | translate) }}
           </h5>
           <div class="content-modal-meta">
-            <span>CDC: <strong>{{ contentModalOt?.cdc || 'Sin CDC' }}</strong></span>
-            <span>Cuadrilla: <strong>{{ contentModalOt?.cuadrilla || 'Sin asignar' }}</strong></span>
-            <span>Estado: <strong>{{ contentModalOt?.active === false ? 'Borrada' : 'Activa' }}</strong></span>
+            <span>{{ 'modules.projects.workOrders.grid.cdc' | translate }}: <strong>{{ contentModalOt?.cdc || ('modules.projects.workOrders.ui.noCdc' | translate) }}</strong></span>
+            <span>{{ 'modules.projects.workOrders.grid.crew' | translate }}: <strong>{{ contentModalOt?.cuadrilla || ('modules.projects.workOrders.ui.unassigned' | translate) }}</strong></span>
+            <span>{{ 'modules.projects.workOrders.grid.status' | translate }}: <strong>{{ (contentModalOt?.active === false ? 'modules.projects.workOrders.ui.deleted' : 'modules.projects.workOrders.ui.active') | translate }}</strong></span>
           </div>
         </div>
         <button type="button" class="btn btn-sm btn-outline-secondary" (click)="closeContentModal()">
@@ -271,19 +271,19 @@
 
       <div class="content-tabs-row">
         <button type="button" class="content-tab-button" [class.active]="isActiveContentTab('photos')" (click)="setContentModalTab('photos')">
-          <i class="bi bi-camera me-1"></i>Fotos
+          <i class="bi bi-camera me-1"></i>{{ 'modules.projects.workOrders.grid.photos' | translate }}
           <span class="tab-count">{{ contentTabCount('photos') }}</span>
         </button>
         <button type="button" class="content-tab-button" [class.active]="isActiveContentTab('personal')" (click)="setContentModalTab('personal')">
-          <i class="bi bi-people me-1"></i>Personal
+          <i class="bi bi-people me-1"></i>{{ 'modules.projects.workOrders.grid.personnel' | translate }}
           <span class="tab-count">{{ contentTabCount('personal') }}</span>
         </button>
         <button type="button" class="content-tab-button" [class.active]="isActiveContentTab('material')" (click)="setContentModalTab('material')">
-          <i class="bi bi-box-seam me-1"></i>Material
+          <i class="bi bi-box-seam me-1"></i>{{ 'modules.projects.workOrders.grid.material' | translate }}
           <span class="tab-count">{{ contentTabCount('material') }}</span>
         </button>
         <button type="button" class="content-tab-button" [class.active]="isActiveContentTab('equipment')" (click)="setContentModalTab('equipment')">
-          <i class="bi bi-tools me-1"></i>Equipos
+          <i class="bi bi-tools me-1"></i>{{ 'modules.projects.workOrders.grid.equipment' | translate }}
           <span class="tab-count">{{ contentTabCount('equipment') }}</span>
         </button>
       </div>
@@ -291,7 +291,7 @@
       <div class="content-modal-body">
         <div *ngIf="contentModalLoading" class="content-loading">
           <div class="spinner-border text-primary" role="status"></div>
-          <span>Cargando contenido de la OT...</span>
+          <span>{{ 'modules.projects.workOrders.ui.loadingOtContent' | translate }}</span>
         </div>
 
         <div *ngIf="!contentModalLoading && contentModalError" class="alert alert-warning mb-3">
@@ -307,12 +307,12 @@
                        [src]="resolveContentImage(item)"
                        [alt]="contentEntryTitle(item)"
                        (click)="openImageInNewTab(item)"
-                       title="Abrir imagen"
+                       [title]="'modules.projects.workOrders.ui.openImage' | translate"
                        style="cursor:pointer;">
                   <ng-template #noPhoto>
                     <div class="no-photo-box">
                       <i class="bi bi-image"></i>
-                      <span>Sin imagen</span>
+                      <span>{{ 'modules.projects.workOrders.ui.noImage' | translate }}</span>
                     </div>
                   </ng-template>
                 </div>
@@ -323,7 +323,7 @@
                 </div>
               </article>
               <div *ngIf="!getContentItems('photos').length" class="content-empty-state">
-                No hay fotos registradas para esta OT.
+                {{ 'modules.projects.workOrders.ui.noPhotosForOt' | translate }}
               </div>
             </div>
 
@@ -331,13 +331,13 @@
               <table class="table table-sm align-middle mb-0">
                 <thead>
                   <tr>
-                    <th>Fecha</th>
-                    <th>Descripción</th>
-                    <th>Cantidad</th>
-                    <th>Posición</th>
-                    <th>Supervisor</th>
-                    <th>Cuadrilla</th>
-                    <th>Recurso</th>
+                    <th>{{ 'modules.projects.workOrders.grid.date' | translate }}</th>
+                    <th>{{ 'modules.projects.workOrders.grid.description' | translate }}</th>
+                    <th>{{ 'modules.projects.workOrders.grid.quantity' | translate }}</th>
+                    <th>{{ 'modules.projects.workOrders.grid.position' | translate }}</th>
+                    <th>{{ 'modules.projects.workOrders.grid.supervisor' | translate }}</th>
+                    <th>{{ 'modules.projects.workOrders.grid.crew' | translate }}</th>
+                    <th>{{ 'modules.projects.workOrders.grid.resource' | translate }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -355,7 +355,7 @@
                   </tr>
                   <tr *ngIf="!getContentItems(contentModalTab).length">
                     <td colspan="7" class="text-center text-muted py-4">
-                      No hay registros para este apartado.
+                      {{ 'modules.projects.workOrders.ui.noSectionRecords' | translate }}
                     </td>
                   </tr>
                 </tbody>

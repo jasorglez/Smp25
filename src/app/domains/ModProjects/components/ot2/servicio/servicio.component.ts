@@ -13,6 +13,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TrackingService } from 'app/services/tracking.service';
+import { injectWorkOrderTranslator } from '../../ot/work-order-i18n';
 
 interface ServicioData {
   codigo: string;
@@ -42,6 +43,7 @@ interface ServicioData {
   styleUrl: './servicio.component.scss'
 })
 export class ServicioComponent implements OnInit {
+  private readonly t = injectWorkOrderTranslator();
   private trackingService = inject(TrackingService);
   
   // Servicios inyectados
@@ -93,7 +95,7 @@ export class ServicioComponent implements OnInit {
   public columnDefs: ColDef[] = [
     {
       field: 'codigo',
-      headerName: 'Código',
+      headerName: this.t('grid.code'),
       editable: true,
       minWidth: 100,
       maxWidth: 140,
@@ -106,7 +108,7 @@ export class ServicioComponent implements OnInit {
     },
     {
       field: 'descripcion',
-      headerName: 'Descripción del Servicio',
+      headerName: this.t('grid.serviceDescription'),
       editable: true,
       minWidth: 300,
       flex: 2,
@@ -121,7 +123,7 @@ export class ServicioComponent implements OnInit {
     },
     {
       field: 'plazo',
-      headerName: 'Fecha Límite',
+      headerName: this.t('grid.dueDate'),
       editable: true,
       minWidth: 120,
       maxWidth: 160,
@@ -142,7 +144,7 @@ export class ServicioComponent implements OnInit {
     },
     {
       field: 'origen',
-      headerName: 'Origen',
+      headerName: this.t('grid.source'),
       editable: true,
       minWidth: 100,
       maxWidth: 130,
@@ -153,16 +155,16 @@ export class ServicioComponent implements OnInit {
       },
       valueFormatter: (params) => {
         const origenMap: {[key: string]: string} = {
-          '0': 'Interno',
-          '1': 'Externo',
-          '2': 'Cliente'
+          '0': this.t('ui.internal'),
+          '1': this.t('ui.external'),
+          '2': this.t('ui.client')
         };
         return origenMap[params.value] || params.value;
       }
     },
     {
       field: 'prioridad',
-      headerName: 'Prioridad',
+      headerName: this.t('grid.priority'),
       editable: true,
       minWidth: 110,
       maxWidth: 150,
@@ -517,7 +519,7 @@ export class ServicioComponent implements OnInit {
       return;
     }
     
-    if (!confirm('¿Está seguro de que desea revertir todos los cambios? Esta acción no se puede deshacer.')) {
+    if (!confirm(this.t('alerts.confirmRevertAllServiceChanges'))) {
       return;
     }
     
@@ -543,7 +545,7 @@ export class ServicioComponent implements OnInit {
     const selectedData = selectedNodes[0].data;
     const description = selectedData.descripcion || 'Sin descripción';
     
-    if (confirm(`¿Está seguro de que desea eliminar el servicio "${description}"?\n\nEsta acción no se puede deshacer.`)) {
+    if (confirm(this.t('alerts.confirmDeleteService', { description }))) {
       this.rowData = this.rowData.filter(row => row !== selectedData);
       this.notSavedChanges = true;
       this.hasSelection = false;

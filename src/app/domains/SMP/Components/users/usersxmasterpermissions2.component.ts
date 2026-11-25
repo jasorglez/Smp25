@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -8,11 +9,12 @@ import { SignalsService } from 'app/services/signals.service';
 import { MasterPermissions2Service } from 'app/services/master-permissions-2.service';
 import { forkJoin } from 'rxjs';
 import { TrackingService } from 'app/services/tracking.service';
+import { injectUserSetupTranslator } from './user-setup-i18n';
 
 @Component({
   selector: 'app-usersxmasterpermissions2',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, TranslateModule, UsersProfileComponent],
   templateUrl: './usersxmasterpermissions2.component.html',
   styleUrl: './usersxmasterpermissions2.component.scss',
   styles: [
@@ -23,11 +25,12 @@ import { TrackingService } from 'app/services/tracking.service';
 })
 
 export class UsersxMasterPermissions2Component {
+  private readonly u18n = injectUserSetupTranslator();
   masterPermissions: any[] = []; // Almacena los permisos maestros
   userPermissions: number[] = []; // Almacena los IDs de los permisos del usuario
   selectedUserId: number; // Cambia esto según el usuario seleccionado
   idEmpresa: number;
-  profileSectionTitle: string = 'Permisos activos';
+  profileSectionTitle: string = this.u18n('activePermissions');
   loading = false;
   saving = false;
   private loadRequest = 0;
@@ -83,7 +86,7 @@ export class UsersxMasterPermissions2Component {
       error: () => {
         if (request !== this.loadRequest) return;
         this.loading = false;
-        alerts.basicAlert('Error', 'No se pudieron cargar los permisos de la empresa seleccionada.', 'error');
+        alerts.basicAlert(this.u18n('error'), this.u18n('alerts.companyPermissionsLoadFailed'), 'error');
       }
     });
   }
@@ -142,12 +145,12 @@ export class UsersxMasterPermissions2Component {
       next: () => {
         this.saving = false;
         if (companyId === this.idEmpresa && userId === this.selectedUserId)
-          alerts.basicAlert('Mensaje', 'Permisos de la empresa actualizados correctamente.', 'success');
+          alerts.basicAlert(this.u18n('message'), this.u18n('alerts.companyPermissionsUpdated'), 'success');
       },
       error: () => {
         this.saving = false;
         if (companyId !== this.idEmpresa || userId !== this.selectedUserId) return;
-        alerts.basicAlert('Error', 'No se pudieron guardar los permisos.', 'error');
+        alerts.basicAlert(this.u18n('error'), this.u18n('alerts.permissionsSaveFailed'), 'error');
         this.loadPermissions();
       }
     });

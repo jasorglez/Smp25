@@ -38,6 +38,7 @@ import { AuthService } from 'app/services/auth.service';
 import * as bootstrap from 'bootstrap';
 import { firstValueFrom, lastValueFrom, EMPTY, catchError, first, Observable, tap, of, map } from 'rxjs';
 import Swal from 'sweetalert2';
+import { injectWorkOrderTranslator } from '../work-order-i18n';
 
 
 @Pipe({
@@ -153,6 +154,7 @@ interface Video {
   styleUrl: './ordenes.component.scss',
 })
 export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
+  private readonly t = injectWorkOrderTranslator();
 
   @Input() captureMode = false;
   @Input() captureOt: any = null;
@@ -223,11 +225,11 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     if (this.canSaveReportDetails) return true;
     const report = this.reportesDiarios.find((row: any) => String(row.id) === String(this.selectedReporteId));
     if (!report || !report.__isNew) {
-      alerts.basicAlert('Reporte diario requerido', 'Selecciona o crea un reporte diario antes de guardar sus partidas.', 'warning');
+      alerts.basicAlert(this.t('alerts.dailyReportRequiredTitle'), this.t('alerts.selectOrCreateReportBeforeSavingItems'), 'warning');
       return false;
     }
     if (!hasPersistedMasterId(report.idOt)) {
-      alerts.basicAlert('OT requerida', 'Guarda la orden de trabajo antes de guardar el reporte diario y sus partidas.', 'warning');
+      alerts.basicAlert(this.t('alerts.workOrderRequiredTitle'), this.t('alerts.saveWorkOrderBeforeReportItems'), 'warning');
       return false;
     }
 
@@ -252,7 +254,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       return true;
     } catch (error: any) {
       console.error('Error guardando el reporte diario antes de sus partidas:', error);
-      alerts.basicAlert('No se pudo guardar el reporte diario', error?.error?.message || error?.message || 'Revisa los datos del reporte e inténtalo de nuevo.', 'error');
+      alerts.basicAlert(this.t('alerts.dailyReportSaveFailedTitle'), error?.error?.message || error?.message || this.t('alerts.reviewReportDataAndTryAgain'), 'error');
       return false;
     }
   }
@@ -424,8 +426,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     const selectedRows = this.gridApi.getSelectedRows();
     if (selectedRows.length === 0) {
       alerts.basicAlert(
-        'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
+        this.t('alerts.deleteEntryTitle'),
+        this.t('alerts.selectEntryToDelete'),
         'error'
       );
       return;
@@ -482,7 +484,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     this.filtrarTipoReporte(this.myForm.value.tipoReporte);
 
     if (this.myForm.invalid) {
-      alerts.basicAlert('Info', 'Por favor, completa todos los campos requeridos.', 'info');
+      alerts.basicAlert(this.t('alerts.infoTitle'), this.t('alerts.completeRequiredFields'), 'info');
       return;
     }
 
@@ -508,7 +510,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
 
-            alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
+            alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.excelGeneratedForDateRange', { start: this.fechaInicio, end: this.fechaFin }), 'success');
             this.closeModal();
           },
           error: async (error) => {
@@ -519,7 +521,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
             if (error.error instanceof Blob) {
               errorMessage = await (error.error as Blob).text();
             }
-            alerts.basicAlert('Error', errorMessage, 'error');
+            alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
           }
         });
         break;
@@ -538,7 +540,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
 
-            alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
+            alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.excelGeneratedForDateRange', { start: this.fechaInicio, end: this.fechaFin }), 'success');
             this.closeModal();
           },
           error: async (error) => {
@@ -549,7 +551,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
             if (error.error instanceof Blob) {
               errorMessage = await (error.error as Blob).text();
             }
-            alerts.basicAlert('Error', errorMessage, 'error');
+            alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
           }
         });
         break;
@@ -568,7 +570,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
 
-            alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
+            alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.excelGeneratedForDateRange', { start: this.fechaInicio, end: this.fechaFin }), 'success');
             this.closeModal();
           },
           error: async (error) => {
@@ -579,7 +581,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
             if (error.error instanceof Blob) {
               errorMessage = await (error.error as Blob).text();
             }
-            alerts.basicAlert('Error', errorMessage, 'error');
+            alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
           }
         });
         break;
@@ -599,7 +601,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
 
-            alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
+            alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.excelGeneratedForDateRange', { start: this.fechaInicio, end: this.fechaFin }), 'success');
             this.closeModal();
           },
           error: async (error) => {
@@ -610,14 +612,14 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
             if (error.error instanceof Blob) {
               errorMessage = await (error.error as Blob).text();
             }
-            alerts.basicAlert('Error', errorMessage, 'error');
+            alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
           }
         });
         break;
 
       case 'cuadrilla-externa':
         if (this.seleccionados.length === 0) {
-          alerts.basicAlert('Advertencia', 'Seleccione una cuadrilla', 'warning');
+          alerts.basicAlert(this.t('alerts.warningTitle'), this.t('alerts.selectCrew'), 'warning');
           this.isGeneratingReport = false;
         } else {
           this.updateExcelService.processAndDownloadCuadExter(this.fechaInicio, this.fechaFin, this.seleccionados).subscribe({
@@ -634,7 +636,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
               document.body.removeChild(a);
               window.URL.revokeObjectURL(url);
 
-              alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
+              alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.excelGeneratedForDateRange', { start: this.fechaInicio, end: this.fechaFin }), 'success');
               this.closeModal();
             },
             error: async (error) => {
@@ -645,7 +647,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
               if (error.error instanceof Blob) {
                 errorMessage = await (error.error as Blob).text();
               }
-              alerts.basicAlert('Error', errorMessage, 'error');
+              alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
             }
           });
         }
@@ -653,7 +655,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
       default:
         this.isGeneratingReport = false;
-        alerts.basicAlert('Advertencia', 'Opción no válida.', 'warning');
+        alerts.basicAlert(this.t('alerts.warningTitle'), this.t('alerts.invalidOption'), 'warning');
         break;
     }
   }
@@ -675,12 +677,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         }
 
         this.masterNotSavedChanges = false;
-        alerts.basicAlert('Éxito', `Se actualizaron ${selectedRows.length} OTs correctamente`, 'success');
+        alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.workOrdersUpdated', { count: selectedRows.length }), 'success');
         this.obtenerDatos();
         return;
 
       } catch (error) {
-        alerts.basicAlert('Error', 'Error al actualizar las OTs', 'error');
+        alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.updateWorkOrdersFailed'), 'error');
         return;
       }
     }
@@ -707,13 +709,13 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         );
 
         this.masterNotSavedChanges = false;
-        alerts.basicAlert('Éxito', 'OT actualizada correctamente', 'success');
+        alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.workOrderUpdated'), 'success');
         this.obtenerDatos();
 
       },
       error: (error) => {
         console.error('Error al actualizar OT:', error);
-        alerts.basicAlert('Error', 'Error al actualizar la OT', 'error');
+        alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.updateWorkOrderFailed'), 'error');
       }
     });
 
@@ -766,7 +768,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       },
       {
         colId: 'otContentIndicators',
-        headerName: 'Información',
+        headerName: this.t('grid.information'),
         width: 190,
         minWidth: 175,
         maxWidth: 220,
@@ -779,7 +781,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       },
       {
         field: 'idProject',
-        headerName: 'Proyecto',
+        headerName: this.t('grid.project'),
 
         filter: true,
         filterParams: {
@@ -812,7 +814,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       },
       {
         field: 'cdc',
-        headerName: 'CDC',
+        headerName: this.t('grid.cdc'),
         
         filter: true,
         
@@ -826,7 +828,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       },
        {
          field: 'cuentaHoja',
-         headerName: 'Hoja',
+         headerName: this.t('grid.sheet'),
          
          filter: true,
          
@@ -835,7 +837,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
        },
       {
         field: 'otNumber',
-        headerName: 'OT',
+        headerName: this.t('grid.workOrder'),
 
         filter: true,
         filterParams: {
@@ -852,7 +854,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       },
       {
         field: 'package',
-        headerName: 'Paquete',
+        headerName: this.t('grid.package'),
         
         filter: true,
         
@@ -861,7 +863,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       },
       {
         field: 'results',
-        headerName: 'Resultados',
+        headerName: this.t('grid.results'),
         
         filter: true,
         
@@ -877,10 +879,10 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
           // Preguntar si se desea cerrar la OT
           const confirmResult = await alerts.confirmAlert(
-            'Cerrar Orden de Trabajo',
-            '¿Deseas cerrar esta OT en la App y en la Web? Los resultados también se guardarán.',
+            this.t('alerts.closeWorkOrderTitle'),
+            this.t('alerts.confirmCloseWorkOrderAppWeb'),
             'question',
-            'Sí, cerrar y guardar'
+            this.t('alerts.closeAndSave')
           );
 
           if (confirmResult.isConfirmed) {
@@ -896,9 +898,9 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
           this.otService.updateOt(otId, otData).subscribe({
             next: () => {
               const message = confirmResult.isConfirmed
-                ? `La OT ${otData.otNumber} ha sido cerrada y los resultados guardados.`
-                : `Resultados de la OT ${otData.otNumber} actualizados correctamente.`;
-              alerts.basicAlert('Éxito', message, 'success');
+                ? this.t('alerts.workOrderClosedAndResultsSaved', { number: otData.otNumber })
+                : this.t('alerts.workOrderResultsUpdated', { number: otData.otNumber });
+              alerts.basicAlert(this.t('alerts.successTitle'), message, 'success');
               if (confirmResult.isConfirmed) {
                 // Si se cerró la OT, la eliminamos de la vista del grid
                 params.api.applyTransaction({ remove: [otData] });
@@ -907,7 +909,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
             },
             error: (error) => {
               console.error('Error al actualizar la OT:', error);
-              alerts.basicAlert('Error', 'No se pudo guardar el cambio. Por favor, intente de nuevo.', 'error');
+              alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.changeSaveFailed'), 'error');
               // Revertir el cambio en la UI en caso de error
               params.node.setDataValue(params.colDef.field!, params.oldValue);
             }
@@ -916,7 +918,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       },
       {
         field: 'area',
-        headerName: 'Area',
+        headerName: this.t('grid.area'),
 
         filter: true,
 
@@ -931,7 +933,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       },
       {
         field: 'closedApp',
-        headerName: 'APP',
+        headerName: this.t('grid.appClosure'),
         
         filter: true,
         
@@ -942,7 +944,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       },
       {
         field: 'closed',
-        headerName: 'Web',
+        headerName: this.t('grid.webClosure'),
         
         filter: true,
         
@@ -970,7 +972,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
   public materialesColumnDefs: ColDef[] = [
       {
-      field: 'idResource', cellDataType: false, headerName: 'Material', flex: 2,
+      field: 'idResource', cellDataType: false, headerName: this.t('grid.material'), flex: 2,
       editable: () => !this.signalsService.getClosedReport()() && !this.creatingQuickResource && !this.savingResourceDetails,
       cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: params => this.reportResourceEditorParams('MATERIAL', params.data?.idResource),
@@ -980,7 +982,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
       {
         field: 'quantity',
-        headerName: 'Cantidad',
+        headerName: this.t('grid.quantity'),
         width: 100,
         editable: () => !this.signalsService.getClosedReport()() && !this.savingResourceDetails,
         cellDataType: 'number', cellEditor: 'agNumberCellEditor'
@@ -988,7 +990,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
       {
         field: 'unidad',
-        headerName: 'Unidad',
+        headerName: this.t('grid.unit'),
         width: 100,
         editable: false,
 
@@ -1011,7 +1013,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   public equiposColumnDefs: ColDef[] = [
     //{ field: 'id', headerName: 'ID', width: 80 },
     {
-      field: 'idResource', cellDataType: false, headerName: 'Equipo', flex: 2,
+      field: 'idResource', cellDataType: false, headerName: this.t('grid.equipment'), flex: 2,
       editable: () => !this.signalsService.getClosedReport()() && !this.creatingQuickResource && !this.savingResourceDetails,
       cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: params => this.reportResourceEditorParams('EQUIPMENT', params.data?.idResource),
@@ -1020,7 +1022,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     },
     {
       field: 'quantity',
-      headerName: 'Cantidad',
+      headerName: this.t('grid.quantity'),
       flex: 1,
       editable: () => !this.signalsService.getClosedReport()() && !this.savingResourceDetails,
       cellDataType: 'number',
@@ -1031,13 +1033,13 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       }
     },
     //{ field: 'quantity', headerName: 'Horas', width: 100, editable: !this.signalsService.getClosedReport() },
-    //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
+    //{ field: 'fechaUso', headerName: this.t('grid.date'), width: 120 }
   ];
 
   public personalColumnDefs: ColDef[] = [
     //{ field: 'id', headerName: 'ID', width: 80 },
     {
-      field: 'idResource', cellDataType: false, headerName: 'Nombre', flex: 2,
+      field: 'idResource', cellDataType: false, headerName: this.t('grid.name'), flex: 2,
       editable: () => !this.signalsService.getClosedReport()() && !this.creatingQuickResource && !this.savingResourceDetails,
       cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: params => this.reportResourceEditorParams('PERSONAL', params.data?.idResource),
@@ -1046,7 +1048,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     },
     {
       field: 'position',
-      headerName: 'Cargo',
+      headerName: this.t('grid.position'),
       flex: 1,
       editable: params => !this.savingResourceDetails && !this.signalsService.getClosedReport()() && !this.resolvePersonnelPosition(params.data?.idResource),
       valueFormatter: (params: any) => {
@@ -1056,23 +1058,23 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
     {
       field: 'cuadrilla',
-      headerName: 'Cuadrilla',
+      headerName: this.t('grid.crew'),
       hide: true,
       flex: 1, editable: () => !this.signalsService.getClosedReport()() && !this.savingResourceDetails,
       valueGetter: (params) => {
         return params.data.cuadrilla || `Cuadrilla ${this.cuadrillaSelect}`;
       }
     },
-    /*{ field: 'start', headerName: 'Inicio', width: 100, editable: !this.signalsService.getClosedReport() },
-    { field: 'end', headerName: 'Fin', width: 100, editable: !this.signalsService.getClosedReport() },
-    { field: 'date', headerName: 'Fecha', width: 120 }*/
+    /*{ field: 'start', headerName: this.t('grid.start'), width: 100, editable: !this.signalsService.getClosedReport() },
+    { field: 'end', headerName: this.t('grid.end'), width: 100, editable: !this.signalsService.getClosedReport() },
+    { field: 'date', headerName: this.t('grid.date'), width: 120 }*/
   ];
 
   public fotografiasColumnDefs: ColDef[] = [
     //{ field: 'id', headerName: 'ID', width: 80 },
     {
       field: 'imageUrl',
-      headerName: 'Foto',
+      headerName: this.t('grid.photo'),
       flex: 1,
       cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
       cellRendererParams: {
@@ -1081,14 +1083,14 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       },
       editable: false,
     },
-    { field: 'description', headerName: 'Descripción', flex: 1, editable: () => !this.signalsService.getClosedReport()() },
-    //{ field: 'fecha', headerName: 'Fecha', width: 120 }
+    { field: 'description', headerName: this.t('grid.description'), flex: 1, editable: () => !this.signalsService.getClosedReport()() },
+    //{ field: 'fecha', headerName: this.t('grid.date'), width: 120 }
   ];
 
   public videosColumnDefs: ColDef[] = [
     {
       field: 'videoUrl',
-      headerName: 'Video',
+      headerName: this.t('grid.video'),
       flex: 1,
       cellRenderer: (params: any) => {
         const cellContainer = document.createElement('div');
@@ -1143,14 +1145,14 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       },
       editable: false,
     },
-    { field: 'description', headerName: 'Descripción', flex: 1, editable: () => !this.signalsService.getClosedReport()() },
+    { field: 'description', headerName: this.t('grid.description'), flex: 1, editable: () => !this.signalsService.getClosedReport()() },
   ];
 
 
   public notasColumnDefs: ColDef[] = [
     {
       field: 'idResource',
-      headerName: 'Tipo de nota',
+      headerName: this.t('grid.noteType'),
       flex: 2,
       editable: () => !this.signalsService.getClosedReport()(),
       cellEditor: 'agSelectCellEditor',
@@ -1197,7 +1199,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     },
     {
       field: 'description',
-      headerName: 'Descripción',
+      headerName: this.t('grid.description'),
       flex: 1,
       editable: () => !this.signalsService.getClosedReport()(),
       cellEditor: 'agPopupTextCellEditor',
@@ -1228,7 +1230,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   public conceptosColumnDefs: ColDef[] = [
     {
       field: 'idResource',
-      headerName: 'Trabajo realizado',
+      headerName: this.t('grid.workPerformed'),
       flex: 2,
       editable: () => !this.signalsService.getClosedReport()(),
       cellEditor: 'agSelectCellEditor',
@@ -1269,8 +1271,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
           if (duplicateExists) {
             alerts.basicAlert(
-              'Duplicado',
-              'Este trabajo ya está asignado.',
+              this.t('alerts.duplicateTitle'),
+              this.t('alerts.workAlreadyAssigned'),
               'error'
             );
             return false;
@@ -1291,7 +1293,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     },
     {
       field: 'quantity',
-      headerName: 'Cantidad',
+      headerName: this.t('grid.quantity'),
       flex: 1,
       editable: () => !this.signalsService.getClosedReport()(),
       valueSetter: (params) => {
@@ -1303,7 +1305,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     },
     {
       field: 'precioUnitario',
-      headerName: 'Precio Unitario',
+      headerName: this.t('grid.unitPrice'),
       hide: !this.signalsService.getrootChoose(), // ← Esto oculta toda la columna
       flex: 1,
       editable: false,
@@ -1320,7 +1322,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     },
     {
       field: 'mont',
-      headerName: 'Monto',
+      headerName: this.t('grid.amount'),
       hide: !this.signalsService.getrootChoose(), // ← Esto oculta toda la columna
       flex: 1,
       editable: false,
@@ -1342,7 +1344,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     },
     {
       field: 'validado',
-      headerName: 'Validado',
+      headerName: this.t('grid.validated'),
       hide: !this.signalsService.getrootChoose(), // Oculta la columna si la condición se cumple
       flex: 1,
       editable: true, // Tiene que ser editable para que se muestre el selector
@@ -1361,7 +1363,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   public reportesColumnDefs: ColDef[] = [
     {
       field: 'date',
-      headerName: 'Fecha',
+      headerName: this.t('grid.date'),
       width: 120,
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
@@ -1424,7 +1426,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     },
     {
       field: 'startTime',
-      headerName: 'Inicio',
+      headerName: this.t('grid.start'),
       width: 105,
       editable: true,
       valueFormatter: (params) => {
@@ -1433,7 +1435,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     },
     {
       field: 'endTime',
-      headerName: 'Término',
+      headerName: this.t('grid.end'),
       width: 105,
       editable: true,
       valueFormatter: (params) => {
@@ -1442,7 +1444,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     },
     /*{
       field: 'paid',
-      headerName: 'Pagado',
+      headerName: this.t('grid.paid'),
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
       width: 110,
@@ -1450,7 +1452,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     {
 
       field: 'totalPay',
-      headerName: 'Total $ Ejecutado',
+      headerName: this.t('grid.totalExecutedAmount'),
       width: 150,
       editable: true,
       hide: !this.signalsService.getrootChoose(), // ← Esto oculta toda la columna
@@ -1481,14 +1483,14 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     },
     {
       field: 'close',
-      headerName: 'Generado',
+      headerName: this.t('grid.generated'),
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
       width: 140,
     },
     {
       field: 'description',
-      headerName: 'Comentario',
+      headerName: this.t('grid.comment'),
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
       width: 240,
@@ -1564,12 +1566,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     );
 
     if (!this.selectedOt) {
-      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectWorkOrderFirst'), 'error');
       return;
     }
 
     if (!this.selectedReporteFecha) {
-      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectReportDateFirst'), 'error');
       return;
     }
 
@@ -1615,12 +1617,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     );
 
     if (!this.selectedOt) {
-      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectWorkOrderFirst'), 'error');
       return;
     }
 
     if (!this.selectedReporteFecha) {
-      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectReportDateFirst'), 'error');
       return;
     }
 
@@ -1661,7 +1663,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     if (!(await this.requireSavedReportForDetails())) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Guardar Cambios Fotografías OT',
+      this.t('alerts.savePhotoChangesTitle'),
       'Modulo Proyectos - Ordenes de Trabajo - Fotografías',
       this.trackingService.getEmail()
     );
@@ -1674,12 +1676,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     const invalidRows = newRows.filter(item => item.imageUrl && item.descripcion);
 
     if (invalidRows.length > 0) {
-      alerts.basicAlert('Error', 'Debe completar la imagen y la descripción antes de guardar.', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.completePhotoAndDescription'), 'error');
       return;
     }
 
     if (newRows.length === 0 && modifiedRows.length === 0) {
-      alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+      alerts.basicAlert(this.t('alerts.infoTitle'), this.t('alerts.noChangesToSave'), 'info');
       return;
     }
 
@@ -1719,7 +1721,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         throw new Error(`${failedResponses.length} requests fallaron`);
       }
 
-      alerts.basicAlert('Éxito', 'Cambios de fotografías guardados correctamente', 'success');
+      alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.photosSaved'), 'success');
       this.autoUpdatePdf()
       this.notSavedFotografiaChanges = false;
 
@@ -1747,7 +1749,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         errorMessage = error.message;
       }
 
-      alerts.basicAlert('Error', errorMessage, 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
     }
   }
 
@@ -1755,7 +1757,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     if (!(await this.requireSavedReportForDetails())) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Guardar Cambios Videos OT',
+      this.t('alerts.saveVideoChangesTitle'),
       'Modulo Proyectos - Ordenes de Trabajo - Videos',
       this.trackingService.getEmail()
     );
@@ -1767,12 +1769,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     const invalidRows = newRows.filter(item => item.videoUrl && item.descripcion);
 
     if (invalidRows.length > 0) {
-      alerts.basicAlert('Error', 'Debe completar el video y la descripción antes de guardar.', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.completeVideoAndDescription'), 'error');
       return;
     }
 
     if (newRows.length === 0 && modifiedRows.length === 0) {
-      alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+      alerts.basicAlert(this.t('alerts.infoTitle'), this.t('alerts.noChangesToSave'), 'info');
       return;
     }
 
@@ -1809,7 +1811,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         throw new Error(`${failedResponses.length} requests fallaron`);
       }
 
-      alerts.basicAlert('Éxito', 'Cambios de videos guardados correctamente', 'success');
+      alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.videosSaved'), 'success');
       this.autoUpdatePdf()
       this.notSavedVideoChanges = false;
 
@@ -1834,7 +1836,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         errorMessage = error.message;
       }
 
-      alerts.basicAlert('Error', errorMessage, 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
     }
   }
 
@@ -1851,19 +1853,19 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   deleteFotografia() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Eliminar Fotografía OT',
+      this.t('alerts.deletePhotoTitle'),
       'Modulo Proyectos - Ordenes de Trabajo - Fotografías',
       this.trackingService.getEmail()
     );
 
     if (!this.fotografiaGridApi) {
-      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.gridUnavailable'), 'error');
       return;
     }
 
     const selectedNodes = this.fotografiaGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
-      alerts.basicAlert('Error', 'Seleccione una entrada de fotografía para eliminar', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectPhotoToDelete'), 'error');
       return;
     }
 
@@ -1872,10 +1874,10 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
 
     alerts.confirmAlert(
-      'Eliminar fotografía',
-      '¿Está seguro que desea eliminar este registro de fotografía?',
+      this.t('alerts.deletePhotoTitle'),
+      this.t('alerts.confirmDeletePhoto'),
       'warning',
-      'Sí, eliminar'
+      this.t('alerts.yesDelete')
     ).then((value) => {
       if (value.isConfirmed) {
         if (selectedData.__isNew) {
@@ -1885,7 +1887,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
           // Limpiar vista previa del PDF para reflejar cambios
           this.clearPdfPreview();
 
-          alerts.basicAlert('Éxito', 'Fotografía eliminada correctamente', 'success');
+          alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.photoDeleted'), 'success');
         } else {
           this.logbookService.deleteDataForOt(Number(id)).subscribe({
             next: (response) => {
@@ -1894,7 +1896,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
               // Limpiar vista previa del PDF para reflejar cambios
               this.clearPdfPreview();
 
-              alerts.basicAlert('Éxito', 'Fotografía eliminada correctamente del servidor', 'success');
+              alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.photoDeletedFromServer'), 'success');
             },
             error: (error) => {
               console.error('Error al eliminar fotografía del servidor:', error);
@@ -1904,7 +1906,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
               } else if (error.status === 401) {
                 errorMessage = 'No autorizado para eliminar este registro';
               }
-              alerts.basicAlert('Error', errorMessage, 'error');
+              alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
             }
           });
         }
@@ -1915,19 +1917,19 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   deleteVideo() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Eliminar Video OT',
+      this.t('alerts.deleteVideoTitle'),
       'Modulo Proyectos - Ordenes de Trabajo - Videos',
       this.trackingService.getEmail()
     );
 
     if (!this.videoGridApi) {
-      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.gridUnavailable'), 'error');
       return;
     }
 
     const selectedNodes = this.videoGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
-      alerts.basicAlert('Error', 'Seleccione una entrada de video para eliminar', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectVideoToDelete'), 'error');
       return;
     }
 
@@ -1936,10 +1938,10 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
 
     alerts.confirmAlert(
-      'Eliminar video',
-      '¿Está seguro que desea eliminar este registro de video?',
+      this.t('alerts.deleteVideoTitle'),
+      this.t('alerts.confirmDeleteVideo'),
       'warning',
-      'Sí, eliminar'
+      this.t('alerts.yesDelete')
     ).then((value) => {
       if (value.isConfirmed) {
         if (selectedData.__isNew) {
@@ -1949,7 +1951,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
           // Limpiar vista previa del PDF para reflejar cambios
           this.clearPdfPreview();
 
-          alerts.basicAlert('Éxito', 'Video eliminado correctamente', 'success');
+          alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.videoDeleted'), 'success');
         } else {
           this.logbookService.deleteDataForOt(Number(id)).subscribe({
             next: (response) => {
@@ -1958,7 +1960,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
               // Limpiar vista previa del PDF para reflejar cambios
               this.clearPdfPreview();
 
-              alerts.basicAlert('Éxito', 'Video eliminado correctamente del servidor', 'success');
+              alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.videoDeletedFromServer'), 'success');
             },
             error: (error) => {
               console.error('Error al eliminar video del servidor:', error);
@@ -1968,7 +1970,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
               } else if (error.status === 401) {
                 errorMessage = 'No autorizado para eliminar este registro';
               }
-              alerts.basicAlert('Error', errorMessage, 'error');
+              alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
             }
           });
         }
@@ -2055,7 +2057,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     },
     singleClickEdit: true,
     autoGroupColumnDef: {
-      headerName: 'Grupo',
+      headerName: this.t('grid.group'),
       field: 'ag-Grid-AutoColumn',
       checkboxSelection: true,
       cellRendererParams: {
@@ -2140,12 +2142,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     try {
       const updatePromises = otsToSave.map(ot => firstValueFrom(this.otService.updateOt(Number(ot.id), ot)));
       await Promise.all(updatePromises);
-      alerts.basicAlert('Éxito', `Se cerraron y guardaron ${otsToSave.length} OTs correctamente.`, 'success');
+      alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.workOrdersClosedAndSaved', { count: otsToSave.length }), 'success');
       if (removeAfterSave) {
         this.gridApi.applyTransaction({ remove: otsToSave });
       }
     } catch (error) {
-      alerts.basicAlert('Error', 'Ocurrió un error al actualizar las OTs.', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.updateWorkOrdersError'), 'error');
       console.error('Error en guardado por lotes:', error);
     }
   }
@@ -2252,7 +2254,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         html: mensajeConfirmacion,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: `Sí, eliminar ${otsEliminables.length} OT(s)`,
+        confirmButtonText: this.t('alerts.deleteSelectedWorkOrders', { count: otsEliminables.length }),
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#dc3545',
         cancelButtonColor: '#6c757d'
@@ -2349,7 +2351,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     } catch (error) {
       Swal.close();
       console.error('Error en deleteOTsWithValidation:', error);
-      alerts.basicAlert('Error', 'Ocurrió un error al procesar la eliminación de OTs.', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.deleteWorkOrdersError'), 'error');
     }
   }
 
@@ -3184,13 +3186,13 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
   openChangeProjectModal() {
     if (!this.hasMultiSelectPermission) {
-      alerts.basicAlert('Error', 'No tiene permisos para realizar esta acción.', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.actionNotPermitted'), 'error');
       return;
     }
 
     const selectedOTs = this.getSelectedOTs();
     if (selectedOTs.length === 0) {
-      alerts.basicAlert('Error', 'Debe seleccionar al menos una OT para cambiar de proyecto.', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectAtLeastOneWorkOrderToMove'), 'error');
       return;
     }
 
@@ -3201,13 +3203,13 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
   async changeProjectForSelectedOTs() {
     if (!this.selectedNewProject) {
-      alerts.basicAlert('Error', 'Debe seleccionar un proyecto.', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectProject'), 'error');
       return;
     }
 
     const selectedOTs = this.getSelectedOTs();
     if (selectedOTs.length === 0) {
-      alerts.basicAlert('Error', 'No hay OTs seleccionadas.', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.noWorkOrdersSelected'), 'error');
       return;
     }
 
@@ -3215,10 +3217,10 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
     try {
       const confirmResult = await alerts.confirmAlert(
-        '¿Confirmar cambio?',
-        `¿Está seguro de cambiar ${selectedOTs.length} OT(s) de proyecto? Esta acción no se puede deshacer.`,
+        this.t('alerts.confirmMoveTitle'),
+        this.t('alerts.confirmMoveWorkOrders', { count: selectedOTs.length }),
         'warning',
-        'Confirmar'
+        this.t('alerts.confirm')
       );
 
       if (!confirmResult.isConfirmed) {
@@ -3261,14 +3263,14 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
       // Mostrar resultado
       if (failedCount === 0) {
-        alerts.basicAlert('Éxito', `Se cambiaron ${successCount} OT(s) de proyecto exitosamente y todos sus registros del logbook.`, 'success');
+        alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.workOrdersMovedWithLogbook', { count: successCount }), 'success');
       } else {
-        alerts.basicAlert('Advertencia', `Se cambiaron ${successCount} OT(s) exitosamente, pero ${failedCount} fallaron.`, 'warning');
+        alerts.basicAlert(this.t('alerts.warningTitle'), this.t('alerts.workOrdersMovedWithFailures', { succeeded: successCount, failed: failedCount }), 'warning');
       }
 
     } catch (error) {
       console.error('Error al cambiar proyecto:', error);
-      alerts.basicAlert('Error', 'Error al cambiar el proyecto de las OTs.', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.changeWorkOrderProjectFailed'), 'error');
     } finally {
       this.isChangingProject = false;
     }
@@ -3327,10 +3329,10 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       if (event.newValue === true) {
         // Preguntar confirmación antes de cerrar
         alerts.confirmAlert(
-          'Cerrar Orden de Trabajo',
-          '¿Deseas cerrar esta OT en la Web?',
+          this.t('alerts.closeWorkOrderTitle'),
+          this.t('alerts.confirmCloseWorkOrderWeb'),
           'question',
-          'Sí, cerrar'
+          this.t('alerts.yesClose')
         ).then(async (result) => {
           if (result.isConfirmed) {
             // Usuario confirmó, proceder con el cierre
@@ -3354,13 +3356,13 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
                 this.trackingService.getEmail()
               );
 
-              alerts.basicAlert('Éxito', `La OT ${event.data.otNumber} ha sido cerrada correctamente.`, 'success');
+              alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.workOrderClosed', { number: event.data.otNumber }), 'success');
 
             } catch (error) {
               console.error('Error al cerrar OT:', error);
               // Revertir el cambio visual en caso de error
               event.node.setDataValue('closed', false);
-              alerts.basicAlert('Error', 'No se pudo cerrar la OT. Por favor, inténtelo de nuevo.', 'error');
+              alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.closeWorkOrderFailed'), 'error');
             }
           } else {
             // Usuario canceló, revertir el checkbox
@@ -3432,10 +3434,10 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       const newProjectName = newProject ? newProject.name : params.newValue;
 
       alerts.confirmAlert(
-        'Cambiar Proyecto de OT',
-        `¿Está seguro que desea cambiar esta orden de trabajo del proyecto "${oldProjectName}" al proyecto "${newProjectName}"?`,
+        this.t('alerts.changeWorkOrderProjectTitle'),
+        this.t('alerts.confirmMoveWorkOrder', { oldProject: oldProjectName, newProject: newProjectName }),
         'question',
-        'Sí, cambiar proyecto'
+        this.t('alerts.yesMoveProject')
       ).then((result) => {
         if (result.isConfirmed) {
           // Usuario confirmó el cambio
@@ -3479,8 +3481,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
             );
 
             alerts.basicAlert(
-              'Proyecto Actualizado',
-              `La orden de trabajo ${params.data.otNumber} y todos sus registros han sido movidos exitosamente al proyecto ${newProjectName}.`,
+              this.t('alerts.projectUpdatedTitle'),
+              this.t('alerts.workOrderMovedWithRecords', { number: params.data.otNumber, project: newProjectName }),
               'success'
             );
 
@@ -3509,8 +3511,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
           error: (logbookError: any) => {
             console.error('Error updating logbook records:', logbookError);
             alerts.basicAlert(
-              'Advertencia',
-              `La OT fue actualizada pero hubo un problema al actualizar algunos registros del logbook. Por favor, verifique los datos.`,
+              this.t('alerts.warningTitle'),
+              this.t('alerts.workOrderUpdatedButLogbookFailed'),
               'warning'
             );
             // Refrescar de todos modos
@@ -3521,8 +3523,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       error: (error: any) => {
         console.error('Error updating OT:', error);
         alerts.basicAlert(
-          'Error al Cambiar Proyecto',
-          'Ocurrió un error al intentar cambiar el proyecto de la orden de trabajo. Por favor, inténtelo nuevamente.',
+          this.t('alerts.changeWorkOrderProjectFailedTitle'),
+          this.t('alerts.changeWorkOrderProjectFailed'),
           'error'
         );
         // Revertir el cambio en caso de error
@@ -3769,7 +3771,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
           console.error('Error al actualizar campo:', error);
           // Revertir el cambio en caso de error
           event.node.setDataValue(field, oldValue);
-          alerts.basicAlert('Error', 'No se pudo actualizar el campo', 'error');
+          alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.fieldUpdateFailed'), 'error');
         }
       });
     }
@@ -3793,11 +3795,11 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     );
 
     if (!this.selectedOt) {
-      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectWorkOrderFirst'), 'error');
       return;
     }
     if (!hasPersistedMasterId(this.selectedOt.id)) {
-      alerts.basicAlert('Guarda primero la OT', 'Guarda la orden de trabajo antes de crear su reporte diario.', 'warning');
+      alerts.basicAlert(this.t('alerts.saveWorkOrderFirstTitle'), this.t('alerts.saveWorkOrderBeforeCreatingDailyReport'), 'warning');
       return;
     }
 
@@ -3836,7 +3838,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   async saveChanges() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Guardar Cambios Reportes Diarios OT',
+      this.t('alerts.saveDailyReportChangesTitle'),
       'Modulo Proyectos - Ordenes de Trabajo - Reportes',
       this.trackingService.getEmail()
     );
@@ -3847,7 +3849,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     const selectedNewReport = newRows.find(row => String(row.id) === String(this.selectedReporteId));
 
     if (newRows.some(row => !hasPersistedMasterId(row.idOt))) {
-      alerts.basicAlert('Guarda primero la OT', 'El reporte diario necesita una orden de trabajo guardada.', 'warning');
+      alerts.basicAlert(this.t('alerts.saveWorkOrderFirstTitle'), this.t('alerts.dailyReportRequiresSavedWorkOrder'), 'warning');
       return;
     }
 
@@ -3856,12 +3858,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
 
     if (invalidNewRows.length > 0) {
-      alerts.basicAlert('Añadir entrada', 'Debe introducir la fecha y supervisor antes de guardar.', 'error');
+      alerts.basicAlert(this.t('alerts.addEntryTitle'), this.t('alerts.enterDateAndSupervisorBeforeSaving'), 'error');
       return;
     }*/
 
     if (newRows.length === 0 && modifiedRows.length === 0) {
-      alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+      alerts.basicAlert(this.t('alerts.infoTitle'), this.t('alerts.noChangesToSave'), 'info');
       return;
     }
 
@@ -3916,7 +3918,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         }
       });
 
-      alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
+      alerts.basicAlert(this.t('alerts.dataUpdatedTitle'), this.t('alerts.dataUpdatedSuccessfully'), 'success');
 
       this.notSavedChanges = false;
 
@@ -3948,7 +3950,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         errorMessage = error.message;
       }
 
-      alerts.basicAlert('Error', errorMessage, 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
     }
   }
 
@@ -3971,7 +3973,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
   printReporte() {
     if (!this.selectedReporteFecha || !this.selectedReporteTipo) {
-      alerts.basicAlert('Error', 'Debe seleccionar un reporte primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectReportFirst'), 'error');
       return;
     }
 
@@ -3982,7 +3984,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     );
 
     if (!reporteSeleccionado) {
-      alerts.basicAlert('Error', 'No se encontró el reporte seleccionado', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectedReportNotFound'), 'error');
       return;
     }
 
@@ -3996,7 +3998,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         link.click();
         window.URL.revokeObjectURL(url);
 
-        alerts.basicAlert('Éxito', 'PDF generado y descargado correctamente', 'success');
+        alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.pdfGeneratedDownloaded'), 'success');
       },
       error: (error) => {
         console.error('Error al generar PDF:', error);
@@ -4004,7 +4006,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         if (error.error?.message) {
           errorMessage = error.error.message;
         }
-        alerts.basicAlert('Error', errorMessage, 'error');
+        alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
       }
     });
   }
@@ -4079,7 +4081,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         if (preserveResourceRows || this.isSavingData || this.hasPendingResourceRows()) return;
         this.reportesDiarios = [];
         this.clearDailyReportSelection();
-        alerts.basicAlert('Error', 'No se pudieron cargar los reportes diarios', 'error');
+        alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.dailyReportsLoadFailed'), 'error');
       }
     });
   }
@@ -4120,13 +4122,13 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
     if (!this.selectedOt) {
       console.error('❌ Error: No hay OT seleccionada');
-      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectWorkOrderFirst'), 'error');
       return;
     }
 
     if (!this.selectedReporteId || !this.selectedReporteFecha) {
       console.error('❌ Error: No hay reporte seleccionado');
-      alerts.basicAlert('Error', 'Debe seleccionar un reporte diario primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), 'Debe seleccionar un reporte diario primero', 'error');
       return;
     }
 
@@ -4204,7 +4206,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         this.isGeneratingPdf = false;
 
 
-        //alerts.basicAlert('Éxito', 'PDF generado correctamente', 'success');
+        //alerts.basicAlert(this.t('alerts.successTitle'), 'PDF generado correctamente', 'success');
       });
 
     } catch (error) {
@@ -4218,7 +4220,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         console.error('💥 Mensaje de error:', errorMessage);
       }
 
-      alerts.basicAlert('Error', errorMessage, 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
     }
   }
 
@@ -4252,15 +4254,15 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       );
 
       alerts.basicAlert(
-        'PDF Procesado Exitosamente',
-        `El PDF ha sido cargado y se han obtenido algunos datos. Será redirigido al formulario de OT para que corrobore los datos.\n\nNúmero OT: ${response.otNumber}`,
+        this.t('alerts.pdfProcessedSuccessfullyTitle'),
+        this.t('alerts.pdfLoadedConfirmDetails', { number: response.otNumber }),
         'success'
       );
       this.obtenerDatos();
 
     } catch (error: any) {
 
-      let errorMessage = 'Error al procesar el archivo PDF.';
+      let errorMessage = this.t('alerts.pdfProcessingFailed');
       if (error?.error?.message) {
         errorMessage = error.error.message;
       } else if (error?.message) {
@@ -4411,21 +4413,21 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   async deleteReporte() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Eliminar Reporte Diario OT',
+      this.t('alerts.deleteDailyReportTitle'),
       'Modulo Proyectos - Ordenes de Trabajo - Reportes',
       this.trackingService.getEmail()
     );
 
     if (!this.reportesGridApi) {
-      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.gridUnavailable'), 'error');
       return;
     }
 
     const selectedNodes = this.reportesGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
-        'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
+        this.t('alerts.deleteEntryTitle'),
+        this.t('alerts.selectEntryToDelete'),
         'error'
       );
       return;
@@ -4436,10 +4438,10 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
     // Mostrar mensaje de confirmación
     alerts.confirmAlert(
-      'Eliminar reporte',
-      '¿Está seguro que desea eliminar este reporte?',
+      this.t('alerts.deleteReportTitle'),
+      this.t('alerts.confirmDeleteReport'),
       'warning',
-      'Sí, eliminar'
+      this.t('alerts.yesDelete')
     ).then((value) => {
       if (value.isConfirmed) {
         if (selectedData.__isNew) {
@@ -4447,8 +4449,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
           this.reportesDiarios = this.reportesDiarios.filter(r => r.id !== id);
           this.notSavedChanges = this.reportesDiarios.some(r => r.__isNew);
           alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
+            this.t('alerts.deleteEntryTitle'),
+            this.t('alerts.entryDeleted'),
             'success'
           );
         } else {
@@ -4456,8 +4458,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
           this.dailyReportService.deleteDailyReport(Number(id)).subscribe({
             next: () => {
               alerts.basicAlert(
-                'Eliminar entrada',
-                'Entrada eliminada satisfactoriamente.',
+                this.t('alerts.deleteEntryTitle'),
+                this.t('alerts.entryDeleted'),
                 'success'
               );
               this.loadDailyReports();
@@ -4465,8 +4467,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
             },
             error: (error) => {
               alerts.basicAlert(
-                'Eliminar entrada',
-                'Error al eliminar la entrada.',
+                this.t('alerts.deleteEntryTitle'),
+                this.t('alerts.entryDeleteFailed'),
                 'error'
               );
               console.error(error);
@@ -4681,10 +4683,10 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         this.loadDailyReports(true);
         this.autoUpdatePdf();
       }
-      alerts.basicAlert('Datos guardados', 'Las partidas quedaron guardadas en el reporte diario.', 'success');
+      alerts.basicAlert(this.t('alerts.dataSavedTitle'), this.t('alerts.itemsSavedToDailyReport'), 'success');
     } catch (error: any) {
       if (rows === this.resourceRows(kind)) this.setResourceDirty(kind, true);
-      alerts.basicAlert('No se pudo completar el guardado', error?.error?.message || error?.message || 'Revisa la conexión y vuelve a intentar.', 'error');
+      alerts.basicAlert(this.t('alerts.saveFailedTitle'), error?.error?.message || error?.message || this.t('alerts.checkConnectionAndRetry'), 'error');
     } finally { this.savingResourceDetails = false; this.savingResourceKind = null; this.isSavingData = false; }
   }
 
@@ -4716,7 +4718,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     if (!item) return false;
     const rows = kind === 'PERSONAL' ? this.personal : kind === 'MATERIAL' ? this.materiales : this.equipos;
     if (rows.some(row => row !== params.data && String(row.idResource) === String(item.id))) {
-      alerts.basicAlert('Duplicado', 'Este recurso ya está agregado al reporte.', 'warning');
+      alerts.basicAlert(this.t('alerts.duplicateTitle'), this.t('alerts.resourceAlreadyInReport'), 'warning');
       return false;
     }
     params.data.idResource = Number(item.id);
@@ -4788,12 +4790,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     );
 
     if (!this.selectedOt) {
-      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectWorkOrderFirst'), 'error');
       return;
     }
 
     if (!this.selectedReporteFecha) {
-      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectReportDateFirst'), 'error');
       return;
     }
 
@@ -4842,12 +4844,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     );
 
     if (!this.selectedOt) {
-      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectWorkOrderFirst'), 'error');
       return;
     }
 
     if (!this.selectedReporteFecha) {
-      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectReportDateFirst'), 'error');
       return;
     }
 
@@ -4892,12 +4894,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     );
 
     if (!this.selectedOt) {
-      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectWorkOrderFirst'), 'error');
       return;
     }
 
     if (!this.selectedReporteFecha) {
-      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectReportDateFirst'), 'error');
       return;
     }
 
@@ -4942,19 +4944,19 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   async deletePersonal() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Eliminar Personal OT',
+      this.t('alerts.deletePersonnelTitle'),
       'Modulo Proyectos - Ordenes de Trabajo - Personal',
       this.trackingService.getEmail()
     );
 
     if (!this.personalGridApi) {
-      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.gridUnavailable'), 'error');
       return;
     }
 
     const selectedNodes = this.personalGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
-      alerts.basicAlert('Error', 'Seleccione una entrada de personal para eliminar', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectPersonnelEntryToDelete'), 'error');
       return;
     }
 
@@ -4963,21 +4965,21 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
 
     alerts.confirmAlert(
-      'Eliminar personal',
-      '¿Está seguro que desea eliminar este registro de personal?',
+      this.t('alerts.deletePersonnelTitle'),
+      this.t('alerts.confirmDeletePersonnel'),
       'warning',
-      'Sí, eliminar'
+      this.t('alerts.yesDelete')
     ).then((value) => {
       if (value.isConfirmed) {
         if (selectedData.__isNew) {
           this.personal = this.personal.filter(p => p.id !== id);
           this.notSavedPersonalChanges = this.personal.some(p => p.__isNew);
-          alerts.basicAlert('Éxito', 'Personal eliminado correctamente', 'success');
+          alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.personnelDeleted'), 'success');
         } else {
           this.logbookService.deleteDataForOt(Number(id)).subscribe({
             next: (response) => {
               this.personal = this.personal.filter(p => p.id !== id);
-              alerts.basicAlert('Éxito', 'Personal eliminado correctamente del servidor', 'success');
+              alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.personnelDeletedFromServer'), 'success');
             },
             error: (error) => {
               console.error('Error al eliminar personal del servidor:', error);
@@ -4987,7 +4989,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
               } else if (error.status === 401) {
                 errorMessage = 'No autorizado para eliminar este registro';
               }
-              alerts.basicAlert('Error', errorMessage, 'error');
+              alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
             }
           });
         }
@@ -5420,19 +5422,19 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   async deleteMaterial() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Eliminar Material OT',
+      this.t('alerts.deleteMaterialTitle'),
       'Modulo Proyectos - Ordenes de Trabajo - Materiales',
       this.trackingService.getEmail()
     );
 
     if (!this.materialesGridApi) {
-      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.gridUnavailable'), 'error');
       return;
     }
 
     const selectedNodes = this.materialesGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
-      alerts.basicAlert('Error', 'Seleccione una entrada de material para eliminar', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectMaterialEntryToDelete'), 'error');
       return;
     }
 
@@ -5441,23 +5443,23 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
 
     alerts.confirmAlert(
-      'Eliminar material',
-      '¿Está seguro que desea eliminar este registro de material?',
+      this.t('alerts.deleteMaterialTitle'),
+      this.t('alerts.confirmDeleteMaterial'),
       'warning',
-      'Sí, eliminar'
+      this.t('alerts.yesDelete')
     ).then((value) => {
       if (value.isConfirmed) {
 
         if (selectedData.__isNew) {
           this.materiales = this.materiales.filter(m => m.id !== id);
           this.notSavedMaterialChanges = this.materiales.some(m => m.__isNew);
-          alerts.basicAlert('Éxito', 'Material eliminado correctamente', 'success');
+          alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.materialDeleted'), 'success');
         } else {
 
           this.logbookService.deleteDataForOt(Number(id)).subscribe({
             next: (response) => {
               this.materiales = this.materiales.filter(m => m.id !== id);
-              alerts.basicAlert('Éxito', 'Material eliminado correctamente del servidor', 'success');
+              alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.materialDeletedFromServer'), 'success');
             },
             error: (error) => {
               console.error('Error al eliminar material del servidor:', error);
@@ -5467,7 +5469,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
               } else if (error.status === 401) {
                 errorMessage = 'No autorizado para eliminar este registro';
               }
-              alerts.basicAlert('Error', errorMessage, 'error');
+              alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
             }
           });
         }
@@ -5477,13 +5479,13 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
   async deleteEquipo() {
     if (!this.equiposGridApi) {
-      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.gridUnavailable'), 'error');
       return;
     }
 
     const selectedNodes = this.equiposGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
-      alerts.basicAlert('Error', 'Seleccione una entrada de equipo para eliminar', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectEquipmentEntryToDelete'), 'error');
       return;
     }
 
@@ -5492,23 +5494,23 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
 
     alerts.confirmAlert(
-      'Eliminar equipo',
-      '¿Está seguro que desea eliminar este registro de equipo?',
+      this.t('alerts.deleteEquipmentTitle'),
+      this.t('alerts.confirmDeleteEquipment'),
       'warning',
-      'Sí, eliminar'
+      this.t('alerts.yesDelete')
     ).then((value) => {
       if (value.isConfirmed) {
 
         if (selectedData.__isNew) {
           this.equipos = this.equipos.filter(m => m.id !== id);
           this.notSavedEquipoChanges = this.equipos.some(m => m.__isNew);
-          alerts.basicAlert('Éxito', 'Equipo eliminado correctamente', 'success');
+          alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.equipmentDeleted'), 'success');
         } else {
 
           this.logbookService.deleteDataForOt(Number(id)).subscribe({
             next: (response) => {
               this.equipos = this.equipos.filter(m => m.id !== id);
-              alerts.basicAlert('Éxito', 'Equipo eliminado correctamente del servidor', 'success');
+              alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.equipmentDeletedFromServer'), 'success');
             },
             error: (error) => {
               console.error('Error al eliminar equipo del servidor:', error);
@@ -5518,7 +5520,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
               } else if (error.status === 401) {
                 errorMessage = 'No autorizado para eliminar este registro';
               }
-              alerts.basicAlert('Error', errorMessage, 'error');
+              alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
             }
           });
         }
@@ -5529,12 +5531,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   // -- Métodos para Conceptos --
   addConcepto() {
     if (!this.selectedOt) {
-      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectWorkOrderFirst'), 'error');
       return;
     }
 
     if (!this.selectedReporteFecha) {
-      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectReportDateFirst'), 'error');
       return;
     }
 
@@ -5584,12 +5586,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
     
     if (invalidNewRows.length > 0) {
-      alerts.basicAlert('Añadir entrada', 'Debe introducir la fecha y supervisor antes de guardar.', 'error');
+      alerts.basicAlert(this.t('alerts.addEntryTitle'), this.t('alerts.enterDateAndSupervisorBeforeSaving'), 'error');
       return;
     }*/
 
     if (newRows.length === 0 && modifiedRows.length === 0) {
-      alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+      alerts.basicAlert(this.t('alerts.infoTitle'), this.t('alerts.noChangesToSave'), 'info');
       return;
     }
 
@@ -5629,7 +5631,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         throw new Error(`${failedResponses.length} requests fallaron`);
       }
 
-      alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
+      alerts.basicAlert(this.t('alerts.dataUpdatedTitle'), this.t('alerts.dataUpdatedSuccessfully'), 'success');
       this.autoUpdatePdf()
       this.notSavedConceptoChanges = false;
       this.conceptos.forEach(item => {
@@ -5676,7 +5678,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         errorMessage = error.message;
       }
 
-      alerts.basicAlert('Error', errorMessage, 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
     }
   }
 
@@ -5726,13 +5728,13 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
   deleteConcepto() {
     if (!this.conceptosGridApi) {
-      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.gridUnavailable'), 'error');
       return;
     }
 
     const selectedNodes = this.conceptosGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
-      alerts.basicAlert('Error', 'Seleccione una entrada de concepto para eliminar', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectConceptEntryToDelete'), 'error');
       return;
     }
 
@@ -5741,23 +5743,23 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
 
     alerts.confirmAlert(
-      'Eliminar concepto',
-      '¿Está seguro que desea eliminar este registro de concepto?',
+      this.t('alerts.deleteConceptTitle'),
+      this.t('alerts.confirmDeleteConcept'),
       'warning',
-      'Sí, eliminar'
+      this.t('alerts.yesDelete')
     ).then((value) => {
       if (value.isConfirmed) {
 
         if (selectedData.__isNew) {
           this.conceptos = this.conceptos.filter(m => m.id !== id);
           this.notSavedConceptoChanges = this.conceptos.some(m => m.__isNew);
-          alerts.basicAlert('Éxito', 'Concepto eliminado correctamente', 'success');
+          alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.conceptDeleted'), 'success');
         } else {
 
           this.logbookService.deleteDataForOt(Number(id)).subscribe({
             next: (response) => {
               this.conceptos = this.conceptos.filter(m => m.id !== id);
-              alerts.basicAlert('Éxito', 'Concepto eliminado correctamente del servidor', 'success');
+              alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.conceptDeletedFromServer'), 'success');
             },
             error: (error) => {
               console.error('Error al eliminar concepto del servidor:', error);
@@ -5767,7 +5769,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
               } else if (error.status === 401) {
                 errorMessage = 'No autorizado para eliminar este registro';
               }
-              alerts.basicAlert('Error', errorMessage, 'error');
+              alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
             }
           });
         }
@@ -5782,7 +5784,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     const companyId = this.idcompany;
     const reportId = this.selectedReporteId;
     if (!companyId) {
-      alerts.basicAlert('Empresa requerida', 'Seleccione una empresa para crear el tipo de nota.', 'warning');
+      alerts.basicAlert(this.t('alerts.companyRequiredTitle'), this.t('alerts.selectCompanyToCreateNoteType'), 'warning');
       return;
     }
     this.notasGridApi?.stopEditing();
@@ -5867,12 +5869,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     );
 
     if (!this.selectedOt) {
-      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectWorkOrderFirst'), 'error');
       return;
     }
 
     if (!this.selectedReporteFecha) {
-      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectReportDateFirst'), 'error');
       return;
     }
 
@@ -5912,7 +5914,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     if (!(await this.requireSavedReportForDetails())) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Guardar Cambios Notas OT',
+      this.t('alerts.saveNoteChangesTitle'),
       'Modulo Proyectos - Ordenes de Trabajo - Notas',
       this.trackingService.getEmail()
     );
@@ -5922,12 +5924,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
     
     if (invalidNewRows.length > 0) {
-      alerts.basicAlert('Añadir entrada', 'Debe introducir la fecha y supervisor antes de guardar.', 'error');
+      alerts.basicAlert(this.t('alerts.addEntryTitle'), this.t('alerts.enterDateAndSupervisorBeforeSaving'), 'error');
       return;
     }*/
 
     if (newRows.length === 0 && modifiedRows.length === 0) {
-      alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+      alerts.basicAlert(this.t('alerts.infoTitle'), this.t('alerts.noChangesToSave'), 'info');
       return;
     }
 
@@ -5969,7 +5971,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         throw new Error(`${failedResponses.length} requests fallaron`);
       }
 
-      alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
+      alerts.basicAlert(this.t('alerts.dataUpdatedTitle'), this.t('alerts.dataUpdatedSuccessfully'), 'success');
       this.autoUpdatePdf()
       this.notSavedNoteChanges = false;
       this.notas.forEach(item => {
@@ -6013,7 +6015,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         errorMessage = error.message;
       }
 
-      alerts.basicAlert('Error', errorMessage, 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
     }
   }
 
@@ -6034,19 +6036,19 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   deleteNota() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Eliminar Nota OT',
+      this.t('alerts.deleteNoteTitle'),
       'Modulo Proyectos - Ordenes de Trabajo - Notas',
       this.trackingService.getEmail()
     );
 
     if (!this.notasGridApi) {
-      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.gridUnavailable'), 'error');
       return;
     }
 
     const selectedNodes = this.notasGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
-      alerts.basicAlert('Error', 'Seleccione una entrada de nota para eliminar', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectNoteEntryToDelete'), 'error');
       return;
     }
 
@@ -6055,10 +6057,10 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
 
     alerts.confirmAlert(
-      'Eliminar nota',
-      '¿Está seguro que desea eliminar este registro de nota?',
+      this.t('alerts.deleteNoteTitle'),
+      this.t('alerts.confirmDeleteNote'),
       'warning',
-      'Sí, eliminar'
+      this.t('alerts.yesDelete')
     ).then((value) => {
       if (value.isConfirmed) {
 
@@ -6069,7 +6071,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
           // Limpiar vista previa del PDF para reflejar cambios
           this.clearPdfPreview();
 
-          alerts.basicAlert('Éxito', 'Nota eliminada correctamente', 'success');
+          alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.noteDeleted'), 'success');
         } else {
 
           this.logbookService.deleteDataForOt(Number(id)).subscribe({
@@ -6079,7 +6081,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
               // Limpiar vista previa del PDF para reflejar cambios
               this.clearPdfPreview();
 
-              alerts.basicAlert('Éxito', 'Nota eliminada correctamente del servidor', 'success');
+              alerts.basicAlert(this.t('alerts.successTitle'), this.t('alerts.noteDeletedFromServer'), 'success');
             },
             error: (error) => {
               console.error('Error al eliminar nota del servidor:', error);
@@ -6089,7 +6091,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
               } else if (error.status === 401) {
                 errorMessage = 'No autorizado para eliminar este registro';
               }
-              alerts.basicAlert('Error', errorMessage, 'error');
+              alerts.basicAlert(this.t('alerts.errorTitle'), errorMessage, 'error');
             }
           });
         }
@@ -6166,8 +6168,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       );
 
       alerts.basicAlert(
-        'PDF Procesado Exitosamente',
-        `El PDF ha sido cargado y se han obtenido algunos datos. Será redirigido al formulario de OT para que corrobore los datos.\n\nNúmero OT: ${response.otNumber}`,
+        this.t('alerts.pdfProcessedSuccessfullyTitle'),
+        this.t('alerts.pdfLoadedConfirmDetails', { number: response.otNumber }),
         'success'
       );
       this.obtenerDatos();
@@ -6179,7 +6181,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       }, 2000);*/
     } catch (error: any) {
 
-      let errorMessage = 'Error al procesar el archivo PDF.';
+      let errorMessage = this.t('alerts.pdfProcessingFailed');
       if (error?.error?.message) {
         errorMessage = error.error.message;
       } else if (error?.message) {
@@ -6195,13 +6197,13 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
   triggerFileInput(fileInput: HTMLInputElement) {
     if (!this.hasMultiSelectPermission) {
-      alerts.basicAlert('Error', 'No tiene permisos para realizar esta acción.', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.actionNotPermitted'), 'error');
       return;
     }
 
     const selectedOTs = this.getSelectedOTs();
     if (selectedOTs.length === 0) {
-      alerts.basicAlert('Error', 'Debe seleccionar al menos una OT.', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.selectAtLeastOneWorkOrder'), 'error');
       return;
     }
 
@@ -6216,7 +6218,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       // Aquí puedes manejar el archivo, por ejemplo subirlo, procesarlo, etc.
       // this.uploadService.uploadFile(file, this.getSelectedOTs());
     } else {
-      alerts.basicAlert('Error', 'No se seleccionó ningún archivo.', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.noFileSelected'), 'error');
     }
 
     input.value = ''; // Limpiar el input por si se quiere seleccionar el mismo archivo de nuevo
@@ -6237,7 +6239,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
       // El backend devuelve un objeto ProcesadorExcelResult
       if (response.errorMessage) {
-        alerts.basicAlert('Error al Procesar', response.errorMessage, 'error');
+        alerts.basicAlert(this.t('alerts.processErrorTitle'), response.errorMessage, 'error');
       } else if (response.archivoBytes && response.nombreArchivo) {
         // Si el backend devuelve un archivo, lo descargamos
         const byteCharacters = atob(response.archivoBytes);
@@ -6257,14 +6259,14 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         this.obtenerProyectos();
-        alerts.basicAlert('Proceso Completado', 'El resumen del proceso se ha descargado.', 'success');
+        alerts.basicAlert(this.t('alerts.processCompletedTitle'), this.t('alerts.processSummaryDownloaded'), 'success');
       } else {
         this.obtenerProyectos();
-        alerts.basicAlert('Proceso Completado', response.resumen || 'El archivo se procesó correctamente.', 'success');
+        alerts.basicAlert(this.t('alerts.processCompletedTitle'), response.resumen || this.t('alerts.fileProcessedSuccessfully'), 'success');
       }
     } catch (error) {
       console.error('Error al subir el archivo Excel:', error);
-      alerts.basicAlert('Error', 'No se pudo procesar el archivo Excel. Revise la consola para más detalles.', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.excelProcessingFailed'), 'error');
     } finally {
       this.isUploadingExcel = false;
       this.closeModal();
@@ -6284,7 +6286,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
       // El backend devuelve un objeto ProcesadorExcelResult
       if (response.errorMessage) {
-        alerts.basicAlert('Error al Procesar', response.errorMessage, 'error');
+        alerts.basicAlert(this.t('alerts.processErrorTitle'), response.errorMessage, 'error');
       } else if (response.archivoBytes && response.nombreArchivo) {
         // Si el backend devuelve un archivo, lo descargamos
         const byteCharacters = atob(response.archivoBytes);
@@ -6304,14 +6306,14 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         this.obtenerProyectos();
-        alerts.basicAlert('Proceso Completado', 'El resumen del proceso se ha descargado.', 'success');
+        alerts.basicAlert(this.t('alerts.processCompletedTitle'), this.t('alerts.processSummaryDownloaded'), 'success');
       } else {
         this.obtenerProyectos();
-        alerts.basicAlert('Proceso Completado', response.resumen || 'El archivo se procesó correctamente.', 'success');
+        alerts.basicAlert(this.t('alerts.processCompletedTitle'), response.resumen || this.t('alerts.fileProcessedSuccessfully'), 'success');
       }
     } catch (error) {
       console.error('Error al subir el archivo Excel:', error);
-      alerts.basicAlert('Error', 'No se pudo procesar el archivo Excel. Revise la consola para más detalles.', 'error');
+      alerts.basicAlert(this.t('alerts.errorTitle'), this.t('alerts.excelProcessingFailed'), 'error');
     } finally {
       this.isUploadingExcel = false;
       this.closeModal();

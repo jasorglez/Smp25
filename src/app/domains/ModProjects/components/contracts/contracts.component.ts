@@ -9,7 +9,7 @@ import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent } from 'ag-grid
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { SignalsService } from 'app/services/signals.service';
-import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { AG_GRID_LOCALE } from 'assets/i18n/ag-grid.locale';
 import { ContractDetailsComponent } from './contract-details/contract-details.component';
 import { BranchsService } from 'app/services/branchs.service';
 import { AuthService } from 'app/services/auth.service';
@@ -37,7 +37,7 @@ export class ContractsComponent {
 
   @ViewChild(ContractDetailsComponent) contractDetails!: ContractDetailsComponent;
 
-  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE;
   selectedRowData: Icontract | null = null;
 
   private isOpen: boolean = false;
