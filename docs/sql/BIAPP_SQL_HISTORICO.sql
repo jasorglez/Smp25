@@ -7325,3 +7325,26 @@ SELECT id, version, validationStatus, releaseStatus, publicationStatus FROM admi
  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 COMMIT TRANSACTION;
 GO
+
+-- 2026-11-25 | Cobranza / Préstamos | Repositorio: Smp25
+-- Origen: src/app/domains/Cobranza/components/clientes-cobranzas/clientes-cobranzas-pagos.component.ts
+-- Ejecutar solo este bloque: anuncio de la entrega, sin afirmar despliegue del código.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Cobranza / Préstamos' AND title=N'Préstamos y cuotas con captura en modales'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT INTO administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.634',N'Cobranza / Préstamos','IMPROVEMENT',N'Préstamos y cuotas con captura en modales',
+ N'Al abrir Pago se muestran los préstamos con sus cuotas anidadas. Incluye filtros Todos, Con saldo, Con atraso y Liquidados, cuotas desplegadas por defecto y modales para crear préstamos y consultar o registrar abonos. Conserva el estado de las filas durante la actualización.',
+ N'Facilita consultar varios préstamos de un cliente y registrar pagos sin perder el contexto del calendario.',
+ N'Consulta tus préstamos y cuotas en una sola vista; agrega préstamos y abonos desde ventanas de captura.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PASSED','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Cobranza / Préstamos' AND title=N'Préstamos y cuotas con captura en modales'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+GO

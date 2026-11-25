@@ -28,5 +28,10 @@ export class ClientesCobranzasDetailWrapperComponent implements ICellRendererAng
     this.onBalancesChanged = (params as any).context?.onBalancesChanged ?? (() => {});
     this.mode = params.data?.__detailMode ?? 'cotizaciones';
   }
-  refresh(): boolean { return false; }
+  refresh(params: ICellRendererParams): boolean {
+    if (Number(params.data?.id) !== Number(this.customer?.id)
+      || (params.data?.__detailMode ?? 'cotizaciones') !== this.mode) return false;
+    Object.assign(this.customer, params.data);
+    return true;
+  }
 }
