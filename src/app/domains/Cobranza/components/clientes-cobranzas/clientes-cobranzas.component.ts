@@ -195,7 +195,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   private lastEditedRowId: number | string | null = null;
 
   rowData: any;
-  private loanTotalsByCustomer = new Map<number, { loans: number; due: number; payments: number; pending: number; overdue: number; overdueInstallments: number }>();
+  private loanTotalsByCustomer = new Map<number, { loans: number; due: number; payments: number; netEarnings: number; pending: number; overdue: number; overdueInstallments: number }>();
   loanTotalsLoaded = false;
   private loanTotalsRequestId = 0;
   private loanTotalsLoadingRoot: number | null = null;
@@ -409,6 +409,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       ...([
         { colId: 'totalPrestamos', headerName: 'Total préstamos', key: 'loans', background: '#e7f1ff', color: '#174d80', format: 'currency' },
         { colId: 'totalPagosCobranza', headerName: 'Total pagos', key: 'payments', background: '#e6f4ea', color: '#166534', format: 'currency' },
+        { colId: 'gananciasNetas', headerName: 'Ganancias netas', key: 'netEarnings', background: '#e8f5e9', color: '#1b5e20', format: 'currency' },
         { colId: 'totalPendientes', headerName: 'Total pendientes', key: 'pending', background: '#fff3d6', color: '#9a5b00', format: 'currency' },
         { colId: 'totalVencido', headerName: 'Saldo vencido', key: 'overdue', background: '#fee2e2', color: '#991b1b', format: 'currency' },
         { colId: 'cuotasVencidas', headerName: 'Cuotas vencidas', key: 'overdueInstallments', background: '#fee2e2', color: '#991b1b', format: 'number' },
@@ -1292,7 +1293,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     this.loanTotalsLoaded = false;
     this.loanTotalsError = '';
     this.loanTotalsByCustomer.clear();
-    this.gridApi?.refreshCells({ columns: ['totalPrestamos', 'totalPagosCobranza', 'totalPendientes', 'totalVencido', 'cuotasVencidas'], force: true });
+    this.gridApi?.refreshCells({ columns: ['totalPrestamos', 'totalPagosCobranza', 'gananciasNetas', 'totalPendientes', 'totalVencido', 'cuotasVencidas'], force: true });
     if (!rootId) return;
     this.loanTotalsLoadingRoot = rootId;
     this.customerService.getCobranzaDashboard(rootId).subscribe({
@@ -1303,8 +1304,9 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         for (const loan of loans || []) {
           const customerId = Number(loan.idCustomer);
-          const totals = this.loanTotalsByCustomer.get(customerId) || { loans: 0, due: 0, payments: 0, pending: 0, overdue: 0, overdueInstallments: 0 };
+          const totals = this.loanTotalsByCustomer.get(customerId) || { loans: 0, due: 0, payments: 0, netEarnings: 0, pending: 0, overdue: 0, overdueInstallments: 0 };
           totals.loans += Number(loan.montoTotal || 0);
+          totals.netEarnings += this.earnedInterestForPortfolio((loan.cuotas || []).filter((item: any) => item.active !== false));
           totals.due += (loan.cuotas || []).filter((installment: any) => installment.active !== false)
             .reduce((sum: number, installment: any) => sum + Number(installment.montoProgramado || 0), 0);
           totals.payments += (loan.cuotas || []).flatMap((installment: any) => installment.abonos || [])
@@ -1321,7 +1323,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
           this.loanTotalsByCustomer.set(customerId, totals);
         }
         this.loanTotalsLoaded = true;
-        this.gridApi?.refreshCells({ columns: ['totalPrestamos', 'totalPagosCobranza', 'totalPendientes', 'totalVencido', 'cuotasVencidas'], force: true });
+        this.gridApi?.refreshCells({ columns: ['totalPrestamos', 'totalPagosCobranza', 'gananciasNetas', 'totalPendientes', 'totalVencido', 'cuotasVencidas'], force: true });
         this.gridApi?.onFilterChanged();
       },
       error: error => {
