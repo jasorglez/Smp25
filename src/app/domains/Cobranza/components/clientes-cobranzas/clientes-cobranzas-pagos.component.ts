@@ -115,6 +115,10 @@ import { CobranzaOfflineService } from 'app/services/cobranza-offline.service';
       <ng-template #newLoanTemplate>
         <div class="modal-header"><h5 class="modal-title fs-6"><i class="bi bi-cash-stack me-2"></i>{{ loanEditId ? 'Editar préstamo' : 'Nuevo préstamo' }} <small class="fw-normal text-muted">· {{ customer?.nameContact || customer?.company }}</small></h5><button type="button" class="btn-close" aria-label="Cerrar" (click)="closeLoanModal()" [disabled]="saving"></button></div>
       <div class="modal-body">
+        <div *ngIf="modalLoanHasPayments" class="alert alert-info py-2 mb-2 small" role="status">
+          <i class="bi bi-info-circle-fill me-1"></i>
+          Este préstamo ya tiene abonos registrados. Para conservar el historial y los saldos, no se pueden cambiar el monto, el interés, el plazo ni las fechas. Puedes actualizar el consecutivo de nota de venta y el comentario.
+        </div>
         <div class="row g-2 align-items-end">
           <div class="col-md-4"><label class="form-label small">Consecutivo de nota de venta</label><input class="form-control form-control-sm" type="text" maxlength="50" [(ngModel)]="loanForm.numeroNotaVenta" placeholder="Ej. 000123" required></div>
           <div class="col-md-4"><label class="form-label small">Monto del préstamo</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [(ngModel)]="loanForm.montoTotal" [disabled]="modalLoanHasPayments"></div>
@@ -610,6 +614,8 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
     const numberOfPayments = Number(this.loanForm.numeroCuotas);
     const receiptNumber = String(this.loanForm.numeroNotaVenta || '').trim();
     if (!receiptNumber || receiptNumber.length > 50 || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(totalInterest) || totalInterest < 0 || !Number.isInteger(numberOfPayments) || numberOfPayments < 1 || !this.loanForm.fechaInicio || !this.loanForm.fechaPrimerPago) { alerts.basicAlert('Datos requeridos', 'Captura el consecutivo de la nota de venta, capital mayor a cero, porcentaje de interés, periodo, número de pagos y fechas válidas.', 'warning'); return; }
+    const confirmation = await alerts.confirmAlert('¿Confirmas crear este préstamo?', 'Después de registrar un abono, ya no podrás cambiar el monto, el interés, el plazo ni las fechas del préstamo. Revisa los datos antes de continuar.', 'warning', 'Sí, crear préstamo');
+    if (!confirmation.isConfirmed || this.saving) return;
     this.saving = true;
     try {
       const saved: any = await firstValueFrom(this.customersService.createCobranzaLoan({ idCustomer: this.customer.id, numeroNotaVenta: receiptNumber, __consecutivoPrefijo: this.loanConsecutivePrefix, montoTotal: amount, montoInteresTotal: totalInterest, tasaInteresMensual: this.rateFor(totalInterest, amount), frecuenciaPago: this.loanForm.frecuenciaPago || 'MENSUAL', fechaInicio: this.loanForm.fechaInicio, fechaPrimerPago: this.loanForm.fechaPrimerPago, numeroCuotas: numberOfPayments, comentario: this.loanForm.comentario }));
