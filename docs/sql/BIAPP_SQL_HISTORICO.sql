@@ -7410,7 +7410,7 @@ BEGIN
  N'El doble clic en un préstamo abre su edición; el doble clic en un abono abre su captura editable. La API permite actualizar abonos respetando saldos, cajas y cortes cerrados.',
  N'Permite corregir los datos del préstamo o del abono desde su contexto y conserva las reglas de Cobranza.',
  N'Edita préstamos y abonos con doble clic y guarda los cambios en sus ventanas.',
- SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PASSED','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
 END;
 SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
  WHERE module=N'Cobranza / Préstamos y abonos' AND title=N'Edición de préstamos y abonos desde sus ventanas'
