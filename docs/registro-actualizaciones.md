@@ -1,5 +1,7 @@
 # Registro de actualizaciones
 
+| 2026-11-25 00:35 EST | 5.00.633 · local | Cobranza / Abonos | Corrección | Se corrige la carga de fuentes del comprobante PDF generado después de guardar un abono. | Permite preparar el comprobante con las fuentes incluidas en la aplicación. | **Consulta el comprobante PDF después de registrar tu abono.** | Generación del comprobante real validada con datos ficticios (PDF de 23 KB). Build global bloqueado por errores de traducción pendientes en Almacenes; revisión visual y despliegue pendientes. | Anuncio publicado, ID 320; código LOCAL |
+
 | 2026-11-24 21:56 EST | 5.00.632 · local | Cobranza / Ticket de abono | Corrección | El ticket se solicita antes de cerrar el formulario y actualizar los préstamos; el botón deja de indicar que guarda una vez confirmado el abono. | El flujo mantiene disponible el comprobante mientras actualiza los saldos. | **Guarda el abono y continúa con su comprobante de pago.** | TypeScript y build de producción aprobados; despliegue sin confirmar. | Borrador |
 
 | 2026-11-24 21:40 EST | 5.00.631 · local | Cobranza / Ticket de abono | Corrección | El ticket conserva el logo cuando carga a tiempo; si la consulta o descarga tarda más de cinco segundos, el comprobante se genera para que no quede bloqueado. | Permite entregar el comprobante del abono aunque el servidor de imágenes responda lento. | **Genera el ticket del abono sin esperar de más por el logo.** | TypeScript y build de producción aprobados; despliegue sin confirmar. | Borrador |

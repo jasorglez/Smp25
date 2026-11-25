@@ -7300,3 +7300,28 @@ WHERE idRoot IS NULL AND idCompany IS NULL
   AND isActive = 1;
 -- COBRANZA-TICKET-ABONO-FLOW-632-UPDATE-END
 GO
+
+-- 2026-11-25 | Cobranza / Abonos | Repositorio: Smp25
+-- Origen: src/app/services/pos-ticket.service.ts
+-- Ejecutar solamente este bloque. Anuncio publicado; código LOCAL, sin evidencia de despliegue.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK, HOLDLOCK)
+ WHERE module = N'Cobranza / Abonos' AND title = N'Corrección del comprobante PDF de abonos'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive = 1)
+BEGIN
+ INSERT INTO administration.dbo.product_updates
+ (idRoot, idCompany, version, module, changeType, title, description, userBenefit, promoText,
+ occurredAtUtc, displayTimeZone, validationStatus, releaseStatus, publicationStatus, publishedAtUtc, createdBy, isActive)
+ VALUES (NULL, NULL, N'5.00.633', N'Cobranza / Abonos', 'FIX', N'Corrección del comprobante PDF de abonos',
+ N'Se corrige la carga de fuentes del comprobante PDF que se genera después de guardar un abono.',
+ N'Permite preparar el comprobante con las fuentes incluidas en la aplicación.',
+ N'Consulta el comprobante PDF después de registrar tu abono.',
+ SYSUTCDATETIME(), N'America/Indiana/Indianapolis', 'PENDING', 'LOCAL', 'PUBLISHED', SYSUTCDATETIME(), N'Codex', 1);
+END;
+UPDATE administration.dbo.product_updates SET version=N'5.00.633', updatedAtUtc=SYSUTCDATETIME() WHERE module=N'Cobranza / Abonos' AND title=N'Corrección del comprobante PDF de abonos' AND idRoot IS NULL AND idCompany IS NULL AND isActive=1 AND releaseStatus='LOCAL';
+SELECT id, version, validationStatus, releaseStatus, publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Cobranza / Abonos' AND title=N'Corrección del comprobante PDF de abonos'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+GO

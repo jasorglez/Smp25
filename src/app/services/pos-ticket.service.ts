@@ -7,8 +7,12 @@ import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 
-(pdfMake as any).vfs =
-  (pdfFonts as any).pdfMake?.vfs ?? (pdfFonts as any).default?.pdfMake?.vfs;
+const ticketFonts = (pdfFonts as any).pdfMake?.vfs
+  ?? (pdfFonts as any).default?.pdfMake?.vfs
+  ?? (pdfFonts as any).default
+  ?? pdfFonts;
+
+(pdfMake as any).vfs = ticketFonts;
 
 const TICKET_WIDTH = 226.77; // 80 mm en puntos
 
@@ -55,7 +59,7 @@ export class PosTicketService {
       ],
     };
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó comprobante de abono', 'Cobranza', this.trackingService.getEmail());
-    await this.pdfPreview.show(pdfMake.createPdf(doc), 'Ticket de abono', `Ticket_Cobranza_${payment.id}.pdf`);
+    await this.pdfPreview.show(pdfMake.createPdf(doc, undefined, undefined, ticketFonts), 'Ticket de abono', `Ticket_Cobranza_${payment.id}.pdf`);
   }
 
   async print(
