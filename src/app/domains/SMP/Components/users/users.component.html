@@ -5,7 +5,7 @@
                 <span class="users-heading-icon"><i class="bi bi-people-fill"></i></span>
                 <div>
                     <h1>{{ 'modules.userSetup.ui.users' | translate }}</h1>
-                    <p>{{ showDeletedUsers ? ('modules.userSetup.ui.deletedReadOnly' | translate) : ('modules.userSetup.ui.accountsDescription' | translate) }}</p>
+                    <p *ngIf="showDeletedUsers">{{ 'modules.userSetup.ui.deletedReadOnly' | translate }}</p>
                 </div>
             </div>
 
