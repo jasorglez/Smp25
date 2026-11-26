@@ -16,10 +16,12 @@ export class PdfReportsService {
   constructor() {
     pdfMake.fonts = {
       Montserrat: {
-        normal: 'https://fonts.cdnfonts.com/s/14883/Montserrat-Regular.ttf',
-        bold: 'https://fonts.cdnfonts.com/s/14883/Montserrat-Bold.ttf',
-        italics: 'https://fonts.cdnfonts.com/s/14883/Montserrat-Italic.ttf',
-        bolditalics: 'https://fonts.cdnfonts.com/s/14883/Montserrat-BoldItalic.ttf',
+        // Auto-hospedadas (antes se pedían a fonts.cdnfonts.com en cada PDF,
+        // agregando ~1-3s de red por reporte, sin cache, dependiendo de un CDN externo).
+        normal: 'assets/fonts/Montserrat-Regular.ttf',
+        bold: 'assets/fonts/Montserrat-Bold.ttf',
+        italics: 'assets/fonts/Montserrat-Italic.ttf',
+        bolditalics: 'assets/fonts/Montserrat-BoldItalic.ttf',
       }
     };
   }

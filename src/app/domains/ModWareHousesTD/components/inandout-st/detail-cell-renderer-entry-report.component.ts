@@ -90,13 +90,14 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
     console.log(`Generating report for ${this.entryData.type === 'IN' ? 'ENTRADA' : 'SALIDA'}`);
 
     try {
-      // Configure fonts for pdfMake
+      // Configure fonts for pdfMake. Auto-hospedadas (antes se pedían a
+      // fonts.cdnfonts.com en cada PDF, agregando ~1-3s de red por reporte).
       pdfMake.fonts = {
         Montserrat: {
-          normal: 'https://fonts.cdnfonts.com/s/14883/Montserrat-Regular.ttf',
-          bold: 'https://fonts.cdnfonts.com/s/14883/Montserrat-Bold.ttf',
-          italics: 'https://fonts.cdnfonts.com/s/14883/Montserrat-Italic.ttf',
-          bolditalics: 'https://fonts.cdnfonts.com/s/14883/Montserrat-BoldItalic.ttf',
+          normal: 'assets/fonts/Montserrat-Regular.ttf',
+          bold: 'assets/fonts/Montserrat-Bold.ttf',
+          italics: 'assets/fonts/Montserrat-Italic.ttf',
+          bolditalics: 'assets/fonts/Montserrat-BoldItalic.ttf',
         }
       };
 
