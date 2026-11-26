@@ -25,21 +25,23 @@ export class PosTicketService {
 
   async printCobranza(payment: { id: number; fecha: string; monto: number; saldoPendiente: number; tipoPago: string; cliente: string; prestamo: number; cuota: number; origen: string; empresaId: number }): Promise<void> {
     let logo: string | null = null;
-    try {
-      const response: any = await Promise.race([
-        lastValueFrom(this.rootService.getRootbyId(payment.empresaId)),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo agotado al consultar el negocio')), 5000)),
-      ]);
-      const root = response?.data ?? response;
-      for (const url of [root?.picture, root?.picture2]) {
-        if (!url) continue;
+    // El ticket se muestra inmediatamente usando la imagen ya cargada en la sesión.
+    // Consultar de nuevo el negocio o descargar sus imágenes antes de crear el PDF
+    // podía dejar el guardado esperando varios segundos cuando esos servicios iban lentos.
+    const cachedLogo = this.trackingService.getpictureComp();
+    if (/^data:image\/(png|jpeg);base64,/i.test(cachedLogo || '')) {
+      logo = cachedLogo;
+    } else if (cachedLogo) {
+      try {
         const image = await Promise.race([
-          this.base64EncodeService.convertImageToBase64(url),
-          new Promise<string>((resolve) => setTimeout(() => resolve(''), 5000)),
+          this.base64EncodeService.convertImageToBase64(cachedLogo),
+          new Promise<string>((resolve) => setTimeout(() => resolve(''), 1200)),
         ]);
-        if (/^data:image\/(png|jpeg);base64,/i.test(image)) { logo = image; break; }
+        if (/^data:image\/(png|jpeg);base64,/i.test(image)) logo = image;
+      } catch (error) {
+        console.warn('No se pudo cargar el logo almacenado para el ticket de Cobranza:', error);
       }
-    } catch (error) { console.warn('No se pudo cargar el logo para el ticket de Cobranza:', error); }
+    }
     const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(payment.monto);
     const line = { canvas: [{ type: 'line', x1: 0, y1: 0, x2: TICKET_WIDTH - 14, y2: 0, lineWidth: 0.4 }], margin: [0, 2, 0, 2] };
     const doc: any = {

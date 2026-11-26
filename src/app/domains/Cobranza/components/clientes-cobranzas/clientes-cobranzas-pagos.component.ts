@@ -778,18 +778,17 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
     try {
       saved = await firstValueFrom(this.customersService.addCobranzaInstallmentPayment(installment.id, { fechaPago: paymentForm.fechaPago, monto: amount, idTipoPago: paymentForm.idTipoPago, idUsuarioCobrador: paymentForm.idUsuarioCobrador, origenCobro: paymentForm.origenCobro, idCajeroTurno: paymentForm.origenCobro === 'NEGOCIO' ? paymentForm.idCajeroTurno : null, comentario: paymentForm.comentario }));
     } catch (error: any) { console.error(error); this.saving = false; alerts.basicAlert('Error', error?.error?.error || 'No se pudo registrar el abono.', 'error'); return; }
-    // Close the capture before showing the PDF; keep saving locked until completion.
+    // El abono ya quedó guardado. Cierra y libera la captura antes de preparar el ticket.
     this.paymentModal?.close(); this.paymentModal = null;
+    this.saving = false;
+    this.activeInstallmentId = null;
+    this.loadLoans();
+    this.balancesChanged.emit();
     try {
       await this.posTicket.printCobranza({ id: saved?.id, fecha: paymentForm.fechaPago, monto: amount, saldoPendiente: Math.max(0, loanBalance - amount), tipoPago: this.paymentTypes.find(item => item.id === paymentForm.idTipoPago)?.description || 'Pago', cliente: this.customer?.nameContact || this.customer?.company || 'Cliente', prestamo: installment.idPrestamo, cuota: installment.numeroCuota, origen: paymentForm.origenCobro, empresaId: this.paymentCompanyId });
     } catch (error) {
       console.error('El abono se guardó, pero no se pudo abrir el ticket:', error);
       alerts.basicAlert('Abono guardado', 'El abono se guardó, pero no se pudo abrir el ticket.', 'warning');
-    } finally {
-      this.saving = false;
-      this.activeInstallmentId = null;
-      this.loadLoans();
-      this.balancesChanged.emit();
     }
   }
 

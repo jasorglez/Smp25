@@ -7450,3 +7450,30 @@ SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administ
  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 COMMIT TRANSACTION;
 GO
+
+-- 2026-11-25 | Cobranza / Ticket de abono | Repositorio: Smp25
+-- Origen: src/app/services/pos-ticket.service.ts y src/app/services/pdf-preview.service.ts
+-- Ejecutar solo este bloque. El anuncio queda publicado en la tabla; releaseStatus LOCAL hasta confirmar despliegue.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Cobranza / Ticket de abono' AND title=N'Reduce la espera al generar el ticket del abono'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT INTO administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.641',N'Cobranza / Ticket de abono','FIX',N'Reduce la espera al generar el ticket del abono',
+ N'El ticket usa el logo disponible en la sesión y no vuelve a consultar el negocio antes de crear el PDF. Tras guardar, la captura se libera y los préstamos se actualizan sin esperar el PDF; cerrar el visor o tardar más de 12 segundos termina la espera.',
+ N'Reduce la espera para ver el comprobante y evita que el formulario quede bloqueado mientras carga el PDF.',
+ N'Guarda el abono y consulta su comprobante con menos espera.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PASSED','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+UPDATE administration.dbo.product_updates
+ SET version=N'5.00.641', description=N'El ticket usa el logo disponible en la sesión y no vuelve a consultar el negocio antes de crear el PDF. Tras guardar, la captura se libera y los préstamos se actualizan sin esperar el PDF; cerrar el visor o tardar más de 12 segundos termina la espera.', userBenefit=N'Reduce la espera para ver el comprobante y evita que el formulario quede bloqueado mientras carga el PDF.', promoText=N'Guarda el abono y consulta su comprobante con menos espera.', validationStatus='PASSED', releaseStatus='LOCAL'
+ WHERE module=N'Cobranza / Ticket de abono' AND title=N'Reduce la espera al generar el ticket del abono'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Cobranza / Ticket de abono' AND title=N'Reduce la espera al generar el ticket del abono'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+GO

@@ -31,8 +31,11 @@ export class PdfPreviewService {
   private requestId = 0;
   private fileName = 'reporte.pdf';
   private pdfBlob: Blob | null = null;
+  private finishPendingRequest: (() => void) | null = null;
 
   show(pdf: any, title = 'Vista previa PDF', fileName?: string): Promise<void> {
+    // Termina la generación anterior si otro reporte la reemplaza.
+    this.finishPendingRequest?.();
     const requestId = ++this.requestId;
     this.releaseObjectUrl();
     this.fileName = this.normalizeFileName(fileName || title);
@@ -46,45 +49,48 @@ export class PdfPreviewService {
 
     return new Promise((resolve) => {
       let settled = false;
-      const timeout = setTimeout(() => {
-        if (settled || requestId !== this.requestId) return;
+      const settle = () => {
+        if (settled) return;
         settled = true;
-        this.stateSignal.set({ open: true, loading: false, title, viewerUrl: null, error: 'El PDF tardó demasiado en prepararse. Cierra la vista previa e inténtalo de nuevo.', zoom: 100, fileName: this.fileName });
+        clearTimeout(timeout);
+        if (this.finishPendingRequest === settle) this.finishPendingRequest = null;
         resolve();
-      }, 30000);
+      };
+      const timeout = setTimeout(() => {
+        if (requestId !== this.requestId) { settle(); return; }
+        this.stateSignal.set({ open: true, loading: false, title, viewerUrl: null, error: 'El PDF tardó demasiado en prepararse. Cierra la vista previa e inténtalo de nuevo.', zoom: 100, fileName: this.fileName });
+        settle();
+      }, 12000);
+      this.finishPendingRequest = settle;
       try {
         pdf.getBlob((blob: Blob) => {
-          if (settled || requestId !== this.requestId) {
-            resolve();
-            return;
-          }
-          settled = true;
-          clearTimeout(timeout);
+          if (requestId !== this.requestId) { settle(); return; }
           if (!(blob instanceof Blob) || blob.size === 0) {
             this.stateSignal.set({ open: true, loading: false, title, viewerUrl: null, error: 'No se pudo crear el archivo PDF.', zoom: 100, fileName: this.fileName });
-            resolve();
+            settle();
             return;
           }
 
           this.pdfBlob = blob;
           this.objectUrl = URL.createObjectURL(blob);
           this.updateViewerUrl(100);
-          resolve();
+          settle();
         });
       } catch (error) {
-        settled = true;
-        clearTimeout(timeout);
         if (requestId === this.requestId) {
           const detail = error instanceof Error ? error.message : String(error || 'Error desconocido');
           this.stateSignal.set({ open: true, loading: false, title, viewerUrl: null, error: detail, zoom: 100, fileName: this.fileName });
         }
-        resolve();
+        settle();
       }
     });
   }
 
   close(): void {
     this.requestId++;
+    // La llamada a show() también debe terminar al cerrar el visor para liberar
+    // el estado "Guardando" de quien pidió el PDF.
+    this.finishPendingRequest?.();
     this.stateSignal.set({ ...EMPTY_STATE });
     this.releaseObjectUrl();
   }
