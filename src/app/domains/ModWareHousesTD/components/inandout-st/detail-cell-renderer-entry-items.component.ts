@@ -127,7 +127,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
           <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()"><i class="bi bi-x-lg"></i> {{ 'modules.warehouses.ui.entryDetail.closeReport' | translate }}</button>
         </div>
       </div>
-      <div class="report-content" [style.height.px]="context?.detailInnerReportHeight || 920" style="width:100%; min-width:0; margin-top:64px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+      <div class="report-content" style="width:100%; min-width:0; height:920px; margin-top:64px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
         <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" [title]="'modules.warehouses.ui.entryDetail.receiptReport' | translate" fileName="Receipt_Report.pdf"></app-pdf-report-viewer>
         <div *ngIf="!pdfUrl" class="d-flex justify-content-center align-items-center h-100">
           <div class="text-center">

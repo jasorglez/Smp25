@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.644 (26 Noviembre 2026 20:10) Traduccion contract y cache-busting i18n',
+  version: '5.00.645 (26 Noviembre 2026 20:45) Corrige vista del reporte PDF en entradas/salidas',
 };

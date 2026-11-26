@@ -743,7 +743,9 @@ export class InandoutStComponent implements OnInit {
     detailRowHeight: 1050,
     getRowHeight: (params: any) => {
       if (!params.node.detail) return undefined;
-      if (params.node.parent?.data?.detailType === 'report') return this.detailRowHeightReport;
+      // El reporte PDF siempre con altura generosa fija (necesita espacio para
+      // renderizar el documento); solo el grid de items se adapta al viewport.
+      if (params.node.parent?.data?.detailType === 'report') return 1080;
       return this.detailRowHeightItems;
     },
     isRowMaster: (dataItem: any) => true,
