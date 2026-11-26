@@ -1241,7 +1241,7 @@
       },
       "ui": {
         "movements": {
-          "items": "Partidas", "pdf": "PDF", "generatePdf": "Generar reporte PDF", "project": "Proyecto",
+          "items": "Partidas", "pdf": "PDF", "generatePdf": "Generar reporte PDF", "project": "Proyecto", "noProject": "Sin proyecto", "onlySidebarContract": "Solo el contrato seleccionado", "allContracts": "Todos los contratos", "onlySidebarProject": "Solo el proyecto seleccionado", "noContract": "Sin contrato",
           "createProject": "Crear proyecto nuevo", "warehouse": "Almacén", "movementType": "Tipo de movimiento",
           "addRecord": "Agregar registro", "workOrder": "Orden de trabajo", "noWorkOrder": "Sin orden de trabajo",
           "purchaseOrder": "Orden de compra", "noPurchaseOrder": "Sin orden de compra", "receiptVoucher": "Vale de entrada",

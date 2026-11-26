@@ -17,6 +17,22 @@
         [searchable]="true">
       </ng-select>
     </div>
+    <ng-container>
+      <label class="form-check form-check-inline mb-0" *ngIf="projectId">
+        <input class="form-check-input" type="checkbox" [ngModel]="movementScope === 'project'" (ngModelChange)="onMovementScopeChange($event ? 'project' : 'all')">
+        <span class="form-check-label">{{ 'modules.warehouses.ui.movements.onlySidebarProject' | translate }}</span>
+      </label>
+    </ng-container>
+    <ng-container *ngIf="contractId">
+      <label class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="checkbox" [ngModel]="movementScope === 'contract'" (ngModelChange)="onMovementScopeChange($event ? 'contract' : 'all')">
+        <span class="form-check-label">{{ 'modules.warehouses.ui.movements.onlySidebarContract' | translate }}</span>
+      </label>
+      <label class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="checkbox" [ngModel]="movementScope === 'all'" (ngModelChange)="onMovementScopeChange($event ? 'all' : 'contract')">
+        <span class="form-check-label">{{ 'modules.warehouses.ui.movements.allContracts' | translate }}</span>
+      </label>
+    </ng-container>
     <small class="text-muted" *ngIf="!warehouses.length">{{ 'modules.warehouses.ui.movements.noAuthorizedWarehouses' | translate }}</small>
   </div>
   <div class="row">

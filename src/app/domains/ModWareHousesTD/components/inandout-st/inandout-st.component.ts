@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect, Input, ViewChild } from '@angular/core';
+import { Component, OnInit, inject, effect, Input, ViewChild, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -72,11 +72,25 @@ export class InandoutStComponent implements OnInit {
   selectedWarehouse: any = null;
   warehouses: any[] = [];
   gridHeight: string = '85vh';
+  // Alturas responsivas del detalle master-detail. Se recalculan según el viewport
+  // para que, en pantallas pequeñas, el detalle no "se trague" el grid maestro.
+  detailRowHeightItems = 1150;
+  detailRowHeightReport = 1080;
+  detailInnerGridHeight = 610;
+  detailInnerReportHeight = 920;
   selectedEntry: any = null;
   hasUnsavedChanges: boolean = false;
   idRoot: number | null = null;
   idBranch: number | null = null;
   projectId: number | null = null;
+  contractId: number | null = null;
+  movementScope: 'project' | 'contract' | 'all' = 'all';
+
+  onMovementScopeChange(scope: 'project' | 'contract' | 'all'): void {
+    this.movementScope = scope;
+    this.refreshColumns();
+    this.loadEntries();
+  }
   movementType: 'IN' | 'OUT' = 'IN';
   newlyAddedRows: string[] = [];
   private tempIdCounter: number = 0;
@@ -140,6 +154,7 @@ export class InandoutStComponent implements OnInit {
 
     effect(() => {
       this.projectId = this.signalsService.getProjectSelectedBySidebar()();
+      this.contractId = this.signalsService.getContractSelectedBySidebar()();
       this.loadOts();
       const email = this.trackingService.getEmail();
       if (this.projectId && email) {
@@ -152,8 +167,36 @@ export class InandoutStComponent implements OnInit {
     });
   }
 
+  /** Calcula las alturas del detalle en función del viewport. El grid maestro usa
+   *  85vh; reservamos ~220px (encabezado + ~5 filas) para que siga visible aunque
+   *  haya un detalle expandido, en vez de que el detalle fijo lo tape por completo. */
+  private computeDetailHeights(): void {
+    const vh = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 900;
+    const cap = Math.round(vh * 0.85 - 220);
+    const desiredItems = this.movementType === 'IN' ? 1150 : 1050;
+    this.detailRowHeightItems  = Math.max(360, Math.min(desiredItems, cap));
+    this.detailRowHeightReport = Math.max(420, Math.min(1080, cap));
+    // Cromo sobre el grid interno (botones + alertas + padding) ≈ 190px;
+    // encabezado + margen del visor de reporte ≈ 130px.
+    this.detailInnerGridHeight   = Math.max(180, this.detailRowHeightItems - 190);
+    this.detailInnerReportHeight = Math.max(240, this.detailRowHeightReport - 130);
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    const prev = this.detailRowHeightItems;
+    this.computeDetailHeights();
+    if (this.gridApi && prev !== this.detailRowHeightItems) {
+      this.gridApi.setGridOption('context', { ...this.gridApi.getGridOption('context'),
+        detailInnerGridHeight: this.detailInnerGridHeight,
+        detailInnerReportHeight: this.detailInnerReportHeight });
+      this.gridApi.resetRowHeights();
+    }
+  }
+
   ngOnInit() {
     this.movementType = this.route.snapshot.data['movementType'] || 'IN';
+    this.computeDetailHeights();
     this.loadUsers();
     const email = this.trackingService.getEmail();
     if (this.idRoot && email) {
@@ -628,26 +671,31 @@ export class InandoutStComponent implements OnInit {
   }
 
   loadEntries() {
-    if (!this.selectedWarehouse || !this.projectId) return;
-    const requestProjectId = Number(this.projectId);
+    if (!this.selectedWarehouse) return;
     const requestWarehouseId = Number(this.selectedWarehouse.idAlmacen);
     const requestRootId = Number(this.idRoot);
-    if (!requestProjectId || !requestWarehouseId || !requestRootId) {
+    if (!requestWarehouseId || !requestRootId) {
       this.rowData = [];
       console.error('No se pueden cargar entradas con el contexto actual:', {
         idRoot: requestRootId,
-        idProject: requestProjectId,
         idWarehouse: requestWarehouseId,
       });
       return;
     }
-    this.inandoutService.getInAndOuts(requestProjectId, requestWarehouseId, this.movementType).subscribe({
+    this.inandoutService.getInAndOuts(null, requestWarehouseId, this.movementType).subscribe({
       next: (data: any[]) => {
-        if (requestProjectId !== Number(this.projectId) ||
-            requestWarehouseId !== Number(this.selectedWarehouse?.idAlmacen) ||
+        if (requestWarehouseId !== Number(this.selectedWarehouse?.idAlmacen) ||
             requestRootId !== Number(this.idRoot)) return;
-        this.rowData = data.map(entry => ({
+        const warehouseEntries = data.filter(entry => {
+          if (this.movementScope === 'project') return Number(entry.idProject) === Number(this.projectId);
+          if (this.movementScope !== 'contract' || !this.contractId) return true;
+          const project = this.projectList.find(item => Number(item.id) === Number(entry.idProject));
+          return Number(project?.idContrato) === Number(this.contractId);
+        });
+        this.rowData = warehouseEntries.map(entry => ({
           ...entry,
+          projectName: this.getProjectName(entry.idProject),
+          contractName: this.getProjectContract(entry.idProject),
           ...(this.isTransferType(entry.idType) ? {
             idWarehouse: entry.idWarehouseOrigin,
             idWarehouseOrigin: entry.idWarehouse,
@@ -658,8 +706,7 @@ export class InandoutStComponent implements OnInit {
         })).sort((entryA, entryB) => (Number(entryB.id) || 0) - (Number(entryA.id) || 0));
       },
       error: (error) => {
-        if (requestProjectId !== Number(this.projectId) ||
-            requestWarehouseId !== Number(this.selectedWarehouse?.idAlmacen) ||
+        if (requestWarehouseId !== Number(this.selectedWarehouse?.idAlmacen) ||
             requestRootId !== Number(this.idRoot)) return;
         console.error(`Error loading entries:`, error);
         const message = error?.error?.message || error?.error?.title || error?.message || 'Error desconocido';
@@ -668,27 +715,48 @@ export class InandoutStComponent implements OnInit {
     });
   }
 
+  private getProjectName(projectId: number | null | undefined): string {
+    if (!projectId) return this.translate.instant('modules.warehouses.ui.movements.noProject');
+    const project = this.projectList.find(item => Number(item.id) === Number(projectId));
+    return project ? (project.description || project.name || `#${projectId}`) : `#${projectId}`;
+  }
+
+  private getProjectContract(projectId: number | null | undefined): string {
+    const project = this.projectList.find(item => Number(item.id) === Number(projectId));
+    const contractId = Number(project?.idContrato || 0);
+    return contractId ? `#${contractId}` : this.translate.instant('modules.warehouses.ui.movements.noContract');
+  }
+
   public gridOptions: any = {
     headerHeight: 35,
     rowHeight: 35,
     animateRows: false,
     masterDetail: true,
+    groupDefaultExpanded: 1,
+    groupDisplayType: 'singleColumn',
+    autoGroupColumnDef: {
+      headerName: this.translate.instant('modules.warehouses.ui.movements.project'),
+      minWidth: 220,
+      flex: 1,
+      cellRendererParams: { suppressCount: false }
+    },
     detailRowHeight: 1050,
     getRowHeight: (params: any) => {
       if (!params.node.detail) return undefined;
-      if (params.node.parent?.data?.detailType === 'report') return 1080;
-      return this.movementType === 'IN' ? 1150 : 1050;
+      if (params.node.parent?.data?.detailType === 'report') return this.detailRowHeightReport;
+      return this.detailRowHeightItems;
     },
     isRowMaster: (dataItem: any) => true,
     detailCellRenderer: DetailCellRendererEntryItemsComponent,
     getRowClass: (params: any) => {
       if (params.node.isSelected()) return 'selected-row';
+      if (params.node.group || !params.data) return '';
       if (params.data.__isNew) return 'new-row-highlight';
       if (params.data.__modified) return 'modified-row';
       return '';
     },
     onRowClicked: (event: any) => {
-      if (event.column && !['pdfReport', 'authorizationAction'].includes(event.column.getColId())) {
+      if (!event.node.group && event.node.data && event.column && !['pdfReport', 'authorizationAction'].includes(event.column.getColId())) {
         event.node.setSelected(true);
       }
     },
@@ -719,6 +787,23 @@ export class InandoutStComponent implements OnInit {
     if (this._colMaster.length) return this._colMaster;
     this._colMaster = [
       {
+        headerName: '#',
+        width: 56,
+        pinned: 'left',
+        lockPinned: true,
+        suppressMovable: true,
+        sortable: false,
+        filter: false,
+        editable: false,
+        // Consecutivo por posición en rowData → numera 1..N las filas (entradas/salidas),
+        // sin saltos aunque haya detalles expandidos.
+        valueGetter: (params: any) => {
+          const idx = this.rowData.indexOf(params.data);
+          return idx >= 0 ? idx + 1 : '';
+        },
+        cellStyle: { color: '#64748b', fontWeight: '600', textAlign: 'center' }
+      },
+      {
         field: 'countrow',
         headerName: this.translate.instant('modules.warehouses.ui.movements.items'),
         width: 80,
@@ -726,7 +811,7 @@ export class InandoutStComponent implements OnInit {
         cellRendererParams: {
           onClick: (node: any) => this.toggleCascade(node),
         },
-        valueGetter: params => params.data.countrow || 0,
+        valueGetter: params => params.data?.countrow || 0,
         editable: false,
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
@@ -745,7 +830,23 @@ export class InandoutStComponent implements OnInit {
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
       {
+        field: 'projectName',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.project'),
+        width: 160,
+        rowGroup: true,
+        hide: true,
+        valueFormatter: (params: any) => params.value || this.getProjectName(params.data?.idProject),
+      },
+      {
+        field: 'contractName',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.contract'),
+        width: 140,
+        hide: this.movementScope !== 'all',
+        editable: false,
+      },
+      {
         field: 'idProject',
+        colId: 'projectAssignment',
         headerName: this.translate.instant('modules.warehouses.ui.movements.project'),
         width: 160,
         editable: (params: any) => this.canEditAuthorizedRow(params.data),
@@ -1156,6 +1257,8 @@ export class InandoutStComponent implements OnInit {
       },
       context: {
         movementType: this.movementType,
+        detailInnerGridHeight: this.detailInnerGridHeight,
+        detailInnerReportHeight: this.detailInnerReportHeight,
         isTransferType: (idType: any) => this.isTransferType(idType),
         getMovementTypeBehavior: (idType: any) => this.catalogs.find(catalog => Number(catalog.id) === Number(idType))?.valueAddition || '',
         idRoot: this.idRoot,
