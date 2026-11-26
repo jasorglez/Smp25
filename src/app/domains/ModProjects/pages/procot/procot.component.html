@@ -40,15 +40,18 @@
           </a>
         </li>
 
+        <li class="nav-item">
+          <a class="nav-link green-tab" routerLink="generales" routerLinkActive="active">
+            <i class="bi bi-gear me-1"></i>{{ 'modules.projects.workOrders.ui.generalSettings' | translate }}
+          </a>
+        </li>
+
+        <!-- Pestaña "servicio" pendiente: no existe la ruta 'servicio' en app.routes.ts.
+             Reactivar solo cuando se defina su ruta/componente. -->
         <!--
         <li class="nav-item">
           <a class="nav-link green-tab" routerLink="servicio" routerLinkActive="active">
-            <i class="bi bi-wrench"></i> {{'orders' | translate}} {{'general' | translate}}
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link green-tab" routerLink="generales" routerLinkActive="active">
-            <i class="bi bi-gear"></i> {{'general' | translate}}
+            <i class="bi bi-wrench me-1"></i>{{ 'modules.projects.workOrders.ui.serviceOrders' | translate }}
           </a>
         </li>
         -->
