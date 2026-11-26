@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.642 (25 Noviembre 2026 22:43) Enfoca el monto al registrar un abono',
+  version: '5.00.643 (26 Noviembre 2026 15:29) Filtra movimientos de almacén por proyecto y contrato',
 };
