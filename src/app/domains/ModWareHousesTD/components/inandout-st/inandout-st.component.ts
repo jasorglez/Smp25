@@ -270,10 +270,16 @@ export class InandoutStComponent implements OnInit {
           seen.add(id);
           return true;
         });
-        this.selectedWarehouse = null;
         this.rowData = [];
         this.selectedEntry = null;
         this.refreshColumns();
+        // Selecciona el primer almacén automáticamente para que la pantalla
+        // muestre información al entrar, en vez de quedar vacía hasta elegir.
+        if (this.warehouses.length) {
+          this.onWarehouseChange(this.warehouses[0].idAlmacen);
+        } else {
+          this.selectedWarehouse = null;
+        }
       },
       error: (error) => {
         if (requestId !== this.warehouseLoadRequest) return;

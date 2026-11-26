@@ -2,6 +2,10 @@ import { Injectable, effect } from '@angular/core';
 import { firstValueFrom, forkJoin } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+
+// pdfMake solo descarga fuentes vía URL absoluta (su URLBrowserResolver
+// ignora rutas relativas en silencio); se resuelve en runtime contra el origen.
+const pdfFontsBaseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 import { ReceivedataService } from './receivedata.service';
 import { Base64EncodeService } from './base64encode.service';
 import { BlobService } from './blob.service';
@@ -860,13 +864,12 @@ private processMaterialesData(): string[][] {
     }
 
     pdfMake.fonts = {
-      // Auto-hospedadas (antes se pedían a fonts.cdnfonts.com en cada PDF,
-      // agregando ~1-3s de red por reporte, sin cache, dependiendo de un CDN externo).
+      // Auto-hospedadas con URL absoluta (ver nota junto a pdfFontsBaseUrl arriba).
       Montserrat: {
-        normal: 'assets/fonts/Montserrat-Regular.ttf',
-        bold: 'assets/fonts/Montserrat-Bold.ttf',
-        italics: 'assets/fonts/Montserrat-Italic.ttf',
-        bolditalics: 'assets/fonts/Montserrat-BoldItalic.ttf',
+        normal: `${pdfFontsBaseUrl}/assets/fonts/Montserrat-Regular.ttf`,
+        bold: `${pdfFontsBaseUrl}/assets/fonts/Montserrat-Bold.ttf`,
+        italics: `${pdfFontsBaseUrl}/assets/fonts/Montserrat-Italic.ttf`,
+        bolditalics: `${pdfFontsBaseUrl}/assets/fonts/Montserrat-BoldItalic.ttf`,
       },
       Emoji: {
         normal:

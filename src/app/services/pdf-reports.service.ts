@@ -6,6 +6,10 @@ import { RootService } from './root.service';
 import { TrackingService } from './tracking.service';
 import { lastValueFrom } from 'rxjs';
 
+// pdfMake solo descarga fuentes vía URL absoluta (ver pdf-reports.service);
+// se resuelve en runtime (no durante SSR) contra el propio origen.
+const pdfFontsBaseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -17,11 +21,14 @@ export class PdfReportsService {
     pdfMake.fonts = {
       Montserrat: {
         // Auto-hospedadas (antes se pedían a fonts.cdnfonts.com en cada PDF,
-        // agregando ~1-3s de red por reporte, sin cache, dependiendo de un CDN externo).
-        normal: 'assets/fonts/Montserrat-Regular.ttf',
-        bold: 'assets/fonts/Montserrat-Bold.ttf',
-        italics: 'assets/fonts/Montserrat-Italic.ttf',
-        bolditalics: 'assets/fonts/Montserrat-BoldItalic.ttf',
+        // agregando ~1-3s de red por reporte, sin cache, dependiendo de un CDN
+        // externo). pdfMake's URLBrowserResolver solo descarga URLs absolutas
+        // (http/https); una ruta relativa la ignora en silencio y el PDF se
+        // queda esperando datos de fuente que nunca llegan.
+        normal: `${pdfFontsBaseUrl}/assets/fonts/Montserrat-Regular.ttf`,
+        bold: `${pdfFontsBaseUrl}/assets/fonts/Montserrat-Bold.ttf`,
+        italics: `${pdfFontsBaseUrl}/assets/fonts/Montserrat-Italic.ttf`,
+        bolditalics: `${pdfFontsBaseUrl}/assets/fonts/Montserrat-BoldItalic.ttf`,
       }
     };
   }
