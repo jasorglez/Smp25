@@ -1082,6 +1082,7 @@
           "pdf": "PDF",
           "generatePdf": "Generate PDF report",
           "project": "Project",
+          "contract": "Contract",
           "noProject": "No project",
           "onlySidebarContract": "Only the selected contract",
           "allContracts": "All contracts",

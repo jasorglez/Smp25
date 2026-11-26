@@ -11,7 +11,10 @@ import { HttpClient } from '@angular/common/http';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 
 export function HttpLoaderFactory(http: HttpClient) {
-  return new TranslateHttpLoader(http, './assets/i18n/', '.json');
+  // Cache-busting por versión (ver app.config.ts) para que no se sirva un
+  // catálogo i18n cacheado tras un deploy.
+  const v = (environment.version || '0').split(' ')[0];
+  return new TranslateHttpLoader(http, './assets/i18n/', `.json?v=${v}`);
 }
 
 export function appInitializer(translate: TranslateService) {

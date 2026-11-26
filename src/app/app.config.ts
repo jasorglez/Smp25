@@ -15,9 +15,13 @@ import { getFirestore, provideFirestore } from '@angular/fire/firestore';
 import { environment } from '../environments/environment';
 import { provideServiceWorker } from '@angular/service-worker';
 
-// Función para cargar las traducciones
+// Función para cargar las traducciones.
+// Cache-busting por versión: sin esto, navegadores como Brave/Firefox (o sesiones
+// viejas) sirven el es.json/en.json cacheado y los nombres de menú no se actualizan
+// tras un deploy. El ?v={version} fuerza una descarga nueva en cada versión.
 export function createTranslateLoader(http: HttpClient) {
-  return new TranslateHttpLoader(http, './assets/i18n/', '.json');
+  const v = (environment.version || '0').split(' ')[0];
+  return new TranslateHttpLoader(http, './assets/i18n/', `.json?v=${v}`);
 }
 
 export const appConfig: ApplicationConfig = {
