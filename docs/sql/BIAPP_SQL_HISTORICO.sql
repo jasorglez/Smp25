@@ -7477,3 +7477,30 @@ SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administ
  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 COMMIT TRANSACTION;
 GO
+
+-- 2026-11-25 | Cobranza / Registro de abonos | Repositorio: Smp25
+-- Origen: src/app/domains/Cobranza/components/clientes-cobranzas/clientes-cobranzas-pagos.component.ts
+-- Ejecutar solo este bloque. El anuncio queda publicado en la tabla; releaseStatus LOCAL hasta confirmar despliegue.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Cobranza / Registro de abonos' AND title=N'Enfoque automático en el monto del abono'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT INTO administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.642',N'Cobranza / Registro de abonos','IMPROVEMENT',N'Enfoque automático en el monto del abono',
+ N'Al abrir Registrar abono, el campo de monto queda enfocado y mantiene precargado el saldo pendiente de la cuota.',
+ N'Permite capturar o ajustar la cantidad inmediatamente, sin buscar el campo ni seleccionarlo manualmente.',
+ N'Abre el registro de abono listo para capturar el monto.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+UPDATE administration.dbo.product_updates
+ SET version=N'5.00.642', description=N'Al abrir Registrar abono, el campo de monto queda enfocado y mantiene precargado el saldo pendiente de la cuota.', userBenefit=N'Permite capturar o ajustar la cantidad inmediatamente, sin buscar el campo ni seleccionarlo manualmente.', promoText=N'Abre el registro de abono listo para capturar el monto.', validationStatus='PENDING', releaseStatus='LOCAL'
+ WHERE module=N'Cobranza / Registro de abonos' AND title=N'Enfoque automático en el monto del abono'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Cobranza / Registro de abonos' AND title=N'Enfoque automático en el monto del abono'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+GO
