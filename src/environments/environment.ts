@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.648 (26 Noviembre 2026 22:48) Corrige fuentes PDF (URL absoluta) y auto-selecciona el primer almacen',
+  version: '5.00.649 (26 Noviembre 2026 23:36) Ajusta reporte PDF: descripcion mas grande, columna ancha y sello sin partirse',
 };

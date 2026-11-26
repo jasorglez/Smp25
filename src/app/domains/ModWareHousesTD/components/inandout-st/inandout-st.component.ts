@@ -737,7 +737,8 @@ export class InandoutStComponent implements OnInit {
   private getProjectContract(projectId: number | null | undefined): string {
     const project = this.projectList.find(item => Number(item.id) === Number(projectId));
     const contractId = Number(project?.idContrato || 0);
-    return contractId ? `#${contractId}` : this.translate.instant('modules.warehouses.ui.movements.noContract');
+    if (!contractId) return this.translate.instant('modules.warehouses.ui.movements.noContract');
+    return project?.contractNumber || `#${contractId}`;
   }
 
   // Paleta estable (misma pastilla siempre para el mismo proyecto) usada como

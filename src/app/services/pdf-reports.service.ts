@@ -233,7 +233,7 @@ export class PdfReportsService {
           },
           {
             table: {
-              widths: ['5%', '14%', '29%', '12%', '14%', '12%', '14%'],
+              widths: ['4%', '10%', '38%', '10%', '12%', '10%', '16%'],
               headerRows: 1,
               body: [
                 [
@@ -248,7 +248,7 @@ export class PdfReportsService {
                 ...(itemsData && itemsData.length > 0 ? itemsData.map((item: any, index: number) => [
                   index + 1,
                   item.code || item.idMaterial || 'N/A',
-                  item.description || item.materialName || 'N/A',
+                  { text: item.description || item.materialName || 'N/A', fontSize: 10 },
                   item.brandName || item.brand || item.marca || 'N/A',
                   item.quantity || 0,
                   item.measure || item.unit || item.unidad || 'N/A',
@@ -273,6 +273,10 @@ export class PdfReportsService {
           },
           {
             margin: [0, 60, 0, 0],
+            // Mantiene firmas + sello "SIN AUTORIZAR" como una sola unidad: si no
+            // caben en lo que queda de la página, pasan juntas a la siguiente en
+            // vez de partirse (lo que descolocaba el sello respecto a "Recibe").
+            unbreakable: true,
             columns: [
               {
                 width: '50%',
