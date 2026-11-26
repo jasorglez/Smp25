@@ -703,7 +703,14 @@ export class InandoutStComponent implements OnInit {
           countrow: entry.countRow || 0,
           detailType: null,
           detailData: []
-        })).sort((entryA, entryB) => (Number(entryB.id) || 0) - (Number(entryA.id) || 0));
+        })).sort((entryA, entryB) => {
+          // Agrupa visualmente por proyecto (AG Grid rowGroup no es compatible
+          // con masterDetail, así que se agrupa por orden + franja de color en
+          // vez de usar row grouping nativo).
+          const projectCompare = String(entryA.projectName || '').localeCompare(String(entryB.projectName || ''));
+          if (projectCompare !== 0) return projectCompare;
+          return (Number(entryB.id) || 0) - (Number(entryA.id) || 0);
+        });
       },
       error: (error) => {
         if (requestWarehouseId !== Number(this.selectedWarehouse?.idAlmacen) ||
@@ -727,19 +734,24 @@ export class InandoutStComponent implements OnInit {
     return contractId ? `#${contractId}` : this.translate.instant('modules.warehouses.ui.movements.noContract');
   }
 
+  // Paleta estable (misma pastilla siempre para el mismo proyecto) usada como
+  // franja visual de agrupación por proyecto en la columna Proyecto.
+  private readonly projectBandPalette = ['#e3f2fd', '#e8f5e9', '#fff3e0', '#f3e5f5', '#fce4ec', '#e0f7fa', '#fff9c4', '#ede7f6'];
+  private getProjectBandColor(projectId: number | null | undefined): string {
+    const key = Number(projectId) || 0;
+    const idx = Math.abs(key) % this.projectBandPalette.length;
+    return this.projectBandPalette[idx];
+  }
+
   public gridOptions: any = {
     headerHeight: 35,
     rowHeight: 35,
     animateRows: false,
     masterDetail: true,
-    groupDefaultExpanded: 1,
-    groupDisplayType: 'singleColumn',
-    autoGroupColumnDef: {
-      headerName: this.translate.instant('modules.warehouses.ui.movements.project'),
-      minWidth: 220,
-      flex: 1,
-      cellRendererParams: { suppressCount: false }
-    },
+    // AG Grid no soporta Row Grouping junto con Master-Detail: con rowGroup
+    // activo, expandir filas para ver items/PDF deja de funcionar. Por eso el
+    // "agrupado por proyecto" se logra con orden (ver sort en loadEntries) +
+    // franja de color (ver getRowStyle), no con rowGroup/autoGroupColumn.
     detailRowHeight: 1050,
     getRowHeight: (params: any) => {
       if (!params.node.detail) return undefined;
@@ -834,10 +846,10 @@ export class InandoutStComponent implements OnInit {
       {
         field: 'projectName',
         headerName: this.translate.instant('modules.warehouses.ui.movements.project'),
-        width: 160,
-        rowGroup: true,
-        hide: true,
+        width: 180,
+        editable: false,
         valueFormatter: (params: any) => params.value || this.getProjectName(params.data?.idProject),
+        cellStyle: (params: any) => ({ backgroundColor: this.getProjectBandColor(params.data?.idProject), fontWeight: '600' }),
       },
       {
         field: 'contractName',
