@@ -173,6 +173,25 @@ export class alerts{
 	Toast: aparece y desaparece solo (sin botón OK)
 	=============================================*/
 
+	static reportUpdateAlert(title: string) {
+		return Swal.fire({
+			toast: true,
+			position: 'top-end',
+			title,
+			icon: 'info',
+			showConfirmButton: false,
+			showCloseButton: true,
+			timer: 10000,
+			timerProgressBar: true,
+			didOpen: (toast) => {
+				const container = Swal.getContainer();
+				if (container) container.style.zIndex = String(SWAL_Z_INDEX);
+				toast.addEventListener('mouseenter', () => Swal.stopTimer());
+				toast.addEventListener('mouseleave', () => Swal.resumeTimer());
+			},
+		});
+	}
+
 	static toastAlert(title: string, icon: SweetAlertIcon, timer: number = 1800) {
 		return Swal.mixin({
 			toast: true,

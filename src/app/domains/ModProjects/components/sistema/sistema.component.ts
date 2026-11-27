@@ -562,7 +562,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
       if (projectId && +projectId === this.idProject) {
         const type = String(data?.TypeNote ?? data?.typeNote ?? '').toUpperCase();
         const label = ({ PERSONAL: 'personal', EQUIPMENT: 'equipo', NOTE: 'nota' })[type] || 'reporte';
-        alerts.toastAlert(`Se recibió un nuevo registro de ${label}.`, 'info');
+        alerts.reportUpdateAlert(`Se recibió un nuevo registro de ${label}.`);
         this.scheduleReload();
       }
     };
@@ -574,6 +574,8 @@ export class SistemaComponent implements OnInit, OnDestroy {
       const photoId = Number(data?.Id ?? data?.id ?? 0);
       if (photoId && this.handledPhotoUpdateIds.has(photoId)) return;
       if (photoId) this.handledPhotoUpdateIds.add(photoId);
+
+      alerts.reportUpdateAlert('Se recibió una nueva foto en la bitácora.');
 
       const reportId = Number(data?.IdReporte ?? data?.idReporte ?? 0);
       if (!reportId || !this.gridApi) return;

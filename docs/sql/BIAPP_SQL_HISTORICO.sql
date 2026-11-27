@@ -7527,3 +7527,20 @@ SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administ
 COMMIT TRANSACTION;
 -- END REPORT_RABBITMQ_650
 GO
+
+-- BEGIN REPORT_PHOTO_NOTICE_651
+-- 2026-11-26 | Proyectos / Reportes diarios | Repositorio: Smp25
+-- Origen: src/app/helpers/alerts.ts y sistema.component.ts
+-- Ajuste del mismo anuncio de RabbitMQ, sin duplicarlo. Ejecutar solo este bloque.
+UPDATE administration.dbo.product_updates
+SET version=N'5.00.651',
+ description=N'Las altas individuales de reportes, fotos, personal, equipos y notas desde Telegram o web generan avisos hacia el frontend. Las fotos también muestran notificación; los avisos aparecen arriba durante 10 segundos y se pausan al pasar el cursor. Requiere desplegar el frontend actualizado.',
+ userBenefit=N'Facilita identificar las nuevas capturas con avisos visibles y duraderos.',
+ promoText=N'Entérate de las fotos y reportes nuevos con avisos más visibles y duraderos.',
+ validationStatus='PENDING', releaseStatus='LOCAL', updatedAtUtc=SYSUTCDATETIME()
+WHERE id=326 AND module=N'Proyectos / Reportes diarios'
+ AND title=N'Avisos de reportes y bitácora desde Telegram y web';
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates WHERE id=326;
+-- END REPORT_PHOTO_NOTICE_651
+GO
