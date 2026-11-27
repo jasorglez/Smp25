@@ -560,6 +560,9 @@ export class SistemaComponent implements OnInit, OnDestroy {
     const handler = (data: any) => {
       const projectId = data?.IdProject ?? data?.idProject;
       if (projectId && +projectId === this.idProject) {
+        const type = String(data?.TypeNote ?? data?.typeNote ?? '').toUpperCase();
+        const label = ({ PERSONAL: 'personal', EQUIPMENT: 'equipo', NOTE: 'nota' })[type] || 'reporte';
+        alerts.toastAlert(`Se recibió un nuevo registro de ${label}.`, 'info');
         this.scheduleReload();
       }
     };
@@ -611,7 +614,12 @@ export class SistemaComponent implements OnInit, OnDestroy {
   // Debounce para evitar múltiples recargas seguidas
   private scheduleReload(): void {
     if (this.reloadTimeout) clearTimeout(this.reloadTimeout);
-    this.reloadTimeout = setTimeout(() => this.loadReports(), 800);
+    this.reloadTimeout = setTimeout(() => {
+      // A remote capture must never replace pending edits or destroy an open detail.
+      if (this.hasUnsavedChanges || this.gridApi?.getEditingCells().length ||
+          this.rowData.some(row => row.detailType)) return;
+      this.loadReports();
+    }, 800);
   }
 
   private async syncExistingOutings(projectId: number): Promise<void> {

@@ -1,0 +1,40 @@
+Avisos de reportes diarios y bitácora — 5.00.650
+
+Flujo: alta desde web (SMP) o Telegram -> RabbitMQ -> consumidor de Telegram
+-> SignalR /telegram/storageHub -> Angular.
+
+Eventos: ReceiveNewDailyReport, ReceivePhotoUpdate y ReceiveTextUpdate
+(personal, equipos y notas conservan TypeNote en el contenido).
+Exchange: biapp.reports.events.v1 (topic, durable).
+Cola: biapp.reports.notifications.signalr.v1 (durable).
+Errores: biapp.reports.notifications.signalr.dlq.v1.
+
+Configuración del servidor, mediante variables de entorno:
+SMP: ReportRabbitMq__Enabled=true; ReportRabbitMq__HostName, __Port,
+__UserName, __Password y __VirtualHost.
+Telegram: RabbitMq__Enabled=true; RabbitMq__HostName, __Port,
+__UserName, __Password y __VirtualHost.
+Ambos deben apuntar al MISMO broker y virtual host. Reutilizar la configuración
+protegida de Cobranza; no copiar contraseñas en el repositorio.
+
+Desplegar e iniciar primero Telegram para crear exchange, bindings y colas;
+después SMP y Angular. Comprobar el mensaje de consumidor conectado en los logs.
+El consumidor sigue la topología de Cobranza: un gateway Telegram. Para varias
+réplicas con clientes SignalR, configurar backplane antes de escalar.
+
+Validación integrada pendiente:
+1. Abrir Reportes diarios en dos navegadores, seleccionando el mismo proyecto.
+2. Crear un reporte y agregar foto, personal, equipo y nota desde Telegram.
+3. Repetir las cinco altas desde la web. Verificar la recepción en el otro navegador.
+4. Mantener una fila en edición: el aviso no debe borrar la captura.
+5. Reentregar un evento con el mismo eventId: no debe duplicar su procesamiento.
+6. Verificar que una captura de otro proyecto no recarga la vista actual.
+7. Revisar la cola de errores y logs ante mensajes inválidos.
+
+Alcance: altas individuales de reportes y bitácora; no añade eventos para
+importaciones Excel, generación masiva desde OT, modificaciones ni eliminaciones.
+Si RabbitMQ falla, el registro SQL se conserva y el fallo del aviso se registra.
+Como en Cobranza, no hay outbox SQL: una publicación fallida no se repone sola.
+La cola conserva eventos ya publicados; SignalR no conserva avisos para navegadores
+desconectados. Al volver a abrir el reporte, se consultan los datos persistidos.
+No se ha verificado despliegue ni entrega real con broker en esta tarea.

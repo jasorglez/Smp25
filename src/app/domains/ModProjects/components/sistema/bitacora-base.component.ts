@@ -1,4 +1,6 @@
-import { Directive, inject, Input, OnInit } from '@angular/core';
+import { DestroyRef, Directive, inject, Input, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { SignalrService } from 'app/services/signalr.service';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { LogbookService }      from 'app/services/logbook.service';
@@ -93,6 +95,8 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
   protected materialsService   = inject(MaterialsService);
   protected signalsService     = inject(SignalsService);
   protected trackingService    = inject(TrackingService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly signalr = inject(SignalrService);
 
   @Input() context: any = null;
   protected gridApi!: GridApi;
@@ -149,6 +153,15 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
 
   // ── Angular lifecycle ────────────────────────────────────────────────────
   ngOnInit(): void {
+    this.signalr.textUpdate$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(event => {
+      if (Number(event?.IdReporte ?? event?.idReporte) !== Number(this.reportData?.id) ||
+          String(event?.TypeNote ?? event?.typeNote).toUpperCase() !== this.typeNoteValue.toUpperCase()) return;
+      if (this.hasUnsavedChanges || this.gridApi?.getEditingCells().length) {
+        alerts.toastAlert('Hay nuevos datos. Guarda o descarta tus cambios y vuelve a abrir el detalle para consultarlos.', 'info');
+        return;
+      }
+      this.loadData();
+    });
     if (this.data) { this.reportData = this.data; this.loadData(); }
     const idRoot = this.signalsService.getRootSelectedBySidebar()();
     if (idRoot) {

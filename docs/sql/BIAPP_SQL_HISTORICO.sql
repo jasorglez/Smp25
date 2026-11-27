@@ -7504,3 +7504,26 @@ SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administ
  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 COMMIT TRANSACTION;
 GO
+
+-- BEGIN REPORT_RABBITMQ_650
+-- 2026-11-26 | Proyectos / Reportes diarios | Repositorio: Smp25
+-- Origen: docs/configurar-avisos-reportes-rabbitmq.txt
+-- Ejecutar exclusivamente este bloque; anuncio publicado, código pendiente de despliegue.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Proyectos / Reportes diarios' AND title=N'Avisos de reportes y bitácora desde Telegram y web' AND isActive=1)
+BEGIN
+ INSERT INTO administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.650',N'Proyectos / Reportes diarios','IMPROVEMENT',N'Avisos de reportes y bitácora desde Telegram y web',
+ N'Las altas individuales de reportes, fotos, personal, equipos y notas generan eventos RabbitMQ hacia el frontend. Requiere activar RabbitMQ y desplegar SMP, Telegram y Angular; validación integrada pendiente.',
+ N'Permite recibir novedades de la captura sin reemplazar cambios pendientes.',
+ N'Recibe novedades de los reportes y su bitácora capturados desde Telegram o la web.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Proyectos / Reportes diarios' AND title=N'Avisos de reportes y bitácora desde Telegram y web' AND isActive=1;
+COMMIT TRANSACTION;
+-- END REPORT_RABBITMQ_650
+GO

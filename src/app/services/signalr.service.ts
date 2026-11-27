@@ -7,6 +7,7 @@ import { environment } from '@env/environment';
   providedIn: 'root'
 })
 export class SignalrService {
+  private readonly receivedReportEvents = new Set<string>();
   private hubConnection: signalR.HubConnection | null = null;
   private connectionState = new BehaviorSubject<string>('Disconnected');
 
@@ -22,6 +23,7 @@ export class SignalrService {
 
   // TelegramHub — conexión al bot de Telegram para recibir eventos en tiempo real
   private telegramHubConnection: signalR.HubConnection | null = null;
+  private telegramRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private cobranzaHubConnection: signalR.HubConnection | null = null;
   private cobranzaCompanyId: number | null = null;
   private cobranzaPaymentSubject = new Subject<any>();
@@ -49,6 +51,9 @@ export class SignalrService {
 
   // Método para iniciar conexión SIN JWT - CORREGIDA LA URL ESPECÍFICA
 public startConnection(hubEndpoint: string = 'storageHub', token?: string): void {
+
+  this.startTelegramConnection();
+  if (this.hubConnection && this.hubConnection.state !== signalR.HubConnectionState.Disconnected) return;
 
   const hubUrl = `https://endpoints.biapp.com.mx/smp/${hubEndpoint}`;
  console.log('🔄 Iniciando conexión SignalR...');
@@ -258,7 +263,9 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
 
   // Conexión al hub del bot Telegram — emite ReceivePhotoUpdate, ReceiveTextUpdate, ReceiveNewDailyReport
   public startTelegramConnection(): void {
+    if (this.telegramRetryTimer) clearTimeout(this.telegramRetryTimer);
     if (this.telegramHubConnection?.state === signalR.HubConnectionState.Connected ||
+        this.telegramHubConnection?.state === signalR.HubConnectionState.Reconnecting ||
         this.telegramHubConnection?.state === signalR.HubConnectionState.Connecting) {
       return;
     }
@@ -278,6 +285,27 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
       })
       .configureLogging(signalR.LogLevel.Warning)
       .build();
+
+    this.telegramHubConnection.on('ReceiveReportEvent', (event: any) => {
+      try {
+        const envelope = typeof event === 'string' ? JSON.parse(event) : event;
+        if (!envelope?.eventId || this.receivedReportEvents.has(envelope.eventId)) return;
+        const subjects = {
+          ReceivePhotoUpdate: this.photoUpdateSubject,
+          ReceiveTextUpdate: this.textUpdateSubject,
+          ReceiveNewDailyReport: this.newDailyReportSubject
+        };
+        const subject = subjects[envelope.eventName];
+        if (!subject || !envelope.payload || typeof envelope.payload !== 'object') return;
+        this.receivedReportEvents.add(envelope.eventId);
+        if (this.receivedReportEvents.size > 1000) {
+          this.receivedReportEvents.delete(this.receivedReportEvents.values().next().value!);
+        }
+        subject.next(envelope.payload);
+      } catch (error) {
+        console.error('Aviso de reporte inválido:', error);
+      }
+    });
 
     // Reutiliza los mismos subjects para que los componentes no necesiten cambiar
     this.telegramHubConnection.on('ReceivePhotoUpdate', (data: any) => {
@@ -307,7 +335,12 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
     this.telegramHubConnection
       .start()
       .then(() => console.log('✅ TelegramHub conectado'))
-      .catch(err => console.error('❌ TelegramHub error:', err));
+      .catch(err => {
+        console.error('❌ TelegramHub error:', err);
+        if (this.telegramHubConnection) {
+          this.telegramRetryTimer = setTimeout(() => this.startTelegramConnection(), 5000);
+        }
+      });
   }
 
   public startCobranzaConnection(companyId: number): void {
@@ -357,6 +390,8 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
   }
 
   public stopTelegramConnection(): void {
+    if (this.telegramRetryTimer) clearTimeout(this.telegramRetryTimer);
+    this.telegramRetryTimer = null;
     if (this.telegramHubConnection) {
       this.telegramHubConnection.stop();
       this.telegramHubConnection = null;
