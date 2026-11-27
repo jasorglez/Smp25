@@ -7924,3 +7924,42 @@ SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administ
 COMMIT TRANSACTION;
 -- END DASHBOARD_WAREHOUSE_SCOPE_663
 GO
+
+-- BEGIN COMPANY_PUBLICITY_IMAGES_667
+-- Fecha: 2026-11-27 | Módulo: Publicidad
+-- Repositorios: Smp25 y MicroServicioAdministration
+-- Origen: src/app/pages/welcome/welcome.component.ts y Administration/Controllers/CompanyPublicityController.cs
+-- Ejecutar únicamente este bloque en administration.
+IF NOT EXISTS (SELECT 1 FROM administration.sys.schemas WHERE name = N'publicidad')
+    EXEC administration.sys.sp_executesql N'CREATE SCHEMA publicidad';
+IF OBJECT_ID(N'administration.publicidad.company_images', N'U') IS NULL
+BEGIN
+    CREATE TABLE administration.publicidad.company_images (
+        id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_publicidad_company_images PRIMARY KEY,
+        idRoot INT NOT NULL,
+        fileName NVARCHAR(255) NOT NULL,
+        contentType VARCHAR(40) NOT NULL,
+        imageData VARBINARY(MAX) NOT NULL,
+        altText NVARCHAR(200) NULL,
+        createdByUserId INT NOT NULL,
+        createdAtUtc DATETIME2(3) NOT NULL CONSTRAINT DF_publicidad_company_images_created DEFAULT SYSUTCDATETIME(),
+        isActive BIT NOT NULL CONSTRAINT DF_publicidad_company_images_active DEFAULT (1)
+    );
+END;
+IF NOT EXISTS (SELECT 1 FROM administration.sys.indexes WHERE object_id = OBJECT_ID(N'administration.publicidad.company_images') AND name = N'IX_publicidad_company_images_root_active')
+    CREATE INDEX IX_publicidad_company_images_root_active ON administration.publicidad.company_images(idRoot, isActive, createdAtUtc DESC);
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Publicidad' AND title=N'Imágenes propias por empresa' AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+    INSERT administration.dbo.product_updates
+    (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+    VALUES(NULL,NULL,N'5.00.667',N'Publicidad','IMPROVEMENT',N'Imágenes propias por empresa',
+    N'La página de Publicidad muestra las imágenes de la empresa seleccionada; su usuario root puede subirlas y borrarlas.',
+    N'Cada empresa controla su publicidad y sus usuarios ven únicamente sus imágenes.',
+    N'Personaliza la publicidad de tu empresa con tus propias imágenes.',
+    SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Publicidad' AND title=N'Imágenes propias por empresa' AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+-- END COMPANY_PUBLICITY_IMAGES_667
+GO
