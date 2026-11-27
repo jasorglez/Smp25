@@ -153,6 +153,8 @@
         "exampleIdentifier": "e.g. 1024",
         "workOrder": "Work Order",
         "projectName": "Project Name",
+        "supervisor": "Supervisor",
+        "enterSupervisor": "Enter the supervisor name",
         "enterProjectName": "Enter the project name",
         "description": "Description",
         "describeScope": "Briefly describe the scope",

@@ -6,6 +6,7 @@ export interface Iproject {
   idActive: number;
   number: string;
   name: string;
+  supervisor?: string;
   request: string;
   priority: number;
   description: string;

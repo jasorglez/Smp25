@@ -316,6 +316,8 @@
         "exampleIdentifier": "Ej. 1024",
         "workOrder": "Orden de trabajo",
         "projectName": "Nombre del proyecto",
+        "supervisor": "Supervisor",
+        "enterSupervisor": "Escribe el nombre del supervisor",
         "enterProjectName": "Escribe el nombre del proyecto",
         "description": "Descripción",
         "describeScope": "Describe brevemente el alcance",
