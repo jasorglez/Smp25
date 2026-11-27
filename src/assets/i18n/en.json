@@ -1365,6 +1365,7 @@
           "totalValue": "Total value",
           "loading": "Loading inventory…",
           "incompleteWarning": "Inventory is incomplete; review it before using these stock levels.",
+          "title": "Inventory", "generatedAt": "Generated", "excel": "Excel", "pdf": "PDF", "exportExcel": "Export inventory to Excel", "exportPdf": "Export inventory to PDF", "exportFailed": "Could not export the inventory.",
           "code": "Code",
           "description": "Description",
           "unit": "Unit",

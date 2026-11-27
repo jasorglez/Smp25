@@ -7980,3 +7980,29 @@ WHERE module=N'Publicidad' AND title=N'Imágenes propias por empresa'
   AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 -- END COMPANY_PUBLICITY_UPLOAD_FIX_668
 GO
+
+-- BEGIN WAREHOUSE_INVENTORY_EXPORT_673
+-- Fecha: 2026-11-27 | Módulo: Almacenes TD / Inventario | Repositorio: Smp25
+-- Origen: src/app/domains/Almacenes/components/inventario/inventario.component.ts
+-- Publica el anuncio de forma idempotente. No cambia el esquema.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Almacenes TD / Inventario' AND title=N'Exportación a Excel y PDF'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.673',N'Almacenes TD / Inventario','IMPROVEMENT',N'Exportación a Excel y PDF',
+ N'El inventario permite descargar Excel y PDF con las filas visibles tras buscar, filtrar y ordenar, el almacén y el valor total.',
+ N'Facilita compartir y revisar existencias en archivos descargables.',
+ N'Exporta tu inventario filtrado a Excel o PDF.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates
+WHERE module=N'Almacenes TD / Inventario' AND title=N'Exportación a Excel y PDF'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+-- END WAREHOUSE_INVENTORY_EXPORT_673
+GO

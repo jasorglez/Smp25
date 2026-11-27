@@ -1367,6 +1367,7 @@
           "refresh": "Actualizar", "showZero": "Mostrar existencia en cero", "materials": "materiales", "criticalStock": "Existencia crítica", "critical": "crítica",
           "lowStock": "Existencia baja", "low": "baja", "optimalStock": "Existencia óptima", "optimal": "óptima", "highStock": "Existencia alta", "high": "alta",
           "totalValue": "Valor total", "loading": "Cargando inventario…", "incompleteWarning": "El inventario está incompleto; revísalo antes de usar estos niveles de existencia.",
+          "title": "Inventario", "generatedAt": "Generado", "excel": "Excel", "pdf": "PDF", "exportExcel": "Exportar inventario a Excel", "exportPdf": "Exportar inventario a PDF", "exportFailed": "No se pudo exportar el inventario.",
           "code": "Código", "description": "Descripción", "unit": "Unidad", "brand": "Marca", "receipts": "Entradas", "issues": "Salidas", "onHand": "Existencia actual",
           "kardex": "Kárdex", "viewKardex": "Ver kárdex del material", "minimum": "Mín.", "maximum": "Máx.", "unitCost": "Costo unitario", "inventoryValue": "Valor del inventario",
           "salePrice": "Precio de venta", "saleValue": "Valor de venta", "status": "Estado", "physicalAdjustment": "Ajuste físico", "adjust": "Ajustar",

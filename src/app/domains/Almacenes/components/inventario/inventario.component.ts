@@ -14,6 +14,11 @@ import { MaterialsService } from 'app/services/materials.service';
 import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { InventoryMovementsDetailComponent } from './inventory-movements-detail.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import * as XLSX from 'xlsx';
+import pdfMake from 'pdfmake/build/pdfmake';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
   selector: 'app-inventario',
@@ -47,6 +52,15 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
       <!-- Botón refrescar -->
       <button class="btn btn-sm btn-outline-secondary" (click)="loadData()" [title]="'modules.warehouses.ui.inventory.refresh' | translate" [attr.aria-label]="'modules.warehouses.ui.inventory.refresh' | translate">
         <i class="bi bi-arrow-clockwise"></i>
+      </button>
+
+      <button class="btn btn-sm btn-outline-success" (click)="exportExcel()" [disabled]="loading || !rowData.length"
+        [title]="'modules.warehouses.ui.inventory.exportExcel' | translate">
+        <i class="bi bi-file-earmark-excel me-1"></i>{{ 'modules.warehouses.ui.inventory.excel' | translate }}
+      </button>
+      <button class="btn btn-sm btn-outline-danger" (click)="exportPdf()" [disabled]="loading || !rowData.length"
+        [title]="'modules.warehouses.ui.inventory.exportPdf' | translate">
+        <i class="bi bi-file-earmark-pdf me-1"></i>{{ 'modules.warehouses.ui.inventory.pdf' | translate }}
       </button>
 
       <label class="form-check form-switch d-flex align-items-center gap-2 mb-0 ms-1 small text-nowrap">
@@ -128,6 +142,95 @@ export class InventarioComponent {
   projectId:         number  = 0;
   private loadedCompany: number = 0;
   private gridApi!: GridApi;
+
+  private readonly exportFields = [
+    'insumo', 'description', 'measure', 'brand', 'entrada', 'salida', 'existencia',
+    'stockMin', 'stockMax', 'costoMN', 'total', 'ventaMN', 'ventaTotal', 'estadoStock',
+  ];
+
+  private getExportRows(): any[] {
+    if (!this.gridApi) return [...this.rowData];
+    const rows: any[] = [];
+    this.gridApi.forEachNodeAfterFilterAndSort(node => {
+      if (node.data) rows.push(node.data);
+    });
+    return rows;
+  }
+
+  private getExportHeaders(): string[] {
+    const keys = ['code', 'description', 'unit', 'brand', 'receipts', 'issues', 'onHand',
+      'minimum', 'maximum', 'unitCost', 'inventoryValue', 'salePrice', 'saleValue', 'status'];
+    return keys.map(key => this.translate.instant(`modules.warehouses.ui.inventory.${key}`));
+  }
+
+  private getExportWarehouse(): string {
+    const warehouse = this.warehouses.find(item => this.warehouseId(item) === Number(this.selectedWarehouse));
+    return warehouse ? this.warehouseName(warehouse) : String(this.selectedWarehouse);
+  }
+
+  private getExportFileName(extension: string): string {
+    const warehouse = this.getExportWarehouse().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 50);
+    const date = new Date().toISOString().slice(0, 10);
+    return `Inventario_${warehouse}_${date}.${extension}`;
+  }
+
+  exportExcel(): void {
+    const rows = this.getExportRows();
+    if (!rows.length) return;
+    try {
+      const headers = this.getExportHeaders();
+      const sheet = XLSX.utils.aoa_to_sheet([
+        [this.translate.instant('modules.warehouses.ui.inventory.title'), this.getExportWarehouse()],
+        [this.translate.instant('modules.warehouses.ui.inventory.generatedAt'), new Date().toLocaleString(this.translate.currentLang === 'en' ? 'en-US' : 'es-MX')],
+        [],
+        headers,
+        ...rows.map(row => this.exportFields.map(field => row[field] ?? '')),
+        [],
+        [this.translate.instant('modules.warehouses.ui.inventory.totalValue'), ...Array(9).fill(''),
+          rows.reduce((sum, row) => sum + this.toNumber(row.total), 0)],
+      ]);
+      sheet['!cols'] = [14, 42, 12, 22, ...Array(10).fill(16)].map(width => ({ wch: width }));
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, sheet, 'Inventario');
+      XLSX.writeFile(workbook, this.getExportFileName('xlsx'));
+    } catch (error) {
+      console.error('Error exporting inventory to Excel:', error);
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.inventory.error'), this.translate.instant('modules.warehouses.ui.inventory.exportFailed'), 'error');
+    }
+  }
+
+  exportPdf(): void {
+    const rows = this.getExportRows();
+    if (!rows.length) return;
+    try {
+      const numericFields = new Set(['entrada', 'salida', 'existencia', 'stockMin', 'stockMax']);
+      const currencyFields = new Set(['costoMN', 'total', 'ventaMN', 'ventaTotal']);
+      const body: any[] = [this.getExportHeaders().map(text => ({ text, bold: true, color: '#ffffff', fillColor: '#17365d' }))];
+      rows.forEach(row => body.push(this.exportFields.map(field =>
+        numericFields.has(field) ? this.formatQuantity(row[field])
+          : currencyFields.has(field) ? this.formatCurrency(row[field]) : String(row[field] ?? '')
+      )));
+      body.push([{ text: this.translate.instant('modules.warehouses.ui.inventory.totalValue'), bold: true, colSpan: 10 },
+        ...Array(9).fill(''), { text: this.formatCurrency(rows.reduce((sum, row) => sum + this.toNumber(row.total), 0)), bold: true },
+        '', '', '']);
+      const doc: any = {
+        pageSize: 'A3', pageOrientation: 'landscape', pageMargins: [24, 32, 24, 32],
+        content: [
+          { text: this.translate.instant('modules.warehouses.ui.inventory.title'), style: 'title' },
+          { text: `${this.translate.instant('modules.warehouses.ui.inventory.warehouse')}: ${this.getExportWarehouse()}  ·  ${this.translate.instant('modules.warehouses.ui.inventory.generatedAt')}: ${new Date().toLocaleString(this.translate.currentLang === 'en' ? 'en-US' : 'es-MX')}`, margin: [0, 0, 0, 10] },
+          ...(this.dataWarnings.length ? [{ text: this.translate.instant('modules.warehouses.ui.inventory.incompleteWarning'), color: '#a15c00', margin: [0, 0, 0, 8] }] : []),
+          { table: { headerRows: 1, widths: [65, '*', 43, 80, 45, 45, 55, 40, 40, 65, 75, 65, 75, 60], body }, layout: 'lightHorizontalLines' },
+        ],
+        styles: { title: { fontSize: 16, bold: true, margin: [0, 0, 0, 6] } },
+        defaultStyle: { fontSize: 7 },
+      };
+      pdfMake.createPdf(doc).download(this.getExportFileName('pdf'));
+    } catch (error) {
+      console.error('Error exporting inventory to PDF:', error);
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.inventory.error'), this.translate.instant('modules.warehouses.ui.inventory.exportFailed'), 'error');
+    }
+  }
 
   // ── Chips ──────────────────────────────────────────────────────
   get totalMateriales() { return new Set(this.rowData.map(row => Number(row.id))).size; }
