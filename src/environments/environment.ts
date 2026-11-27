@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.657 (27 Noviembre 2026 11:35) Actualiza existencia al borrar salidas',
+  version: '5.00.658 (27 Noviembre 2026 12:10) PDF de reporte diario muestra % de avance por concepto',
 };

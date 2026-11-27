@@ -420,7 +420,14 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
         hCell('TÉRMINO', 'center'),
         hCell('DESCRIPCIÓN DE LAS ACTIVIDADES'),
         hCell('CANT.', 'right'),
+        hCell('% AVANCE', 'right'),
       ]];
+      // Avance = cantidad registrada en la entrada / cantidad planeada del concepto (workprogram), en %
+      const pctCell = (entryQty: any, plannedQty: any, alt: boolean) => {
+        const planned = Number(plannedQty);
+        const pct = planned > 0 ? (Number(entryQty ?? 0) * 100 / planned) : null;
+        return dCell(pct != null ? `${pct.toFixed(1)}%` : '', alt, 'right');
+      };
 
       for (const sys of conceptsHierarchy) {
         const sysAct = String(sys.activity ?? '').trim();
@@ -437,16 +444,17 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
               { text: sysAct, fontSize: 8, bold: true, color: WHITE, fillColor: NAVY },
               { text: '', fillColor: NAVY }, { text: '', fillColor: NAVY },
               { text: sysTxt.toUpperCase(), fontSize: 8, bold: true, color: WHITE, fillColor: NAVY },
-              { text: '', fillColor: NAVY },
+              { text: '', fillColor: NAVY }, { text: '', fillColor: NAVY },
             ]);
             sysAdded = true;
           }
           const edtC = `${sysAct}.${cAct}`;
+          const plannedQty = c.quantity ?? c.Quantity ?? c.amount ?? c.Amount ?? c.volume ?? c.Volume;
           cRows.push([
             { text: edtC, fontSize: 8, bold: true, color: BLUE, fillColor: '#eaf0fb' },
             { text: '', fillColor: '#eaf0fb' }, { text: '', fillColor: '#eaf0fb' },
             { text: cTxt.toUpperCase(), fontSize: 8, bold: true, color: BLUE, fillColor: '#eaf0fb' },
-            { text: '', fillColor: '#eaf0fb' },
+            { text: '', fillColor: '#eaf0fb' }, { text: '', fillColor: '#eaf0fb' },
           ]);
           for (let ei = 0; ei < entries.length; ei++) {
             const e = entries[ei];
@@ -456,6 +464,7 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
               dCell(fmtT(e.start), alt, 'center'), dCell(fmtT(e.end), alt, 'center'),
               dCell(String(e.description ?? e.metadata ?? ''), alt),
               dCell(e.quantity != null ? String(e.quantity) : '', alt, 'right'),
+              pctCell(e.quantity, plannedQty, alt),
             ]);
           }
         }
@@ -481,6 +490,7 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
                 { text: '',     fillColor: NAVY },
                 { text: sysTxt.toUpperCase(), fontSize: 8, bold: true, color: WHITE, fillColor: NAVY },
                 { text: '',     fillColor: NAVY },
+                { text: '',     fillColor: NAVY },
               ]);
               sysAdded = true;
             }
@@ -493,17 +503,20 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
                 { text: '',     fillColor: LBLUE },
                 { text: subTxt.toUpperCase(), fontSize: 8, bold: true, color: NAVY, fillColor: LBLUE },
                 { text: '',     fillColor: LBLUE },
+                { text: '',     fillColor: LBLUE },
               ]);
               subAdded = true;
             }
 
             // ─ CONCEPTO catálogo ───────────────────────────────────────────
             const edtC = `${subAct}.${cAct}`;
+            const plannedQty = c.quantity ?? c.Quantity ?? c.amount ?? c.Amount ?? c.volume ?? c.Volume;
             cRows.push([
               { text: edtC, fontSize: 8, bold: true, color: BLUE, fillColor: '#eaf0fb' },
               { text: '',   fillColor: '#eaf0fb' },
               { text: '',   fillColor: '#eaf0fb' },
               { text: cTxt.toUpperCase(), fontSize: 8, bold: true, color: BLUE, fillColor: '#eaf0fb' },
+              { text: '',   fillColor: '#eaf0fb' },
               { text: '',   fillColor: '#eaf0fb' },
             ]);
 
@@ -517,6 +530,7 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
                 dCell(fmtT(e.end),   alt, 'center'),
                 dCell(String(e.description ?? e.metadata ?? ''), alt),
                 dCell(e.quantity != null ? String(e.quantity) : '', alt, 'right'),
+                pctCell(e.quantity, plannedQty, alt),
               ]);
             }
           }
@@ -527,7 +541,7 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
         mkSectionTitle('Bitácora de Conceptos'),
         cRows.length > 1
           ? {
-              table: { widths: [55, 35, 42, '*', 35], headerRows: 1, body: cRows },
+              table: { widths: [50, 32, 38, '*', 32, 42], headerRows: 1, body: cRows },
               layout: TBL_LAYOUT,
               margin: [0, 0, 0, 10],
             }

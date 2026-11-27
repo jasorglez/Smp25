@@ -1,3 +1,4 @@
 use smp; 
 
-select * from projects ORDER BY id desc ;jajaja
+select * from projects ORDER BY id desc ;
+
