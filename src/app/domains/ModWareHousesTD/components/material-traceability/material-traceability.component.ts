@@ -164,7 +164,9 @@ export class MaterialTraceabilityComponent implements OnDestroy {
       ));
       const whs = this.asArray(base.warehouses);
       this.defaultWarehouseName = whs[0]?.nombreAlmacen || whs[0]?.name || whs[0]?.description || '';
-      const movement$ = whs.flatMap(w => ['IN', 'OUT'].map(type => this.movements.getInAndOuts(reference, +(w.idAlmacen || w.idWarehouse || w.warehouseId || w.id), type).pipe(
+      // Los movimientos pueden no tener proyecto asignado (id_project NULL); conservarlos
+      // consultando por almacén autorizado, como hace el Kardex.
+      const movement$ = whs.flatMap(w => ['IN', 'OUT'].map(type => this.movements.getInAndOuts(null, +(w.idAlmacen || w.idWarehouse || w.warehouseId || w.id), type).pipe(
         catchError(() => { warn(this.translate.instant('modules.warehouses.ui.traceability.warnings.movementHeaders')); return of([]); }),
         switchMap((masters: any) => {
         const rows = this.asArray(masters).filter((m: any) => m.active !== false && Number(m.active) !== 0);

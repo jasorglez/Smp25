@@ -7864,3 +7864,39 @@ SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administ
 COMMIT TRANSACTION;
 -- END MATERIAL_TRACEABILITY_ZERO_BALANCE_660
 GO
+
+-- BEGIN MATERIAL_TRACEABILITY_UNASSIGNED_PROJECT_662
+-- Fecha: 2026-11-27 | Módulo: Almacenes / Trazabilidad de materiales
+-- Repositorio: Smp25 | Origen: src/app/domains/ModWareHousesTD/components/material-traceability/material-traceability.component.ts
+-- Actualiza el mismo anuncio de la entrega anterior, sin duplicarlo.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Almacenes / Trazabilidad de materiales' AND title=N'Trazabilidad con saldo neto cero'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ UPDATE administration.dbo.product_updates
+ SET version=N'5.00.662',
+ description=N'La trazabilidad consulta por almacén autorizado aunque los movimientos no tengan proyecto asignado.',
+ userBenefit=N'Permite ver entradas y salidas guardadas sin asociación a un proyecto, como las de Rancho San Lucas.',
+ promoText=N'Consulta las entradas y salidas de tus almacenes aunque no estén ligadas a un proyecto.',
+ validationStatus='PENDING',releaseStatus='LOCAL',publicationStatus='PUBLISHED',publishedAtUtc=SYSUTCDATETIME()
+ WHERE module=N'Almacenes / Trazabilidad de materiales' AND title=N'Trazabilidad con saldo neto cero'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+END
+ELSE
+BEGIN
+ INSERT INTO administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.662',N'Almacenes / Trazabilidad de materiales','CORRECTION',N'Trazabilidad con saldo neto cero',
+ N'La trazabilidad consulta por almacén autorizado aunque los movimientos no tengan proyecto asignado.',
+ N'Permite ver entradas y salidas guardadas sin asociación a un proyecto, como las de Rancho San Lucas.',
+ N'Consulta las entradas y salidas de tus almacenes aunque no estén ligadas a un proyecto.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Almacenes / Trazabilidad de materiales' AND title=N'Trazabilidad con saldo neto cero'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+-- END MATERIAL_TRACEABILITY_UNASSIGNED_PROJECT_662
+GO
