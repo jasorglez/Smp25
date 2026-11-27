@@ -764,6 +764,12 @@ export class DetailCellRendererEntryItemsComponent {
         if (this.context && this.context.ITEMS && this.context.ITEMS.updateCount) {
           this.context.ITEMS.updateCount(this.params.data.id, this.rowData.length);
         }
+
+        if (selectedItem.__isNew) {
+          this.applyBrandStockToRows();
+        } else {
+          this.loadMaterials();
+        }
       });
     }
   }
@@ -1196,6 +1202,7 @@ export class DetailCellRendererEntryItemsComponent {
         const quantitiesByMaterialBrand = new Map<string, number>();
         movementGroups.forEach((details: any[], movementIndex: number) => {
           details.forEach((item: any) => {
+            if (item.active === false || Number(item.active) === 0) return;
             const materialId = Number(item.idProduct ?? item.IdProduct ?? item.idSupplie ?? 0);
             if (!materialId) return;
             const brandId = item.idBrand ?? item.IdBrand;

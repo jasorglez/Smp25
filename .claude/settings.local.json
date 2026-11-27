@@ -181,7 +181,9 @@
       "PowerShell(Get-ChildItem \"C:\\\\Users\\\\hco-c\\\\.claude\\\\projects\\\\\" | Select-Object -First 20 | ForEach-Object { $_.Name })",
       "WebFetch(domain:ipquery.io)",
       "WebFetch(domain:api.ipquery.io)",
-      "Skill(claude-in-chrome)"
+      "Skill(claude-in-chrome)",
+      "mcp__sqlserver__mssql_query",
+      "Skill(run)"
     ],
     "deny": [],
     "ask": [],

@@ -7814,3 +7814,28 @@ SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administ
 COMMIT TRANSACTION;
 -- END WAREHOUSE_PROJECT_ISSUE_STOCK_656
 GO
+
+-- BEGIN WAREHOUSE_ISSUE_STOCK_REFRESH_657
+-- 2026-11-27 | Almacenes TD / Salidas e Inventario | Repositorio: Smp25
+-- Origen: src/app/domains/ModWareHousesTD/components/inandout-st/detail-cell-renderer-entry-items.component.ts
+-- Publica idempotentemente la novedad; el código permanece LOCAL hasta confirmar despliegue.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Almacenes TD / Salidas e Inventario' AND title=N'Existencias al borrar partidas de salida'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT INTO administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.657',N'Almacenes TD / Salidas e Inventario','CORRECTION',N'Existencias al borrar partidas de salida',
+ N'Al borrar una partida de salida, el detalle vuelve a consultar las existencias del almacén y excluye del cálculo las partidas inactivas.',
+ N'Muestra de inmediato el saldo recuperado, sin salir de la pantalla ni conservar cantidades de partidas eliminadas.',
+ N'Actualiza las existencias al instante cuando borras una partida de salida.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Almacenes TD / Salidas e Inventario' AND title=N'Existencias al borrar partidas de salida'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+-- END WAREHOUSE_ISSUE_STOCK_REFRESH_657
+GO
