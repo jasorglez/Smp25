@@ -157,10 +157,11 @@ import { AttachHandlerService } from 'app/services/attach-handler.service';
         <i class="bi bi-info-circle me-1"></i> {{ 'modules.warehouses.ui.entryDetail.masterWillSaveMessage' | translate }}
       </div>
       <div class="evidence-grid d-flex flex-wrap gap-3">
-        <div *ngFor="let photo of evidenceRows" class="evidence-card text-center">
+        <div *ngFor="let photo of evidenceRows" class="evidence-card text-center" style="width:160px;">
           <img [src]="photo.image" (click)="openEvidencePreview(photo.image)"
             style="width:140px;height:140px;object-fit:cover;border-radius:6px;border:1px solid #ddd;cursor:pointer;" alt="Evidencia" />
           <div class="small text-muted mt-1">{{ photo.createdAt ? (photo.createdAt | date:'short') : '' }}</div>
+          <div class="small mt-1" style="word-break: break-word;" *ngIf="photo.comment">{{ photo.comment }}</div>
           <button class="btn btn-sm btn-outline-danger mt-1" (click)="deleteEvidencePhoto(photo)">
             <i class="bi bi-trash"></i>
           </button>
@@ -1510,7 +1511,14 @@ export class DetailCellRendererEntryItemsComponent {
     try {
       const url = await this.attachHandler.uploadImg();
       if (!url) return;
-      this.context.EVIDENCE.add(this.entryData.id, url, (saved: any) => {
+      const result = await alerts.inputAlert(
+        this.translate.instant('modules.warehouses.ui.entryDetail.evidenceCommentTitle'),
+        this.translate.instant('modules.warehouses.ui.entryDetail.evidenceCommentPrompt'),
+        'textarea', '',
+        { required: false, confirmButtonText: this.translate.instant('save') }
+      );
+      const comment = result.isConfirmed ? (result.value || '') : '';
+      this.context.EVIDENCE.add(this.entryData.id, url, comment, (saved: any) => {
         if (saved) {
           this.evidenceRows = [saved, ...this.evidenceRows];
           this.context.EVIDENCE.updateCount?.(this.entryData.id, this.evidenceRows.length);

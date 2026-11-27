@@ -32,6 +32,7 @@ import { navigateEditableCellOnEnter } from 'app/helpers/ag-grid-enter-navigatio
 import { ProjectsComponent } from 'app/domains/ModProjects/components/projects/projects.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { InandoutEvidenceService } from 'app/services/inandout-evidence.service';
+import { RootService } from 'app/services/root.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { Base64EncodeService } from 'app/services/base64encode.service';
@@ -73,6 +74,7 @@ export class InandoutStComponent implements OnInit {
   private base64EncodeService = inject(Base64EncodeService);
   private pdfPreview = inject(PdfPreviewService);
   private inandoutEvidenceService = inject(InandoutEvidenceService);
+  private rootService = inject(RootService);
 
   private isGeneratingReport: boolean = false;
   private warehouseLoadRequest = 0;
@@ -1388,8 +1390,8 @@ export class InandoutStComponent implements OnInit {
           load: (entryId: number, callback: (data: any[]) => void) => {
             this.loadEntryEvidence(entryId, callback);
           },
-          add: (entryId: number, imageUrl: string, callback: (saved: any) => void) => {
-            this.addEntryEvidence(entryId, imageUrl, callback);
+          add: (entryId: number, imageUrl: string, comment: string, callback: (saved: any) => void) => {
+            this.addEntryEvidence(entryId, imageUrl, comment, callback);
           },
           delete: (id: number, callback: () => void) => {
             this.deleteEntryEvidence(id, callback);
@@ -1772,10 +1774,11 @@ export class InandoutStComponent implements OnInit {
           const evidenceRows: any[] = await lastValueFrom(this.inandoutEvidenceService.getByInandout(entry.id));
           const dateText = entry.date ? new Date(entry.date).toLocaleDateString() : '';
           const typeLabel = this.translate.instant(entry.type === 'IN' ? 'modules.warehouses.ui.movements.receipt' : 'modules.warehouses.ui.movements.issue');
-          const caption = `${entry.folio || ''} · ${typeLabel} · ${dateText}${entry.deliverName ? ' · ' + entry.deliverName : ''}`;
+          const baseCaption = `${entry.folio || ''} · ${typeLabel} · ${dateText}${entry.deliverName ? ' · ' + entry.deliverName : ''}`;
           for (const evidence of (Array.isArray(evidenceRows) ? evidenceRows : [])) {
             try {
               const base64 = await this.base64EncodeService.convertImageToBase64(evidence.image);
+              const caption = evidence.comment ? `${baseCaption}\n${evidence.comment}` : baseCaption;
               photos.push({ base64, caption });
             } catch (error) {
               console.error('Error convirtiendo imagen de evidencia:', evidence.id, error);
@@ -1827,6 +1830,16 @@ export class InandoutStComponent implements OnInit {
 
       const warehouseName = this.selectedWarehouse?.nombreAlmacen || this.selectedWarehouse?.name || '';
       const typeTitle = this.translate.instant(this.movementType === 'IN' ? 'modules.warehouses.ui.movements.receipt' : 'modules.warehouses.ui.movements.issue');
+      const reportTitle = `${this.translate.instant('modules.warehouses.ui.movements.evidenceReportTitle')} - ${typeTitle}${warehouseName ? ' - ' + warehouseName : ''}`;
+
+      let logo = '';
+      let company: any = {};
+      try {
+        company = await lastValueFrom(this.rootService.getRootbyId(this.idRoot));
+        if (company?.picture) logo = await this.base64EncodeService.convertImageToBase64(company.picture);
+      } catch (error) {
+        console.error('Error cargando logo de la empresa para el reporte de evidencias:', error);
+      }
 
       pdfMake.fonts = {
         Montserrat: {
@@ -1840,18 +1853,30 @@ export class InandoutStComponent implements OnInit {
       const docDefinition: any = {
         pageSize: 'LETTER',
         pageOrientation: 'portrait',
-        pageMargins: [40, 60, 40, 60],
+        pageMargins: [40, 100, 40, 60],
         defaultStyle: { fontSize: 8, font: 'Montserrat' },
-        content: [
-          {
-            text: `${this.translate.instant('modules.warehouses.ui.movements.evidenceReportTitle')} - ${typeTitle}${warehouseName ? ' - ' + warehouseName : ''}`,
-            fontSize: 14,
-            bold: true,
-            alignment: 'center',
-            margin: [0, 0, 0, 20]
-          },
-          ...content
-        ],
+        styles: {
+          companyName: { fontSize: 12, bold: true },
+          companyInfo: { fontSize: 8 },
+          reportTitle: { fontSize: 13, bold: true }
+        },
+        header: () => ({
+          margin: [40, 15, 40, 5],
+          columns: [
+            { width: 70, stack: logo ? [{ image: logo, width: 60, height: 45 }] : [{ text: '' }] },
+            {
+              width: '*',
+              stack: [
+                { text: company?.name || '', style: 'companyName', alignment: 'center' },
+                { text: [company?.address, company?.city, company?.state].filter(Boolean).join(', '), style: 'companyInfo', alignment: 'center' },
+                { text: `RFC: ${company?.rfc || 'N/A'} | Email: ${company?.email || 'N/A'} | Tel: ${company?.phone || 'N/A'}`, style: 'companyInfo', alignment: 'center' }
+              ],
+              margin: [10, 5, 10, 0]
+            },
+            { width: 150, stack: [{ text: reportTitle, style: 'reportTitle', alignment: 'right' }] }
+          ]
+        }),
+        content: [...content],
         footer: (currentPage: number, pageCount: number) => ({
           text: `${currentPage} / ${pageCount}`,
           fontSize: 8,
@@ -2189,8 +2214,8 @@ export class InandoutStComponent implements OnInit {
     });
   }
 
-  addEntryEvidence(entryId: number, imageUrl: string, callback: (saved: any) => void) {
-    this.inandoutEvidenceService.add({ idInandout: entryId, image: imageUrl }).subscribe({
+  addEntryEvidence(entryId: number, imageUrl: string, comment: string, callback: (saved: any) => void) {
+    this.inandoutEvidenceService.add({ idInandout: entryId, image: imageUrl, comment }).subscribe({
       next: (saved: any) => callback(saved),
       error: (error) => {
         console.error('Error saving evidence:', error);
