@@ -77,7 +77,8 @@ export class MaterialTraceabilityComponent implements OnDestroy {
   projectId: number | null = null;
   rowData: any[] = [];
   private allRows: any[] = [];
-  showZeroInventory = false;
+  // La trazabilidad debe mostrar documentos y movimientos aunque el saldo neto sea cero.
+  showZeroInventory = true;
   loading = false;
   dataWarnings: string[] = [];
   pdfGenerating = false;
@@ -163,7 +164,7 @@ export class MaterialTraceabilityComponent implements OnDestroy {
       ));
       const whs = this.asArray(base.warehouses);
       this.defaultWarehouseName = whs[0]?.nombreAlmacen || whs[0]?.name || whs[0]?.description || '';
-      const movement$ = whs.flatMap(w => ['IN', 'OUT'].map(type => this.movements.getInAndOuts(reference, +(w.id || w.idWarehouse || w.idAlmacen), type).pipe(
+      const movement$ = whs.flatMap(w => ['IN', 'OUT'].map(type => this.movements.getInAndOuts(reference, +(w.idAlmacen || w.idWarehouse || w.warehouseId || w.id), type).pipe(
         catchError(() => { warn(this.translate.instant('modules.warehouses.ui.traceability.warnings.movementHeaders')); return of([]); }),
         switchMap((masters: any) => {
         const rows = this.asArray(masters).filter((m: any) => m.active !== false && Number(m.active) !== 0);
@@ -218,12 +219,23 @@ export class MaterialTraceabilityComponent implements OnDestroy {
         unidad: i.measure || i.unit || g.materialMap.get(materialId)?.measure || '',
         tipo: g.type === 'IN' ? 'Entrada' : 'Salida', folio: entry.m.folio, documento: entry.m.id,
         fecha: entry.m.date || entry.m.deliveryDate, cantidad: i.quantity || i.total,
-        almacen: g.w.nombreAlmacen || g.w.name || g.w.description || g.w.nameWarehouse || this.defaultWarehouseName,
+        almacen: g.w.nombreAlmacen || g.w.nameWarehouse || g.w.name || g.w.description || this.defaultWarehouseName,
         estado: entry.m.active === false ? 'Inactivo' : 'Activo'
       };
     })));
   }
-  private asArray(value: any): any[] { return Array.isArray(value) ? value : (value?.data || value?.result || value?.items || []); }
+  private asArray(value: any): any[] {
+    if (Array.isArray(value)) return value;
+    if (!value || typeof value !== 'object') return [];
+    for (const key of ['data', 'result', 'items']) {
+      if (Array.isArray(value[key])) return value[key];
+      if (value[key] && value[key] !== value) {
+        const nested = this.asArray(value[key]);
+        if (nested.length) return nested;
+      }
+    }
+    return [];
+  }
 
   private groupByMaterial(rows: any[]): any[] {
     const grouped = new Map<string, any>();

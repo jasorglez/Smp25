@@ -7839,3 +7839,28 @@ SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administ
 COMMIT TRANSACTION;
 -- END WAREHOUSE_ISSUE_STOCK_REFRESH_657
 GO
+
+-- BEGIN MATERIAL_TRACEABILITY_ZERO_BALANCE_660
+-- Fecha: 2026-11-27 | Módulo: Almacenes / Trazabilidad de materiales
+-- Repositorio: Smp25 | Origen: src/app/domains/ModWareHousesTD/components/material-traceability/material-traceability.component.ts
+-- Publica de forma idempotente el anuncio local; no acredita despliegue del código.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Almacenes / Trazabilidad de materiales' AND title=N'Trazabilidad con saldo neto cero'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT INTO administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.660',N'Almacenes / Trazabilidad de materiales','CORRECTION',N'Trazabilidad con saldo neto cero',
+ N'La trazabilidad muestra inicialmente materiales con saldo neto cero y reconoce identificadores alternativos de almacén recibidos por permisos.',
+ N'Permite consultar entradas y salidas aunque se compensen entre sí, sin que el filtro inicial o el nombre del identificador del almacén oculte los registros.',
+ N'Consulta las trazabilidades de tus almacenes aunque las entradas y salidas dejen saldo cero.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Almacenes / Trazabilidad de materiales' AND title=N'Trazabilidad con saldo neto cero'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+-- END MATERIAL_TRACEABILITY_ZERO_BALANCE_660
+GO

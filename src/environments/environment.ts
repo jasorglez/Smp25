@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.658 (27 Noviembre 2026 12:10) PDF de reporte diario muestra % de avance por concepto',
+  version: '5.00.660 (27 Noviembre 2026 14:14) Muestra trazabilidad aunque el saldo neto sea cero',
 };
