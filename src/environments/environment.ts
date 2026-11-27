@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.653 (26 Noviembre 2026 23:19) Avisos de reportes OT desde Telegram',
+  version: '5.00.654 (27 Noviembre 2026 11:09) Agregar partidas en transferencias sin vale',
 };

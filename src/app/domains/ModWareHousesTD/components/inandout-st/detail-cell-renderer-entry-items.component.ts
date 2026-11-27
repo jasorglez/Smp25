@@ -47,7 +47,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
         <i class="bi bi-info-circle me-1"></i>
         {{ 'modules.warehouses.ui.entryDetail.transferMessage' | translate }}
       </div>
-      <div *ngIf="isStandardOutgoingEntry()" class="alert alert-info py-1 px-2 mb-2 small">
+      <div *ngIf="isStandardOutgoingEntry() && !isTransferMovement()" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-exclamation-circle me-1"></i>
         {{ 'modules.warehouses.ui.entryDetail.unlinkedIssueMessage' | translate }}
         <span *ngIf="isProjectStandardOutgoingWithoutEntry()">{{ 'modules.warehouses.ui.entryDetail.linkReceiptPrompt' | translate }}</span>
@@ -204,7 +204,7 @@ export class DetailCellRendererEntryItemsComponent {
     this.detailType = params.data.detailType || 'items';
 
     if (this.detailType === 'items') {
-      if (this.isStandardOutgoingEntry()) {
+      if (this.isStandardOutgoingEntry() && !this.isTransferMovement()) {
         alerts.toastAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.noLinkedReceiptForIssue'), 'warning', 4000);
       }
       this.loadMaterials();
@@ -1325,7 +1325,16 @@ export class DetailCellRendererEntryItemsComponent {
 
   isProjectStandardOutgoingWithoutEntry(): boolean {
     const projectId = Number(this.context?.getSelectedProjectId?.() || this.context?.projectId || this.entryData?.idProject || 0);
-    return this.isStandardOutgoingEntry() && projectId > 0 && this.getMovementTypeBehavior() === 'STANDARD';
+    return this.isStandardOutgoingEntry()
+      && !this.isTransferMovement()
+      && projectId > 0
+      && this.getMovementTypeBehavior() === 'STANDARD';
+  }
+
+  isTransferMovement(): boolean {
+    const idType = this.entryData?.idType;
+    return this.getMovementTypeBehavior() === 'TRANSFER'
+      || !!this.context?.isTransferType?.(idType);
   }
 
   isInventoryAdjustmentEntry(): boolean {

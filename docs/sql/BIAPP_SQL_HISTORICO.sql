@@ -7732,3 +7732,27 @@ WHERE id=326 AND module=N'Proyectos / Reportes diarios' AND title=N'Avisos de re
 SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates WHERE id=326;
 -- END OT_TELEGRAM_NOTICE_653
 GO
+-- BEGIN WAREHOUSE_TRANSFER_ITEMS_654
+-- 2026-11-27 | Almacenes TD / Entradas y Salidas | Repositorio: Smp25
+-- Origen: src/app/domains/ModWareHousesTD/components/inandout-st/detail-cell-renderer-entry-items.component.ts
+-- Ejecutar solo este bloque para publicar el anuncio. El código aún no está desplegado.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Almacenes TD / Entradas y Salidas' AND title=N'Agregar partidas a transferencias sin vale'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT INTO administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.654',N'Almacenes TD / Entradas y Salidas','CORRECTION',N'Agregar partidas a transferencias sin vale',
+ N'Las transferencias permiten agregar materiales disponibles aunque tengan un proyecto seleccionado y no muestran el aviso de vale de entrada.',
+ N'Permite capturar los materiales del traspaso desde las existencias del almacén origen sin exigir un vale que no corresponde a la transferencia.',
+ N'Agrega materiales disponibles a tus transferencias sin necesitar un vale de entrada.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Almacenes TD / Entradas y Salidas' AND title=N'Agregar partidas a transferencias sin vale'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+-- END WAREHOUSE_TRANSFER_ITEMS_654
+GO
