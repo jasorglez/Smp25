@@ -1,42 +1,11 @@
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, of } from 'rxjs';
+import { catchError, firstValueFrom, of } from 'rxjs';
+import { CompanyPublicityImage, CompanyPublicityService } from 'app/services/company-publicity.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ProductUpdate, ProductUpdatesPage, ProductUpdatesService } from 'app/services/product-updates.service';
-import { environment } from '@env/environment';
-
-interface PublicityImage {
-  file: string;
-  alt: string;
-}
-
-const PUBLIC_IMAGE_BASE = 'assets/media/inicio/';
-const PUBLIC_IMAGE_CACHE_KEY = encodeURIComponent(environment.version);
-const MANIFEST_URL = `${PUBLIC_IMAGE_BASE}manifest.json?v=${PUBLIC_IMAGE_CACHE_KEY}`;
-
-/** Debe coincidir con los archivos neutrales de assets/media/inicio. */
-const FALLBACK_IMAGES: readonly PublicityImage[] = [
-  { file: 'slide-01.png', alt: '3 erp' },
-  { file: 'slide-02.png', alt: 'demo para obras' },
-  { file: 'slide-03.png', alt: 'erp construccion' },
-  { file: 'slide-04.png', alt: 'Gestión de obras con ERP y bot' },
-  { file: 'slide-05.png', alt: 'Historia' },
-  { file: 'slide-06.jpg', alt: 'Integración de bot con ERP' },
-  { file: 'slide-07.jpg', alt: 'Inteligencia empresarial en tiempo real' },
-  { file: 'slide-08.png', alt: 'Intensive frontend development course promotion 1' },
-  { file: 'slide-09.png', alt: 'publicidad 1' },
-  { file: 'slide-10.png', alt: 'Publicidad 2' },
-  { file: 'slide-11.png', alt: 'Publicidad de ERP para construcción' },
-  { file: 'slide-12.png', alt: 'RH 2' },
-  { file: 'slide-13.png', alt: 'RH' },
-  { file: 'slide-14.jpg', alt: 'Solución integral para ventas y ERP logo' },
-  { file: 'slide-15.png', alt: 'ventas x whatsapp' },
-  { file: 'slide-16.png', alt: 'ventas xwhats' },
-  { file: 'slide-17.png', alt: 'Ventas' },
-];
 
 @Component({
   selector: 'app-welcome',
@@ -46,7 +15,7 @@ const FALLBACK_IMAGES: readonly PublicityImage[] = [
   styleUrls: ['./welcome.component.scss'],
 })
 export class WelcomeComponent implements OnInit, OnDestroy {
-  private readonly http = inject(HttpClient);
+  private readonly publicity = inject(CompanyPublicityService);
   private readonly updatesService = inject(ProductUpdatesService);
   private readonly signals = inject(SignalsService);
   private readonly route = inject(ActivatedRoute);
@@ -92,6 +61,12 @@ export class WelcomeComponent implements OnInit, OnDestroy {
 
   imageUrls: string[] = [];
   alts: string[] = [];
+  images: CompanyPublicityImage[] = [];
+  canManageImages = false;
+  uploadBusy = false;
+  imageError = '';
+  private companyId = 0;
+  private imageRequestId = 0;
   currentIndex = 0;
   loading = true;
   showUpdates = false;
@@ -121,6 +96,16 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     }
   };
 
+  constructor() {
+    effect(() => {
+      const companyId = Number(this.signals.getRootSelectedBySidebar()() || 0);
+      if (companyId !== this.companyId) {
+        this.companyId = companyId;
+        void this.loadCompanyImages();
+      }
+    });
+  }
+
   ngOnInit(): void {
     this.queryParamsSubscription = this.route.queryParamMap.subscribe((params) => {
       if (params.get('showUpdates') === '1') this.openUpdates();
@@ -128,19 +113,6 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', this.onVisibilityChange);
     }
-    this.http
-      .get<{ images?: PublicityImage[] }>(MANIFEST_URL)
-      .pipe(
-        catchError(() =>
-          of<{ images?: PublicityImage[] }>({ images: [...FALLBACK_IMAGES] }),
-        ),
-      )
-      .subscribe((data) => {
-        const images = data.images?.length ? data.images : [...FALLBACK_IMAGES];
-        this.applyImageNames(images);
-        this.loading = false;
-        this.startAutoplay();
-      });
   }
 
   ngOnDestroy(): void {
@@ -150,6 +122,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
       document.removeEventListener('visibilitychange', this.onVisibilityChange);
     }
     this.stopAutoplay();
+    this.imageUrls.forEach(url => URL.revokeObjectURL(url));
   }
 
   get hasSlides(): boolean {
@@ -274,19 +247,72 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     this.restartAutoplay();
   }
 
-  private applyImageNames(images: PublicityImage[]): void {
-    const availableImages = images.filter((image) => image.file?.trim());
-    this.imageUrls = availableImages.map(
-      (image) => `${PUBLIC_IMAGE_BASE}${encodeURIComponent(image.file.trim())}?v=${PUBLIC_IMAGE_CACHE_KEY}`,
-    );
-    this.alts = availableImages.map(
-      (image) => image.alt?.trim() || this.altFromFilename(image.file),
-    );
+  private clearImageUrls(): void {
+    this.stopAutoplay();
+    this.imageUrls.forEach(url => URL.revokeObjectURL(url));
+    this.imageUrls = [];
+    this.alts = [];
+    this.images = [];
     this.currentIndex = 0;
   }
 
-  private altFromFilename(name: string): string {
-    return name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').trim() || 'Publicidad';
+  private async loadCompanyImages(): Promise<void> {
+    const requestId = ++this.imageRequestId;
+    this.clearImageUrls();
+    this.canManageImages = false;
+    this.imageError = '';
+    this.loading = true;
+    if (!this.companyId) { this.loading = false; return; }
+    try {
+      const companyId = this.companyId;
+      const result = await firstValueFrom(this.publicity.list(companyId));
+      const loaded = await Promise.all((result.images || []).map(async image => {
+        try { return { image, blob: await firstValueFrom(this.publicity.image(companyId, image.id)) }; }
+        catch { return null; }
+      }));
+      if (requestId !== this.imageRequestId) return;
+      this.canManageImages = result.canManage === true;
+      for (const item of loaded) {
+        if (!item) continue;
+        this.images.push(item.image);
+        this.imageUrls.push(URL.createObjectURL(item.blob));
+        this.alts.push(item.image.altText || item.image.fileName || 'Publicidad');
+      }
+    } catch {
+      if (requestId === this.imageRequestId) this.imageError = 'No se pudieron cargar las imágenes de esta empresa.';
+    } finally {
+      if (requestId === this.imageRequestId) {
+        this.loading = false;
+        this.startAutoplay();
+      }
+    }
+  }
+
+  async onImageSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file || !this.canManageImages || !this.companyId) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 5_000_000) {
+      this.imageError = 'Selecciona una imagen PNG, JPG o WebP de máximo 5 MB.';
+      return;
+    }
+    this.uploadBusy = true;
+    this.imageError = '';
+    try {
+      await firstValueFrom(this.publicity.upload(this.companyId, file));
+      await this.loadCompanyImages();
+    } catch { this.imageError = 'No se pudo subir la imagen.'; }
+    finally { this.uploadBusy = false; }
+  }
+
+  async deleteImage(image: CompanyPublicityImage): Promise<void> {
+    if (!this.canManageImages || !this.companyId || !confirm('¿Borrar esta imagen de publicidad?')) return;
+    this.imageError = '';
+    try {
+      await firstValueFrom(this.publicity.delete(this.companyId, image.id));
+      await this.loadCompanyImages();
+    } catch { this.imageError = 'No se pudo borrar la imagen.'; }
   }
 
   private startAutoplay(): void {

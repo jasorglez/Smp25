@@ -5,6 +5,13 @@
   background: linear-gradient(165deg, #f5f7fb 0%, #eef2f9 38%, #f8fafc 100%);
 }
 
+.company-publicity-tools { display: flex; align-items: center; gap: 12px; margin: 0 auto 14px; width: min(1280px, 100%); font-size: 12px; color: #64748b; }
+.company-publicity-tools label { cursor: pointer; margin: 0; }
+.company-publicity-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; width: min(1280px, 100%); margin: 16px auto; }
+.company-publicity-item { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 7px; border: 1px solid #dbe4ee; border-radius: 8px; background: #fff; }
+.company-publicity-item img { width: 50px; height: 40px; object-fit: cover; border-radius: 5px; }
+.company-publicity-item span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+
 /* Texto de bienvenida: compacto y centrado */
 .welcome__intro {
   flex-shrink: 0;
