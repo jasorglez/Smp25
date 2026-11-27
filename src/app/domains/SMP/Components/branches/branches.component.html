@@ -33,7 +33,7 @@
         <div class="row">
           <ag-grid-angular style="width: 100%" [ngStyle]="{ height: gridHeight }"
             class="ag-theme-quartz small-text-ag-grid" [rowData]="masterRowData" [columnDefs]="colMaster"
-            [defaultColDef]="defaultColDef"
+            [defaultColDef]="defaultColDef" [context]="{ componentParent: this }"
             (selectionChanged)="onMasterSelectionChanged($event)" [gridOptions]="gridOptions"
             (gridReady)="onMasterGridReady($event)"
             [rowSelection]="rowSelection"
@@ -47,6 +47,34 @@
     </div>
   </div>
 </div>
+
+<!-- ========== MODAL PARA VER LOGO EN GRANDE ========== -->
+<div class="modal fade" [class.show]="showImageModal"
+     [style.display]="showImageModal ? 'block' : 'none'"
+     tabindex="-1" *ngIf="showImageModal" (click)="closeImageModal()">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-image"></i>
+          Logo de la sucursal
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeImageModal()"></button>
+      </div>
+      <div class="modal-body text-center" style="padding: 20px;">
+        <img [src]="selectedImageUrl"
+             style="max-width: 100%; max-height: 70vh; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"
+             alt="Logo de la sucursal" />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeImageModal()">
+          <i class="bi bi-x-circle"></i> Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show" *ngIf="showImageModal"></div>
 
 <ng-template #content let-modal>
   <div class="modal-header">
@@ -82,6 +110,21 @@
           <div class="mb-2">
             <textarea formControlName="address" id="address" class="form-control" placeholder="Dirección de la sucursal"
               rows="4"></textarea>
+          </div>
+          <div class="mb-2">
+            <label class="form-label d-block">Logo</label>
+            <div class="d-flex align-items-center gap-2">
+              <img *ngIf="addBranch.get('image').value" [src]="addBranch.get('image').value"
+                   style="width: 48px; height: 48px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; cursor: pointer;"
+                   (click)="openImageModal(addBranch.get('image').value)" alt="Logo" />
+              <button type="button" class="btn btn-sm btn-outline-primary" (click)="uploadFormImage()">
+                <i class="bi bi-cloud-upload"></i> {{ addBranch.get('image').value ? 'Cambiar' : 'Subir' }}
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-danger" *ngIf="addBranch.get('image').value"
+                      (click)="addBranch.patchValue({ image: '' })">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
           </div>
           <div class="mb-2">
             <div class="form-check">

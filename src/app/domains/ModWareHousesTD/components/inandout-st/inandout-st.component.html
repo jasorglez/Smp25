@@ -57,6 +57,10 @@
       <button type="button" class="btn btn-danger mb-2" (click)="deleteEntry()">
         <i class="bi bi-trash" style="font-size: 1rem;"></i>
       </button>
+
+      <button type="button" class="btn btn-outline-dark mb-2" (click)="generateEvidenceReport()" [title]="'modules.warehouses.ui.movements.evidenceReport' | translate">
+        <i class="bi bi-images" style="font-size: 1rem;"></i>
+      </button>
     </nav>
 
     <!-- Right Panel: Grid -->
@@ -67,6 +71,7 @@
         class="ag-theme-quartz small-text-ag-grid"
         [columnDefs]="colMaster"
         [rowData]="rowData"
+        [context]="{ componentParent: this }"
         [gridOptions]="gridOptions"
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"

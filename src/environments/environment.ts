@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.667 (27 Noviembre 2026 15:17) Publicidad con imagenes por empresa',
+  version: '5.00.668 (27 Noviembre 2026) Fix critico PDF entradas/salidas + evidencia como subdetalle',
 };

@@ -19,6 +19,7 @@ import { navigateEditableCellOnEnter } from 'app/helpers/ag-grid-enter-navigatio
 import Swal from 'sweetalert2';
 import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, switchMap, toArray } from 'rxjs';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { AttachHandlerService } from 'app/services/attach-handler.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-entry-items',
@@ -137,10 +138,41 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
         </div>
       </div>
     </div>
+
+    <!-- Evidence Photos View -->
+    <div class="evidence-detail-container" *ngIf="detailType === 'evidence'">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="mb-0">{{ 'modules.warehouses.ui.entryDetail.evidenceTitle' | translate }} — {{ entryData?.folio }}</h6>
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary btn-sm" (click)="addEvidencePhoto()" [disabled]="!masterSaved"
+            [title]="!masterSaved ? ('modules.warehouses.ui.entryDetail.masterWillSaveMessage' | translate) : ''">
+            <i class="bi bi-camera"></i> {{ 'modules.warehouses.ui.entryDetail.addEvidence' | translate }}
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeEvidence()">
+            <i class="bi bi-x-lg"></i> {{ 'modules.warehouses.ui.entryDetail.closeDetail' | translate }}
+          </button>
+        </div>
+      </div>
+      <div *ngIf="!masterSaved" class="alert alert-info py-1 px-2 mb-2 small">
+        <i class="bi bi-info-circle me-1"></i> {{ 'modules.warehouses.ui.entryDetail.masterWillSaveMessage' | translate }}
+      </div>
+      <div class="evidence-grid d-flex flex-wrap gap-3">
+        <div *ngFor="let photo of evidenceRows" class="evidence-card text-center">
+          <img [src]="photo.image" (click)="openEvidencePreview(photo.image)"
+            style="width:140px;height:140px;object-fit:cover;border-radius:6px;border:1px solid #ddd;cursor:pointer;" alt="Evidencia" />
+          <div class="small text-muted mt-1">{{ photo.createdAt ? (photo.createdAt | date:'short') : '' }}</div>
+          <button class="btn btn-sm btn-outline-danger mt-1" (click)="deleteEvidencePhoto(photo)">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+        <div *ngIf="!evidenceRows.length" class="text-muted small py-3">{{ 'modules.warehouses.ui.entryDetail.noEvidenceYet' | translate }}</div>
+      </div>
+    </div>
   `,
   styles: [`
     .detail-grid-container,
-    .report-detail-container {
+    .report-detail-container,
+    .evidence-detail-container {
       padding: 10px;
       height: 100%;
       overflow-y: auto;
@@ -151,6 +183,8 @@ export class DetailCellRendererEntryItemsComponent {
   private translate = inject(TranslateService);
   private trackingService = inject(TrackingService);
   private inventoryService = inject(InventarioWarehouseService);
+  private attachHandler = inject(AttachHandlerService);
+  evidenceRows: any[] = [];
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -207,6 +241,8 @@ export class DetailCellRendererEntryItemsComponent {
     } else if (this.detailType === 'report') {
       // Load data first, then generate report
       this.loadDataForReport();
+    } else if (this.detailType === 'evidence') {
+      this.loadEvidence();
     }
   }
 
@@ -1449,6 +1485,58 @@ export class DetailCellRendererEntryItemsComponent {
     if (this.context && this.context.componentParent) {
       this.context.componentParent.collapseReportDetail(this.entryData.id);
     }
+  }
+
+  closeEvidence() {
+    if (this.context && this.context.componentParent) {
+      this.context.componentParent.collapseEvidenceDetail(this.entryData.id);
+    }
+  }
+
+  loadEvidence() {
+    if (!this.masterSaved) {
+      this.evidenceRows = [];
+      return;
+    }
+    if (this.context?.EVIDENCE?.load) {
+      this.context.EVIDENCE.load(this.entryData.id, (data: any[]) => {
+        this.evidenceRows = Array.isArray(data) ? data : [];
+      });
+    }
+  }
+
+  async addEvidencePhoto() {
+    if (!this.masterSaved) return;
+    try {
+      const url = await this.attachHandler.uploadImg();
+      if (!url) return;
+      this.context.EVIDENCE.add(this.entryData.id, url, (saved: any) => {
+        if (saved) {
+          this.evidenceRows = [saved, ...this.evidenceRows];
+          this.context.EVIDENCE.updateCount?.(this.entryData.id, this.evidenceRows.length);
+        }
+      });
+    } catch (error) {
+      console.error('Error uploading evidence photo:', error);
+    }
+  }
+
+  async deleteEvidencePhoto(photo: any) {
+    const result = await alerts.confirmAlert(
+      this.translate.instant('modules.warehouses.ui.entryDetail.deleteEvidence'),
+      this.translate.instant('modules.warehouses.ui.entryDetail.confirmDeleteEvidence'),
+      'warning',
+      this.translate.instant('delete')
+    );
+    if (!result.isConfirmed) return;
+    this.context.EVIDENCE.delete(photo.id, () => {
+      this.evidenceRows = this.evidenceRows.filter(p => p.id !== photo.id);
+      this.context.EVIDENCE.updateCount?.(this.entryData.id, this.evidenceRows.length);
+    });
+  }
+
+  openEvidencePreview(url: string) {
+    window.open(url, '_blank');
   }
 
   private async generateReport() {

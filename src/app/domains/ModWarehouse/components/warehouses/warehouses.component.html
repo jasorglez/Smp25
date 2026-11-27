@@ -31,7 +31,7 @@
         <section class="col">
           <ag-grid-angular style="width: 100%; height: calc(100vh - 220px); min-height: 500px;"
           class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData"
-             [columnDefs]="colMaster" 
+             [columnDefs]="colMaster" [context]="{ componentParent: this }"
              (selectionChanged)="onSelectionChanged($event)"
              (cellValueChanged)="onCellValueChanged($event)" 
              (rowSelected)="onSelectedRow($event)"
@@ -49,3 +49,31 @@
     </main>
   </div>
 </section>
+
+<!-- ========== MODAL PARA VER LOGO EN GRANDE ========== -->
+<div class="modal fade" [class.show]="showImageModal"
+     [style.display]="showImageModal ? 'block' : 'none'"
+     tabindex="-1" *ngIf="showImageModal" (click)="closeImageModal()">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-image"></i>
+          {{ 'modules.warehouses.ui.warehouseSetup.logo' | translate }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeImageModal()"></button>
+      </div>
+      <div class="modal-body text-center" style="padding: 20px;">
+        <img [src]="selectedImageUrl"
+             style="max-width: 100%; max-height: 70vh; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"
+             alt="Logo" />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeImageModal()">
+          <i class="bi bi-x-circle"></i> {{ 'modules.warehouses.ui.warehouseSetup.close' | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show" *ngIf="showImageModal"></div>

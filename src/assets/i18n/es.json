@@ -1184,6 +1184,7 @@
     },
     "warehouses": {
       "menu": {
+        "warehouses": "Almacenes",
         "setup-st": "Configuración de almacenes",
         "materials-st": "Materiales",
         "material-traceability": "Trazabilidad de materiales",
@@ -1243,7 +1244,7 @@
       },
       "ui": {
         "movements": {
-          "items": "Partidas", "pdf": "PDF", "generatePdf": "Generar reporte PDF", "project": "Proyecto", "contract": "Contrato", "noProject": "Sin proyecto", "onlySidebarContract": "Solo el contrato seleccionado", "allContracts": "Todos los contratos", "onlySidebarProject": "Solo el proyecto seleccionado", "noContract": "Sin contrato",
+          "items": "Partidas", "support": "Fotos de soporte", "evidenceDetail": "Ver/agregar fotos de soporte", "evidenceReport": "Reporte fotográfico de evidencias", "noEvidence": "No hay fotos de soporte para incluir en el reporte.", "generatingReport": "Generando reporte...", "processingPhotos": "Procesando fotos...", "evidenceReportTitle": "Reporte fotográfico de evidencias", "pdf": "PDF", "generatePdf": "Generar reporte PDF", "project": "Proyecto", "contract": "Contrato", "noProject": "Sin proyecto", "onlySidebarContract": "Solo el contrato seleccionado", "allContracts": "Todos los contratos", "onlySidebarProject": "Solo el proyecto seleccionado", "noContract": "Sin contrato",
           "createProject": "Crear proyecto nuevo", "warehouse": "Almacén", "movementType": "Tipo de movimiento",
           "addRecord": "Agregar registro", "workOrder": "Orden de trabajo", "noWorkOrder": "Sin orden de trabajo",
           "purchaseOrder": "Orden de compra", "noPurchaseOrder": "Sin orden de compra", "receiptVoucher": "Vale de entrada",
@@ -1253,6 +1254,7 @@
           "saveChangesF10": "Guardar cambios (F10)", "unsavedChanges": "Cambios sin guardar", "receipt": "Entrada", "issue": "Salida",
           "messages": {
             "loadWarehousesFailed": "No se pudieron cargar los almacenes autorizados.", "movementTypeCreated": "Tipo de movimiento creado",
+            "evidenceSaveFailed": "No se pudo guardar la foto de soporte.", "evidenceDeleteFailed": "No se pudo eliminar la foto de soporte.",
             "createFailed": "No se pudo crear el tipo de movimiento.", "loadFailed": "No se pudieron cargar los movimientos.",
             "authorizationAssigned": "Autorización asignada", "authorizationRemoved": "Autorización eliminada",
             "authorizerAssigned": "Se asignó el autorizador.", "authorizerSelected": "Selecciona un usuario autorizador.",
@@ -1280,6 +1282,11 @@
           }
         },
         "entryDetail": {
+          "evidenceTitle": "Fotos de soporte",
+          "addEvidence": "Agregar foto",
+          "noEvidenceYet": "Todavía no hay fotos de soporte.",
+          "deleteEvidence": "Eliminar foto",
+          "confirmDeleteEvidence": "¿Deseas eliminar esta foto de soporte?",
           "poLoadedMessage": "Las partidas de la OC se cargan al abrir el detalle. Captura la cantidad recibida y guarda.",
           "sourceBalanceMessage": "No guardes las partidas vinculadas hasta actualizar y verificar la cantidad restante.",
           "initialInventoryMessage": "Agrega cada material por código o descripción e indica su existencia inicial.",
@@ -1371,7 +1378,7 @@
         "inventoryDetail": { "title": "Movimientos del material", "date": "Fecha", "reference": "Referencia", "movement": "Movimiento", "receipt": "Entrada", "issue": "Salida", "balance": "Saldo", "note": "Referencia", "noMovements": "Este material no tiene movimientos en el almacén seleccionado." },
         "warehouseSetup": {
           "unsavedExit": "Hay cambios sin guardar. ¿Seguro que quieres salir?", "branch": "Sucursal", "name": "Nombre", "address": "Dirección", "state": "Estado", "city": "Ciudad",
-          "postalCode": "Código postal", "place": "Lugar", "phone": "Teléfono", "manager": "Responsable", "primary": "Principal", "add": "Agregar", "save": "Guardar", "undo": "Deshacer", "delete": "Eliminar",
+          "postalCode": "Código postal", "place": "Lugar", "phone": "Teléfono", "manager": "Responsable", "logo": "Logo", "close": "Cerrar", "primary": "Principal", "add": "Agregar", "save": "Guardar", "undo": "Deshacer", "delete": "Eliminar",
           "branchRequired": "Sucursal requerida", "chooseBranch": "Selecciona una sucursal específica para agregar un almacén.", "addWarehouse": "Agregar almacén", "requiredFields": "Completa todos los campos antes de guardar.",
           "updated": "Datos actualizados", "updatedSuccessfully": "Los datos se actualizaron correctamente.", "unknownError": "Error desconocido", "error": "Error", "updateFailed": "Ocurrió un error al actualizar los datos.",
           "deleteWarehouse": "Eliminar almacén", "selectWarehouseToDelete": "Selecciona un almacén para eliminar.", "deleteFailed": "No se pudo eliminar el almacén.", "deletedSuccessfully": "El almacén se eliminó correctamente."
