@@ -50,8 +50,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
       <div *ngIf="isStandardOutgoingEntry() && !isTransferMovement()" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-exclamation-circle me-1"></i>
         {{ 'modules.warehouses.ui.entryDetail.unlinkedIssueMessage' | translate }}
-        <span *ngIf="isProjectStandardOutgoingWithoutEntry()">{{ 'modules.warehouses.ui.entryDetail.linkReceiptPrompt' | translate }}</span>
-        <span *ngIf="!isProjectStandardOutgoingWithoutEntry()">{{ 'modules.warehouses.ui.entryDetail.addIssueItemsPrompt' | translate }}</span>
+        <span>{{ 'modules.warehouses.ui.entryDetail.addIssueItemsPrompt' | translate }}</span>
       </div>
       <div *ngIf="(isStockRestrictedEntry() || isStandardOutgoingEntry()) && loadingWarehouseStock" class="alert alert-info py-2 px-2 mb-2 small" role="status" aria-live="polite">
         <div class="d-flex align-items-center gap-2 mb-1">
@@ -68,8 +67,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
       </div>
       <div class="detail-actions d-flex justify-content-end mb-2">
         <button *ngIf="!isInventoryAdjustmentEntry()" class="btn btn-primary btn-sm me-2" (click)="addItem()"
-          [disabled]="isProjectStandardOutgoingWithoutEntry()"
-          [title]="isProjectStandardOutgoingWithoutEntry() ? ('modules.warehouses.ui.entryDetail.linkReceiptPrompt' | translate) : ('modules.warehouses.ui.entryDetail.addItem' | translate)">
+          [title]="'modules.warehouses.ui.entryDetail.addItem' | translate">
           <i class="bi bi-plus-lg"></i> {{ 'modules.warehouses.ui.entryDetail.addItem' | translate }}
         </button>
         <button *ngIf="entryData?.idOc > 0" class="btn btn-secondary btn-sm me-2" (click)="importarItemsDeOC()"
@@ -204,9 +202,6 @@ export class DetailCellRendererEntryItemsComponent {
     this.detailType = params.data.detailType || 'items';
 
     if (this.detailType === 'items') {
-      if (this.isStandardOutgoingEntry() && !this.isTransferMovement()) {
-        alerts.toastAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.noLinkedReceiptForIssue'), 'warning', 4000);
-      }
       this.loadMaterials();
       this.loadData();
     } else if (this.detailType === 'report') {
@@ -700,10 +695,6 @@ export class DetailCellRendererEntryItemsComponent {
   };
 
   addItem() {
-    if (this.isProjectStandardOutgoingWithoutEntry()) {
-      alerts.toastAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.linkReceiptBeforeAddingIssueItems'), 'warning');
-      return;
-    }
     const tempId = `temp_item_${this.tempIdCounter++}`;
     const startsAtZero = this.isInitialInventoryEntry() || this.isInventoryAdjustmentEntry() || this.isTransferEntry();
     const newItem = {
@@ -1321,14 +1312,6 @@ export class DetailCellRendererEntryItemsComponent {
 
   isStandardOutgoingEntry(): boolean {
     return this.context?.movementType === 'OUT' && Number(this.entryData?.idEntry || 0) <= 0;
-  }
-
-  isProjectStandardOutgoingWithoutEntry(): boolean {
-    const projectId = Number(this.context?.getSelectedProjectId?.() || this.context?.projectId || this.entryData?.idProject || 0);
-    return this.isStandardOutgoingEntry()
-      && !this.isTransferMovement()
-      && projectId > 0
-      && this.getMovementTypeBehavior() === 'STANDARD';
   }
 
   isTransferMovement(): boolean {

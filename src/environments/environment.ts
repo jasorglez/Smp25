@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.655 (27 Noviembre 2026 11:14) Reconocer transferencias en salidas',
+  version: '5.00.656 (27 Noviembre 2026 11:24) Salidas desde existencias sin vale',
 };

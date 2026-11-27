@@ -7364,7 +7364,7 @@ BEGIN
  N'El dashboard de Clientes incorpora una columna de ganancias netas calculada a partir de los intereses ganados en los abonos registrados.',
  N'Permite consultar por cliente el interés efectivamente ganado junto con los saldos y pagos.',
  N'Consulta las ganancias por intereses de cada cliente desde el dashboard de Cobranza.',
- SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PASSED','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
 END;
 SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
  WHERE module=N'Cobranza / Dashboard de clientes' AND title=N'Ganancias netas por cliente'
@@ -7784,4 +7784,33 @@ SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administ
  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 COMMIT TRANSACTION;
 -- END WAREHOUSE_TRANSFER_ITEMS_655
+GO
+
+-- BEGIN WAREHOUSE_PROJECT_ISSUE_STOCK_656
+-- 2026-11-27 | Almacenes TD / Salidas | Repositorio: Smp25
+-- Origen: src/app/domains/ModWareHousesTD/components/inandout-st/detail-cell-renderer-entry-items.component.ts
+-- Actualiza idempotentemente el anuncio de salidas desde inventario; código no desplegado.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Almacenes TD / Entradas y Salidas' AND title=N'Agregar partidas a transferencias sin vale'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT INTO administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.656',N'Almacenes TD / Entradas y Salidas','CORRECTION',N'Agregar partidas a transferencias sin vale',
+ N'Las salidas de proyecto permiten agregar partidas sin vincular un vale. El selector muestra únicamente materiales con existencias en el almacén, incluidas las recibidas por transferencia.',
+ N'Permite entregar desde el inventario disponible sin exigir un vale de entrada para volver a importar materiales.',
+ N'Registra salidas desde las existencias del almacén, aunque el material haya llegado por traspaso.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+UPDATE administration.dbo.product_updates
+ SET version=N'5.00.656', description=N'Las salidas de proyecto permiten agregar partidas sin vincular un vale. El selector muestra únicamente materiales con existencias en el almacén, incluidas las recibidas por transferencia.', userBenefit=N'Permite entregar desde el inventario disponible sin exigir un vale de entrada para volver a importar materiales.', promoText=N'Registra salidas desde las existencias del almacén, aunque el material haya llegado por traspaso.', validationStatus='PASSED', releaseStatus='LOCAL'
+ WHERE module=N'Almacenes TD / Entradas y Salidas' AND title=N'Agregar partidas a transferencias sin vale'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Almacenes TD / Entradas y Salidas' AND title=N'Agregar partidas a transferencias sin vale'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+-- END WAREHOUSE_PROJECT_ISSUE_STOCK_656
 GO
