@@ -25,12 +25,12 @@
   </div>
 
   <section class="welcome__showcase" aria-label="Publicidad">
-    <div class="company-publicity-tools" *ngIf="canManageImages">
-      <label class="btn btn-primary btn-sm" [class.disabled]="uploadBusy">
+    <div class="company-publicity-tools" *ngIf="isRootUser">
+      <label class="btn btn-primary btn-sm" [class.disabled]="uploadBusy || !canManageImages">
         <i class="bi bi-upload me-1"></i>{{ uploadBusy ? 'Subiendo…' : 'Subir imagen' }}
-        <input type="file" accept="image/png,image/jpeg,image/webp" (change)="onImageSelected($event)" [disabled]="uploadBusy" hidden>
+        <input type="file" accept="image/png,image/jpeg,image/webp" (change)="onImageSelected($event)" [disabled]="uploadBusy || !canManageImages" hidden>
       </label>
-      <span>PNG, JPG o WebP · máximo 5 MB</span>
+      <span>{{ canManageImages ? 'PNG, JPG o WebP · máximo 5 MB' : 'Disponible cuando se active el servicio de publicidad' }}</span>
     </div>
     <div class="alert alert-warning" *ngIf="imageError" role="alert">{{ imageError }}</div>
     @if (loading) {
