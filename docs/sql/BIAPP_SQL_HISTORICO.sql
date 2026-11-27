@@ -7831,7 +7831,7 @@ BEGIN
  N'Al borrar una partida de salida, el detalle vuelve a consultar las existencias del almacén y excluye del cálculo las partidas inactivas.',
  N'Muestra de inmediato el saldo recuperado, sin salir de la pantalla ni conservar cantidades de partidas eliminadas.',
  N'Actualiza las existencias al instante cuando borras una partida de salida.',
- SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PASSED','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
 END;
 SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
  WHERE module=N'Almacenes TD / Salidas e Inventario' AND title=N'Existencias al borrar partidas de salida'
