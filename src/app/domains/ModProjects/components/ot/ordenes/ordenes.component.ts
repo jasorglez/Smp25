@@ -2560,6 +2560,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     // Iniciar SignalR connection para sistema reactivo
     const token = this.trackingService.getAuthToken();
     this.signalrService.startConnection('storageHub', token);
+    // Los eventos publicados por Telegram pasan por su StorageHub.
+    this.signalrService.startTelegramConnection();
 
     // Configurar listeners para updates en tiempo real
     this.setupSignalRListeners();
@@ -2674,6 +2676,9 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     this.signalrService.textUpdate$.subscribe(logbookData => {
 
       if (logbookData && this.shouldUpdateForLogbook(logbookData)) {
+        const type = String(logbookData.TypeNote ?? logbookData.typeNote ?? '').toUpperCase();
+        const label = ({ PERSONAL: 'personal', EQUIPMENT: 'equipo', NOTE: 'nota' } as Record<string, string>)[type] || 'nota';
+        alerts.reportUpdateAlert(`Se recibió una nueva ${label} para esta OT.`);
         this.handleDailyReportUpdate(logbookData);
       } else if (logbookData) {
       }
@@ -2690,6 +2695,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     // Escuchar nuevos reportes diarios
     this.signalrService.newDailyReport$.subscribe(reportData => {
       if (reportData && this.shouldUpdateForDailyReport(reportData)) {
+        alerts.reportUpdateAlert(`Se creó un reporte diario para la OT ${this.selectedOt?.otNumber || ''}.`);
         this.handleDailyReportUpdate(reportData);
       } else if (reportData) {
       }
@@ -2712,6 +2718,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
   // Manejar actualizaciones de fotos en tiempo real
   private handlePhotoUpdate(photoData: any): void {
+
+    alerts.reportUpdateAlert(`Se recibió una nueva foto para la OT ${this.selectedOt?.otNumber || ''}.`);
 
     // Si hay un reporte seleccionado, recargar sus fotos
     if (this.selectedReporteId) {

@@ -7544,3 +7544,14 @@ SELECT id,version,validationStatus,releaseStatus,publicationStatus
 FROM administration.dbo.product_updates WHERE id=326;
 -- END REPORT_PHOTO_NOTICE_651
 GO
+
+-- BEGIN OT_TELEGRAM_NOTICE_653
+-- 2026-11-26 | Proyectos / Órdenes | Repositorio: Smp25
+-- Origen: src/app/domains/ModProjects/components/ot/ordenes/ordenes.component.ts
+-- Actualiza el anuncio existente sin crear duplicados.
+UPDATE administration.dbo.product_updates
+SET version=N'5.00.653', description=N'Los reportes, fotos, notas, personal y equipos capturados desde Telegram para una OT se reflejan en Reporte diario y muestran un aviso al consultar esa OT.', userBenefit=N'Permite confirmar las capturas enviadas desde Telegram mientras se consulta la OT.', promoText=N'Recibe avisos en la pantalla de Órdenes cuando Telegram agrega información a una OT.', validationStatus='PENDING', releaseStatus='LOCAL', updatedAtUtc=SYSUTCDATETIME()
+WHERE id=326 AND module=N'Proyectos / Reportes diarios' AND title=N'Avisos de reportes y bitácora desde Telegram y web';
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates WHERE id=326;
+-- END OT_TELEGRAM_NOTICE_653
+GO
