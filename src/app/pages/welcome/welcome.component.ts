@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { catchError, firstValueFrom, of } from 'rxjs';
 import { CompanyPublicityImage, CompanyPublicityService } from 'app/services/company-publicity.service';
+import { AuthService } from 'app/services/auth.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ProductUpdate, ProductUpdatesPage, ProductUpdatesService } from 'app/services/product-updates.service';
 
@@ -16,6 +17,7 @@ import { ProductUpdate, ProductUpdatesPage, ProductUpdatesService } from 'app/se
 })
 export class WelcomeComponent implements OnInit, OnDestroy {
   private readonly publicity = inject(CompanyPublicityService);
+  private readonly auth = inject(AuthService);
   private readonly updatesService = inject(ProductUpdatesService);
   private readonly signals = inject(SignalsService);
   private readonly route = inject(ActivatedRoute);
@@ -63,6 +65,10 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   alts: string[] = [];
   images: CompanyPublicityImage[] = [];
   canManageImages = false;
+  get isRootUser(): boolean {
+    const flag: unknown = this.signals.getUserRoot()();
+    return this.auth.isRoot() || flag === true || Number(flag) === 1 || String(flag).toLowerCase() === 'true';
+  }
   uploadBusy = false;
   imageError = '';
   private companyId = 0;
@@ -279,7 +285,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
         this.alts.push(item.image.altText || item.image.fileName || 'Publicidad');
       }
     } catch {
-      if (requestId === this.imageRequestId) this.imageError = 'No se pudieron cargar las imágenes de esta empresa.';
+      if (requestId === this.imageRequestId) this.imageError = 'El servicio de publicidad de la empresa aún no está disponible. Faltan la tabla SQL y la publicación del microservicio.';
     } finally {
       if (requestId === this.imageRequestId) {
         this.loading = false;
