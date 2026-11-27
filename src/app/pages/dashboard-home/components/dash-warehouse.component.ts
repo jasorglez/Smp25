@@ -10,6 +10,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { SetupService } from 'app/services/setup.service';
 import { WarehousesService } from 'app/services/warehouses.service';
 import { BranchsService } from 'app/services/branchs.service';
+import { ProjectsService } from 'app/services/projects.service';
 
 @Component({
   selector: 'app-dash-warehouse',
@@ -22,6 +23,21 @@ import { BranchsService } from 'app/services/branchs.service';
         <div class="context"><i class="bi bi-geo-alt-fill"></i>{{ contextLabel }}<span class="live"></span></div>
       </div>
 
+      <div class="scope-menu" role="group" aria-label="Alcance del dashboard de Almacenes">
+        <label>Vista
+          <select [(ngModel)]="scope" (ngModelChange)="onScopeChange()">
+            <option value="branch">Por sucursal</option>
+            <option value="all">Todas las sucursales</option>
+          </select>
+        </label>
+        <label *ngIf="scope === 'branch'">Sucursal
+          <select [(ngModel)]="selectedDashboardBranch" (ngModelChange)="onScopeChange()">
+            <option *ngFor="let branch of branches" [ngValue]="branchId(branch)">{{ branchName(branch) }}</option>
+          </select>
+        </label>
+      </div>
+      <div *ngIf="scope === 'branch' && !inventoryScoped" class="alert alert-info py-2 mb-3">El inventario disponible solo incluye el total de la empresa; los indicadores de inventario se muestran en “Todas las sucursales”.</div>
+
       <div *ngIf="errorMessage" class="alert alert-warning py-2 mb-3"><i class="bi bi-exclamation-triangle me-2"></i>{{ errorMessage }}</div>
 
       <div class="kpis">
@@ -29,7 +45,7 @@ import { BranchsService } from 'app/services/branchs.service';
         <article class="kpi violet"><i class="bi bi-cart-check-fill"></i><div><span>Órdenes de compra</span><strong>{{ purchaseOrders.length }}</strong><small>{{ openOrders }} abiertas</small></div></article>
         <article class="kpi green"><i class="bi bi-box-arrow-in-down"></i><div><span>Entradas</span><strong>{{ entrances.length }}</strong><small>{{ totalEntries | number:'1.0-2' }} unidades</small></div></article>
         <article class="kpi orange"><i class="bi bi-box-arrow-up"></i><div><span>Salidas</span><strong>{{ outings.length }}</strong><small>{{ totalOutings | number:'1.0-2' }} unidades</small></div></article>
-        <article class="kpi cyan"><i class="bi bi-boxes"></i><div><span>Inventario</span><strong>{{ inventory.length }}</strong><small>materiales</small></div></article>
+        <article class="kpi cyan" *ngIf="inventoryScoped"><i class="bi bi-boxes"></i><div><span>Inventario</span><strong>{{ inventory.length }}</strong><small>materiales</small></div></article>
       </div>
 
       <div class="row g-3 mb-3">
@@ -43,7 +59,7 @@ import { BranchsService } from 'app/services/branchs.service';
             <ng-template #noMovements><div class="empty">Sin movimientos en el contexto seleccionado</div></ng-template>
           </article>
         </div>
-        <div class="col-12 col-xl-4">
+        <div class="col-12 col-xl-4" *ngIf="inventoryScoped">
           <article class="card-box h-100">
             <header><span><i class="bi bi-pie-chart-fill"></i> Salud del inventario</span></header>
             <div class="chart" *ngIf="stockSeries.length; else noInventory">
@@ -55,7 +71,7 @@ import { BranchsService } from 'app/services/branchs.service';
         </div>
       </div>
 
-      <div class="row g-3 mb-3">
+      <div class="row g-3 mb-3" *ngIf="inventoryScoped">
         <div class="col-12 col-xl-4">
           <article class="card-box h-100 value-card">
             <header><span><i class="bi bi-cash-coin"></i> Valor de inventario</span></header>
@@ -104,8 +120,8 @@ import { BranchsService } from 'app/services/branchs.service';
                     <td>{{ row.date | date:'dd MMM yyyy' }}</td><td><strong>{{ row.folio }}</strong></td>
                     <td><div class="material-cell"><strong>{{ row.material }}</strong><small>{{ row.code }}</small></div></td>
                     <td class="number quantity" [class.out]="row.type === 'OUT'">{{ row.quantity | number:'1.0-2' }}</td>
-                    <td class="number existence">{{ row.existence | number:'1.0-2' }}</td>
-                    <td><span class="stock-state" [class.critical]="normalizeState(row.stockState) === 'CRITICO'">{{ row.stockState || '—' }}</span></td>
+                    <td class="number existence">{{ inventoryScoped ? (row.existence | number:'1.0-2') : '—' }}</td>
+                    <td><span class="stock-state" [class.critical]="normalizeState(row.stockState) === 'CRITICO'">{{ inventoryScoped ? (row.stockState || '—') : '—' }}</span></td>
                     <td>{{ row.warehouse }}</td>
                   </tr>
                 </tbody>
@@ -131,6 +147,7 @@ import { BranchsService } from 'app/services/branchs.service';
     </section>
   `,
   styles: [`
+    .scope-menu{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:0 0 16px;padding:12px 16px;border:1px solid #d7e6de;border-radius:12px;background:#f1fbf6}.scope-menu label{display:flex;flex-direction:column;gap:4px;color:#065f46;font-size:11px;font-weight:700}.scope-menu select{min-width:180px;padding:6px 10px;border:1px solid #a7d5bd;border-radius:8px;background:#fff;color:#172033}
     .warehouse-dashboard{padding:2px;color:#172033}.hero{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:22px 26px;margin-bottom:16px;border-radius:16px;color:#fff;background:linear-gradient(120deg,#064e3b,#047857 55%,#0f766e);box-shadow:0 10px 30px rgba(4,120,87,.2)}
     .eyebrow{font-size:10px;font-weight:800;letter-spacing:2px;opacity:.7}.hero h2{margin:3px 0 2px;font-size:24px;font-weight:800}.hero p{margin:0;font-size:12px;opacity:.78}.context{display:flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid rgba(255,255,255,.25);border-radius:20px;background:rgba(255,255,255,.1);font-size:10px}.live{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 4px rgba(74,222,128,.18)}
     .kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:16px}.kpi{display:flex;align-items:center;gap:12px;min-height:91px;padding:14px;background:#fff;border:1px solid #e8edf5;border-radius:13px;box-shadow:0 3px 14px rgba(15,23,42,.05)}.kpi>i{width:41px;height:41px;display:grid;place-items:center;flex:none;border-radius:11px;color:#fff;font-size:18px}.kpi.blue>i{background:linear-gradient(135deg,#2563eb,#60a5fa)}.kpi.violet>i{background:linear-gradient(135deg,#7c3aed,#a78bfa)}.kpi.green>i{background:linear-gradient(135deg,#059669,#34d399)}.kpi.orange>i{background:linear-gradient(135deg,#ea580c,#fb923c)}.kpi.cyan>i{background:linear-gradient(135deg,#0891b2,#22d3ee)}
@@ -149,9 +166,11 @@ export class DashWarehouseComponent {
   private inventoryService = inject(InventarioWarehouseService);
   private warehousesService = inject(WarehousesService);
   private branchesService = inject(BranchsService);
+  private projectsService = inject(ProjectsService);
   private setupService = inject(SetupService);
 
   requisitions: any[]=[]; purchaseOrders: any[]=[]; entrances: any[]=[]; outings: any[]=[]; inventory: any[]=[]; warehouses: any[]=[];
+  branches:any[]=[]; scope:'branch'|'all'='branch'; selectedDashboardBranch=0; inventoryScoped=false;
   movementItems: {type:string;date:any;folio:string;material:string;code:string;quantity:number;existence:number;stockState:string;warehouse:string}[]=[];
   selectedWarehouse=0;
   movementDateFrom=this.toDateInput(this.offsetDate(new Date(),-365)); movementDateTo=this.toDateInput(new Date()); filteringMovements=false;
@@ -165,7 +184,10 @@ export class DashWarehouseComponent {
   readonly donutChart:any={type:'donut',height:270,toolbar:{show:false},fontFamily:'Inter, system-ui, sans-serif'};
   readonly donutLabels:any={enabled:true,formatter:(v:number)=>`${v.toFixed(0)}%`}; readonly stockColors=['#ef4444','#f59e0b','#10b981','#3b82f6','#94a3b8'];
 
-  constructor(){effect(()=>{const company=Number(this.signals.getRootSelectedBySidebar()()||0);const project=Number(this.signals.getProjectSelectedBySidebar()()||0);const branch=Number(this.signals.getBranchSelectedBySidebar()()||0);const key=`${company}-${project}-${branch}`;if(company&&key!==this.loadKey){this.loadKey=key;this.load(company,project,branch);}})}
+  constructor(){effect(()=>{const company=Number(this.signals.getRootSelectedBySidebar()()||0);const project=Number(this.signals.getProjectSelectedBySidebar()()||0);const branch=Number(this.signals.getBranchSelectedBySidebar()()||0);const key=`${company}-${project}-${branch}`;if(company&&key!==this.loadKey){this.loadKey=key;this.selectedDashboardBranch=branch;this.load(company,project,branch);}})}
+  onScopeChange(){const company=Number(this.signals.getRootSelectedBySidebar()()||0);const project=Number(this.signals.getProjectSelectedBySidebar()()||0);if(company)this.load(company,project,this.selectedDashboardBranch)}
+  branchId(branch:any){return Number(branch?.id??branch?.idBranch??0)}
+  branchName(branch:any){return branch?.name||branch?.description||`Sucursal ${this.branchId(branch)}`}
   get pendingRequisitions(){return this.requisitions.filter(x=>this.isOpen(x)).length} get openOrders(){return this.purchaseOrders.filter(x=>this.isOpen(x)).length}
   get totalEntries(){return this.sumMovement(this.entrances)} get totalOutings(){return this.sumMovement(this.outings)} get inventoryValue(){return this.inventory.reduce((s,x)=>s+Number(x.total||0),0)} get totalExistence(){return this.inventory.reduce((s,x)=>s+Number(x.existencia||0),0)}
   get criticalStock(){return this.inventory.filter(x=>this.normalizeState(x.estadoStock)==='CRITICO').length} get lowStock(){return this.inventory.filter(x=>this.normalizeState(x.estadoStock)==='BAJO').length} get optimalStock(){return this.inventory.filter(x=>this.normalizeState(x.estadoStock)==='OPTIMO').length}
@@ -176,19 +198,32 @@ export class DashWarehouseComponent {
   private async load(company:number,project:number,branch:number){this.loading=true;this.errorMessage='';try{
     const setup=this.array(await this.safe(()=>this.setupService.getWarehouseSetup(company)));
     const projectOrBranch=setup.length?this.asBoolean(setup[0].projectOrBranch):!!project;
-    const reference=projectOrBranch?project:branch;
-    const typeReference=projectOrBranch?'project':'branch';
-    this.contextLabel=projectOrBranch?(project?'Proyecto seleccionado':'Proyecto no seleccionado'):(branch?'Sucursal seleccionada':'Sucursal no seleccionada');
-    const [inv,req,oc,branches]=await Promise.all([this.safe(()=>this.inventoryService.getInventario(company)),reference?this.safe(()=>this.ocReqService.getOcAndReqs(typeReference,reference,'REQUIS')):[],reference?this.safe(()=>this.ocReqService.getOcAndReqs(typeReference,reference,'OC')):[],this.safe(()=>this.branchesService.getBranches2fields(company))]);
-    this.inventory=this.array(inv);this.requisitions=this.array(req);this.purchaseOrders=this.array(oc);
-    const branchList=this.array(branches);
-    const warehouseLists=await Promise.all(branchList.map(branch=>this.safe(()=>this.warehousesService.getSimpleWarehouses(Number(branch.id??branch.idBranch)))));
+    const [inv,branches,projects]=await Promise.all([this.safe(()=>this.inventoryService.getInventario(company)),this.safe(()=>this.branchesService.getBranches2fields(company)),this.safe(()=>this.projectsService.getProjectListByCompany(company))]);
+    this.branches=this.array(branches);
+    if(this.scope==='branch'&&!this.branches.some(b=>this.branchId(b)===branch))branch=this.branchId(this.branches[0]);
+    this.selectedDashboardBranch=branch;
+    const selectedBranches=this.scope==='all'?this.branches:this.branches.filter(b=>this.branchId(b)===branch);
+    this.contextLabel=this.scope==='all'?'Todas las sucursales de la empresa':this.branchName(selectedBranches[0]||{id:branch});
+    const references=[...selectedBranches.map(b=>({type:'branch',id:this.branchId(b)}))];
+    if(projectOrBranch){
+      const projectList=this.array(projects);
+      const scopedProjects=this.scope==='all'?projectList:projectList.filter(item=>Number(item.idBranch??item.id_branch??item.branchId??0)===branch);
+      const projectIds=scopedProjects.map(item=>Number(item.id)).filter(id=>id>0);
+      const activeBranch=Number(this.signals.getBranchSelectedBySidebar()()||0);
+      if(this.scope==='branch'&&branch===activeBranch&&project>0&&!projectIds.includes(project))projectIds.push(project);
+      references.push(...projectIds.map(id=>({type:'project',id})));
+    }
+    const documents=await Promise.all(references.flatMap(ref=>['REQUIS','OC'].map(type=>this.safe(()=>this.ocReqService.getOcAndReqs(ref.type,ref.id,type)))));
+    this.requisitions=[...new Map(documents.filter((_,i)=>i%2===0).flatMap((response:any)=>this.array(response)).map((d:any)=>[d.id,d])).values()];
+    this.purchaseOrders=[...new Map(documents.filter((_,i)=>i%2===1).flatMap((response:any)=>this.array(response)).map((d:any)=>[d.id,d])).values()];
+    const inventoryRows=this.array(inv);
+    this.inventoryScoped=this.scope==='all'||inventoryRows.every(row=>Number(row.idBranch??row.id_branch??row.branchId??0)>0);
+    this.inventory=this.scope==='all'?inventoryRows:this.inventoryScoped?inventoryRows.filter(row=>Number(row.idBranch??row.id_branch??row.branchId)===branch):[];
+    const warehouseLists=await Promise.all(selectedBranches.map(item=>this.safe(()=>this.warehousesService.getSimpleWarehouses(this.branchId(item)))));
     this.warehouses=warehouseLists.flatMap(items=>this.array(items));
-    if(!this.warehouses.length)this.warehouses=this.array(await this.safe(()=>this.warehousesService.getSimpleWarehouses(company)));
     this.warehouses=[...new Map(this.warehouses.map(warehouse=>[this.warehouseId(warehouse),warehouse])).values()];
     if(this.selectedWarehouse&&!this.warehouses.some(w=>this.warehouseId(w)===this.selectedWarehouse))this.selectedWarehouse=0;
-    const movementProject=projectOrBranch&&project>0?project:null;
-    const movementPairs=await Promise.all(this.warehouses.map(w=>Promise.all([this.safe(()=>this.inOutService.getInAndOuts(movementProject,this.warehouseId(w),'IN')),this.safe(()=>this.inOutService.getInAndOuts(movementProject,this.warehouseId(w),'OUT'))])));
+    const movementPairs=await Promise.all(this.warehouses.map(w=>Promise.all([this.safe(()=>this.inOutService.getInAndOuts(null,this.warehouseId(w),'IN')),this.safe(()=>this.inOutService.getInAndOuts(null,this.warehouseId(w),'OUT'))])));
     this.entrances=movementPairs.flatMap((x,i)=>this.array(x[0]).map(row=>({...row,__warehouse:this.warehouses[i],__type:'IN'})));this.outings=movementPairs.flatMap((x,i)=>this.array(x[1]).map(row=>({...row,__warehouse:this.warehouses[i],__type:'OUT'})));
     await this.loadMovementItems();this.buildCharts();
   }catch(e){console.error('Error dashboard almacenes:',e);this.errorMessage='No fue posible cargar toda la información de Almacenes.'}finally{this.loading=false}}

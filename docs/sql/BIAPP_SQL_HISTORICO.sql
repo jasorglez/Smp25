@@ -7900,3 +7900,27 @@ SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administ
 COMMIT TRANSACTION;
 -- END MATERIAL_TRACEABILITY_UNASSIGNED_PROJECT_662
 GO
+
+-- BEGIN DASHBOARD_WAREHOUSE_SCOPE_663
+-- Fecha: 2026-11-27 | Módulo: Dashboard / Almacenes
+-- Repositorio: Smp25 | Origen: src/app/pages/dashboard-home/components/dash-warehouse.component.ts
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Dashboard / Almacenes' AND title=N'Vista por sucursal o empresa'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT INTO administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.663',N'Dashboard / Almacenes','IMPROVEMENT',N'Vista por sucursal o empresa',
+ N'El dashboard de Almacenes permite elegir una sucursal o consolidar todas las sucursales de la empresa.',
+ N'Permite consultar movimientos y documentos en el alcance elegido sin mezclar cifras de otras sucursales.',
+ N'Consulta el dashboard de Almacenes por sucursal o con todas las sucursales de tu empresa.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Dashboard / Almacenes' AND title=N'Vista por sucursal o empresa'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+-- END DASHBOARD_WAREHOUSE_SCOPE_663
+GO
