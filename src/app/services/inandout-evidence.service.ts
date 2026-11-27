@@ -26,6 +26,10 @@ export class InandoutEvidenceService {
     return this.http.post(`${environment.urlWarehouse}/InandoutEvidence`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  update(id: number, comment: string): Observable<any> {
+    return this.http.put(`${environment.urlWarehouse}/InandoutEvidence/${id}`, { comment }, { headers: this.trackingService.getHeaders() });
+  }
+
   delete(id: number): Observable<any> {
     return this.http.delete(`${environment.urlWarehouse}/InandoutEvidence/${id}`, { headers: this.trackingService.getHeaders() });
   }

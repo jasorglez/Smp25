@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.670 (27 Noviembre 2026) Comentario por foto de evidencia + logo estandar en reporte',
+  version: '5.00.672 (27 Noviembre 2026) Fix modal de evidencia usa NgbModal (no se rompe dentro del grid)',
 };

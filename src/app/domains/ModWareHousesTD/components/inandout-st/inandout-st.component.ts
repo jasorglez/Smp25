@@ -1393,6 +1393,9 @@ export class InandoutStComponent implements OnInit {
           add: (entryId: number, imageUrl: string, comment: string, callback: (saved: any) => void) => {
             this.addEntryEvidence(entryId, imageUrl, comment, callback);
           },
+          update: (id: number, comment: string, callback: (saved: any) => void) => {
+            this.editEntryEvidence(id, comment, callback);
+          },
           delete: (id: number, callback: () => void) => {
             this.deleteEntryEvidence(id, callback);
           },
@@ -2219,6 +2222,17 @@ export class InandoutStComponent implements OnInit {
       next: (saved: any) => callback(saved),
       error: (error) => {
         console.error('Error saving evidence:', error);
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.error'), this.translate.instant('modules.warehouses.ui.movements.messages.evidenceSaveFailed'), 'error');
+        callback(null);
+      }
+    });
+  }
+
+  editEntryEvidence(id: number, comment: string, callback: (saved: any) => void) {
+    this.inandoutEvidenceService.update(id, comment).subscribe({
+      next: (saved: any) => callback(saved),
+      error: (error) => {
+        console.error('Error updating evidence comment:', error);
         alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.error'), this.translate.instant('modules.warehouses.ui.movements.messages.evidenceSaveFailed'), 'error');
         callback(null);
       }

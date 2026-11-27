@@ -1,5 +1,6 @@
 import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
-import { Component, inject } from '@angular/core';
+import { Component, inject, ViewChild, TemplateRef } from '@angular/core';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -19,7 +20,8 @@ import { navigateEditableCellOnEnter } from 'app/helpers/ag-grid-enter-navigatio
 import Swal from 'sweetalert2';
 import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, switchMap, toArray } from 'rxjs';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { AttachHandlerService } from 'app/services/attach-handler.service';
+import { ImageHandlerService } from 'app/services/image-handler.service';
+import { BITACORA_STYLES } from 'app/domains/ModProjects/components/sistema/bitacora-base.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-entry-items',
@@ -140,52 +142,172 @@ import { AttachHandlerService } from 'app/services/attach-handler.service';
     </div>
 
     <!-- Evidence Photos View -->
-    <div class="evidence-detail-container" *ngIf="detailType === 'evidence'">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h6 class="mb-0">{{ 'modules.warehouses.ui.entryDetail.evidenceTitle' | translate }} — {{ entryData?.folio }}</h6>
-        <div class="d-flex gap-2">
-          <button class="btn btn-primary btn-sm" (click)="addEvidencePhoto()" [disabled]="!masterSaved"
+    <section class="photo-detail" *ngIf="detailType === 'evidence'">
+      <div class="photo-toolbar">
+        <div class="photo-toolbar-title">
+          <span class="photo-toolbar-icon"><i class="bi bi-images"></i></span>
+          <span><strong>{{ 'modules.warehouses.ui.entryDetail.evidenceTitle' | translate }} — {{ entryData?.folio }}</strong><small>{{ evidenceRows.length }} foto(s)</small></span>
+        </div>
+        <div class="photo-toolbar-actions">
+          <button class="btn btn-primary btn-sm" (click)="openEvidenceModal()" [disabled]="!masterSaved"
             [title]="!masterSaved ? ('modules.warehouses.ui.entryDetail.masterWillSaveMessage' | translate) : ''">
-            <i class="bi bi-camera"></i> {{ 'modules.warehouses.ui.entryDetail.addEvidence' | translate }}
+            <i class="bi bi-camera me-1"></i>{{ 'modules.warehouses.ui.entryDetail.addEvidence' | translate }}
+          </button>
+          <button class="btn btn-outline-danger btn-sm" (click)="deleteEvidencePhoto(selectedEvidenceRow)" [disabled]="!selectedEvidenceRow" title="Eliminar foto seleccionada">
+            <i class="bi bi-trash"></i>
           </button>
           <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeEvidence()">
-            <i class="bi bi-x-lg"></i> {{ 'modules.warehouses.ui.entryDetail.closeDetail' | translate }}
+            <i class="bi bi-x-lg"></i>
           </button>
         </div>
       </div>
+
       <div *ngIf="!masterSaved" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-info-circle me-1"></i> {{ 'modules.warehouses.ui.entryDetail.masterWillSaveMessage' | translate }}
       </div>
-      <div class="evidence-grid d-flex flex-wrap gap-3">
-        <div *ngFor="let photo of evidenceRows" class="evidence-card text-center" style="width:160px;">
-          <img [src]="photo.image" (click)="openEvidencePreview(photo.image)"
-            style="width:140px;height:140px;object-fit:cover;border-radius:6px;border:1px solid #ddd;cursor:pointer;" alt="Evidencia" />
-          <div class="small text-muted mt-1">{{ photo.createdAt ? (photo.createdAt | date:'short') : '' }}</div>
-          <div class="small mt-1" style="word-break: break-word;" *ngIf="photo.comment">{{ photo.comment }}</div>
-          <button class="btn btn-sm btn-outline-danger mt-1" (click)="deleteEvidencePhoto(photo)">
-            <i class="bi bi-trash"></i>
-          </button>
-        </div>
-        <div *ngIf="!evidenceRows.length" class="text-muted small py-3">{{ 'modules.warehouses.ui.entryDetail.noEvidenceYet' | translate }}</div>
+
+      <div class="photo-empty-hint" *ngIf="!evidenceRows.length">
+        <i class="bi bi-camera"></i><span>{{ 'modules.warehouses.ui.entryDetail.noEvidenceYet' | translate }}</span>
       </div>
-    </div>
+
+      <ag-grid-angular
+        *ngIf="evidenceRows.length"
+        class="ag-theme-quartz small-text-ag-grid"
+        [rowData]="evidenceRows"
+        [columnDefs]="evidenceColDefs"
+        [defaultColDef]="{ sortable: false, filter: false, resizable: true }"
+        [rowSelection]="'single'"
+        (gridReady)="onEvidenceGridReady($event)"
+        (cellClicked)="onEvidenceCellClicked($event)"
+        (cellDoubleClicked)="onEvidenceCellDoubleClicked($event)"
+        style="height: 260px; width: 100%;">
+      </ag-grid-angular>
+
+      <ng-template #evidenceModalTpl let-modal>
+        <section class="photo-modal" role="dialog" aria-modal="true">
+          <header class="photo-modal-header">
+            <div class="photo-modal-heading">
+              <span class="photo-modal-icon"><i class="bi bi-camera-fill"></i></span>
+              <div><h5>{{ editingEvidence ? 'Actualizar foto' : 'Agregar foto' }}</h5>
+                <p>{{ entryData?.folio }}</p></div>
+            </div>
+            <button type="button" class="photo-close" (click)="modal.dismiss()" aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+          </header>
+
+          <div class="photo-modal-body">
+            <div class="photo-preview" [class.photo-preview-filled]="evidenceModalImageUrl">
+              <img *ngIf="evidenceModalImageUrl" [src]="evidenceModalImageUrl" alt="Vista previa de la foto">
+              <div *ngIf="!evidenceModalImageUrl" class="photo-preview-empty">
+                <span><i class="bi bi-image"></i></span><strong>Tu foto aparecerá aquí</strong>
+                <small>Selecciona una imagen para comenzar</small>
+              </div>
+            </div>
+
+            <div class="photo-dropzone" [class.photo-dropzone-active]="evidenceDraggingFile" [class.photo-dropzone-disabled]="evidenceUploading"
+                 (dragover)="onEvidenceDragOver($event)" (dragleave)="onEvidenceDragLeave($event)" (drop)="onEvidenceFileDrop($event)">
+              <input #evidenceInput type="file" accept="image/jpeg,image/png,image/webp" [disabled]="evidenceUploading"
+                     (change)="onEvidenceFileSelected($event)" aria-label="Seleccionar foto">
+              <span class="photo-upload-icon"><i class="bi bi-cloud-arrow-up"></i></span>
+              <strong>{{ evidenceSelectedFileName || 'Arrastra una foto aquí' }}</strong>
+              <small *ngIf="!evidenceSelectedFileName">o elige un archivo desde tu dispositivo</small>
+              <button type="button" class="btn btn-outline-primary btn-sm" (click)="evidenceInput.click()" [disabled]="evidenceUploading">
+                {{ evidenceModalImageUrl ? 'Cambiar foto' : 'Seleccionar foto' }}
+              </button>
+              <div class="photo-uploading" *ngIf="evidenceUploading" aria-live="polite">
+                <div class="photo-progress"><span></span></div><small>Subiendo foto al almacenamiento…</small>
+              </div>
+            </div>
+
+            <div class="photo-upload-error" *ngIf="evidenceUploadError" role="alert">
+              <i class="bi bi-exclamation-triangle-fill"></i><span>{{ evidenceUploadError }}</span>
+            </div>
+
+            <label class="photo-description-label" for="evidence-description">Descripción <span>Opcional</span></label>
+            <textarea id="evidence-description" class="form-control" rows="3" maxlength="500"
+                      [(ngModel)]="evidenceModalComment" placeholder="¿Qué muestra esta foto? Agrega un detalle…"></textarea>
+            <div class="photo-description-count">{{ evidenceModalComment.length || 0 }}/500</div>
+          </div>
+
+          <footer class="photo-modal-footer">
+            <span><i class="bi bi-info-circle me-1"></i>La foto se guarda de inmediato.</span>
+            <div><button type="button" class="btn btn-light" (click)="modal.dismiss()">Cancelar</button>
+              <button type="button" class="btn btn-primary" (click)="saveEvidenceModal(modal)" [disabled]="evidenceUploading || !evidenceModalImageUrl">
+                <i class="bi bi-check-lg me-1"></i>Guardar</button></div>
+          </footer>
+        </section>
+      </ng-template>
+    </section>
   `,
-  styles: [`
+  styles: [...BITACORA_STYLES, `
     .detail-grid-container,
-    .report-detail-container,
-    .evidence-detail-container {
+    .report-detail-container {
       padding: 10px;
       height: 100%;
       overflow-y: auto;
     }
+    .photo-detail { padding: 10px; height: 100%; overflow-y: auto; }
   `]
 })
 export class DetailCellRendererEntryItemsComponent {
   private translate = inject(TranslateService);
   private trackingService = inject(TrackingService);
   private inventoryService = inject(InventarioWarehouseService);
-  private attachHandler = inject(AttachHandlerService);
+  private imageHandlerService = inject(ImageHandlerService);
   evidenceRows: any[] = [];
+  selectedEvidenceRow: any = null;
+  private evidenceGridApi!: GridApi;
+  editingEvidence: any = null;
+  @ViewChild('evidenceModalTpl') evidenceModalTpl!: TemplateRef<any>;
+  private ngbModal = inject(NgbModal);
+  evidenceModalComment = '';
+  evidenceModalImageUrl: string | null = null;
+  evidenceSelectedFileName = '';
+  evidenceDraggingFile = false;
+  evidenceUploading = false;
+  evidenceUploadError = '';
+
+  get evidenceColDefs(): ColDef[] {
+    return [
+      {
+        headerName: '#', width: 45, pinned: 'left',
+        valueGetter: (p) => (p.node!.rowIndex ?? 0) + 1,
+      },
+      {
+        field: 'image', headerName: 'Foto', width: 110,
+        cellRenderer: (params: any) => {
+          const div = document.createElement('div');
+          div.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;';
+          div.title = 'Doble clic para editar';
+          if (params.value) {
+            const img = document.createElement('img');
+            img.src = params.value;
+            img.style.cssText = 'max-width:100%;max-height:56px;object-fit:contain;border-radius:4px;pointer-events:none;';
+            div.appendChild(img);
+          } else {
+            div.innerHTML = '<i class="bi bi-camera" style="font-size:1.5rem;color:#adb5bd;pointer-events:none;"></i>';
+          }
+          return div;
+        },
+      },
+      {
+        field: 'comment', headerName: 'Descripción', flex: 1,
+        valueFormatter: (p: any) => p.value || 'Doble clic para editar...',
+        cellStyle: (p: any) => p.value ? { color: '#212529' } : { color: '#adb5bd', fontStyle: 'italic' },
+      },
+    ];
+  }
+
+  onEvidenceGridReady(params: GridReadyEvent) {
+    this.evidenceGridApi = params.api;
+  }
+
+  onEvidenceCellClicked(event: any) {
+    this.selectedEvidenceRow = event.data;
+  }
+
+  onEvidenceCellDoubleClicked(event: any) {
+    this.openEvidenceModal(event.data);
+  }
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -1506,30 +1628,81 @@ export class DetailCellRendererEntryItemsComponent {
     }
   }
 
-  async addEvidencePhoto() {
+  openEvidenceModal(row?: any) {
     if (!this.masterSaved) return;
-    try {
-      const url = await this.attachHandler.uploadImg();
-      if (!url) return;
-      const result = await alerts.inputAlert(
-        this.translate.instant('modules.warehouses.ui.entryDetail.evidenceCommentTitle'),
-        this.translate.instant('modules.warehouses.ui.entryDetail.evidenceCommentPrompt'),
-        'textarea', '',
-        { required: false, confirmButtonText: this.translate.instant('save') }
-      );
-      const comment = result.isConfirmed ? (result.value || '') : '';
-      this.context.EVIDENCE.add(this.entryData.id, url, comment, (saved: any) => {
+    this.editingEvidence = row || null;
+    this.evidenceModalComment = row?.comment || '';
+    this.evidenceModalImageUrl = row?.image || null;
+    this.evidenceSelectedFileName = '';
+    this.evidenceUploadError = '';
+    this.ngbModal.open(this.evidenceModalTpl, { size: 'lg' }).result.catch(() => {});
+  }
+
+  onEvidenceDragOver(event: DragEvent) { event.preventDefault(); this.evidenceDraggingFile = true; }
+  onEvidenceDragLeave(event: DragEvent) { event.preventDefault(); this.evidenceDraggingFile = false; }
+  onEvidenceFileDrop(event: DragEvent) {
+    event.preventDefault();
+    this.evidenceDraggingFile = false;
+    const file = event.dataTransfer?.files?.[0];
+    if (file) this.uploadEvidenceFile(file);
+  }
+
+  onEvidenceFileSelected(event: any) {
+    const file: File = event.target.files?.[0];
+    if (!file) return;
+    this.uploadEvidenceFile(file, event.target);
+  }
+
+  private uploadEvidenceFile(file: File, input?: HTMLInputElement) {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      if (input) input.value = '';
+      this.evidenceUploadError = 'Selecciona una imagen JPG, PNG o WebP.';
+      return;
+    }
+    this.evidenceUploadError = '';
+    this.evidenceSelectedFileName = file.name;
+    this.evidenceUploading = true;
+    this.imageHandlerService.uploadFileToFirebase(file, 'images')
+      .then((url: string) => {
+        this.evidenceModalImageUrl = url;
+        this.evidenceUploading = false;
+      })
+      .catch((error: any) => {
+        this.evidenceUploading = false;
+        console.error('Error subiendo foto de evidencia:', error);
+        this.evidenceUploadError = error?.message || 'No se pudo subir la foto.';
+      })
+      .finally(() => { if (input) input.value = ''; });
+  }
+
+  saveEvidenceModal(modal: any) {
+    if (!this.evidenceModalImageUrl) {
+      this.evidenceUploadError = 'Selecciona y sube una foto antes de continuar.';
+      return;
+    }
+    const comment = this.evidenceModalComment.trim();
+    const editingEvidence = this.editingEvidence;
+
+    if (editingEvidence) {
+      this.context.EVIDENCE.update(editingEvidence.id, comment, (saved: any) => {
+        if (saved) {
+          this.evidenceRows = this.evidenceRows.map(row => row.id === editingEvidence.id ? { ...row, comment } : row);
+        }
+      });
+    } else {
+      this.context.EVIDENCE.add(this.entryData.id, this.evidenceModalImageUrl, comment, (saved: any) => {
         if (saved) {
           this.evidenceRows = [saved, ...this.evidenceRows];
           this.context.EVIDENCE.updateCount?.(this.entryData.id, this.evidenceRows.length);
         }
       });
-    } catch (error) {
-      console.error('Error uploading evidence photo:', error);
     }
+    modal.close();
+    this.editingEvidence = null;
   }
 
   async deleteEvidencePhoto(photo: any) {
+    if (!photo) return;
     const result = await alerts.confirmAlert(
       this.translate.instant('modules.warehouses.ui.entryDetail.deleteEvidence'),
       this.translate.instant('modules.warehouses.ui.entryDetail.confirmDeleteEvidence'),
@@ -1539,12 +1712,9 @@ export class DetailCellRendererEntryItemsComponent {
     if (!result.isConfirmed) return;
     this.context.EVIDENCE.delete(photo.id, () => {
       this.evidenceRows = this.evidenceRows.filter(p => p.id !== photo.id);
+      this.selectedEvidenceRow = null;
       this.context.EVIDENCE.updateCount?.(this.entryData.id, this.evidenceRows.length);
     });
-  }
-
-  openEvidencePreview(url: string) {
-    window.open(url, '_blank');
   }
 
   private async generateReport() {
