@@ -22,6 +22,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface Branch {
   id: number;
@@ -31,11 +32,12 @@ interface Branch {
 @Component({
   selector: 'app-warehouses',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, TranslateModule],
   templateUrl: './warehouses.component.html',
   styleUrl: './warehouses.component.scss',
 })
 export class WarehousesComponent implements CanComponentDeactivate {
+  private translate = inject(TranslateService);
   private trackingService = inject(TrackingService);
   selectedRoot: string = '';
 
@@ -55,8 +57,7 @@ export class WarehousesComponent implements CanComponentDeactivate {
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.notSavedChanges) {
-      $event.returnValue =
-        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
+      $event.returnValue = this.translate.instant('modules.warehouses.ui.warehouseSetup.unsavedExit');
     }
   }
 
@@ -128,7 +129,7 @@ export class WarehousesComponent implements CanComponentDeactivate {
     this._colMaster = [
       {
         field: 'branchName',
-        headerName: 'Sucursal',
+        headerName: this.translate.instant('modules.warehouses.ui.warehouseSetup.branch'),
         editable: false,
         filter: true,
         width: 180,
@@ -136,14 +137,14 @@ export class WarehousesComponent implements CanComponentDeactivate {
       },
       {
         field: 'name',
-        headerName: 'Nombre',
+        headerName: this.translate.instant('modules.warehouses.ui.warehouseSetup.name'),
         editable: true,
         filter: true,
         width: 200,
       },
       {
         field: 'address',
-        headerName: 'Direccion',
+        headerName: this.translate.instant('modules.warehouses.ui.warehouseSetup.address'),
         editable: false,
         width: 285,
         filter: true,
@@ -175,7 +176,7 @@ export class WarehousesComponent implements CanComponentDeactivate {
       },
       {
         field: 'state',
-        headerName: 'Estado',
+        headerName: this.translate.instant('modules.warehouses.ui.warehouseSetup.state'),
         editable: true,
         width: 150,
         cellEditor: 'agSelectCellEditor',
@@ -183,27 +184,27 @@ export class WarehousesComponent implements CanComponentDeactivate {
           values: this.estados,
         }),
       },
-      { field: 'city', headerName: 'Ciudad', editable: true, width: 100 },
+      { field: 'city', headerName: this.translate.instant('modules.warehouses.ui.warehouseSetup.city'), editable: true, width: 100 },
       {
         field: 'codePostal',
-        headerName: 'CP',
+        headerName: this.translate.instant('modules.warehouses.ui.warehouseSetup.postalCode'),
         editable: true,
         width: 70,
       },
-      { field: 'place', headerName: 'Lugar', editable: true, width: 185 },
+      { field: 'place', headerName: this.translate.instant('modules.warehouses.ui.warehouseSetup.place'), editable: true, width: 185 },
       {
         field: 'phone',
-        headerName: 'Telefono',
+        headerName: this.translate.instant('modules.warehouses.ui.warehouseSetup.phone'),
         editable: true,
         width: 105,
         cellEditorParams: {
           maxLength: 10,
         },
       },
-      { field: 'leader', headerName: 'Lider', editable: true, width: 238 },
+      { field: 'leader', headerName: this.translate.instant('modules.warehouses.ui.warehouseSetup.manager'), editable: true, width: 238 },
       {
         field: 'principal',
-        headerName: 'Principal',
+        headerName: this.translate.instant('modules.warehouses.ui.warehouseSetup.primary'),
         editable: true,
         width: 100,
         cellEditor: 'agCheckboxCellEditor'
@@ -324,7 +325,7 @@ export class WarehousesComponent implements CanComponentDeactivate {
   addRow() {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo warehouses', 'Almacenes', this.trackingService.getEmail());
     if (!this.idBranch || this.isAllBranches) {
-      alerts.basicAlert('Sucursal requerida', 'Seleccione una sucursal específica para agregar un almacén.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.warehouseSetup.branchRequired'), this.translate.instant('modules.warehouses.ui.warehouseSetup.chooseBranch'), 'warning');
       return;
     }
 
@@ -355,8 +356,8 @@ export class WarehousesComponent implements CanComponentDeactivate {
     const isValid = this.rowData.every((item) => item.name && item.address);
     if (!isValid) {
       alerts.basicAlert(
-        'Añadir entrada',
-        'Debe llenar todos los campos antes de guardar.',
+        this.translate.instant('modules.warehouses.ui.warehouseSetup.addWarehouse'),
+        this.translate.instant('modules.warehouses.ui.warehouseSetup.requiredFields'),
         'error'
       );
       return;
@@ -383,18 +384,18 @@ export class WarehousesComponent implements CanComponentDeactivate {
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
       alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
+        this.translate.instant('modules.warehouses.ui.warehouseSetup.updated'),
+        this.translate.instant('modules.warehouses.ui.warehouseSetup.updatedSuccessfully'),
         'success'
       );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       this.obtenerDatos(); // Refrescar los datos
     } catch (error: any) {
-      const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
+      const errorMsg = error?.error?.message || error?.message || this.translate.instant('modules.warehouses.ui.warehouseSetup.unknownError');
       alerts.basicAlert(
-        'Error',
-        `Ocurrió un error al actualizar los datos: ${errorMsg}`,
+        this.translate.instant('modules.warehouses.ui.warehouseSetup.error'),
+        `${this.translate.instant('modules.warehouses.ui.warehouseSetup.updateFailed')}: ${errorMsg}`,
         'error'
       );
     }
@@ -404,8 +405,8 @@ export class WarehousesComponent implements CanComponentDeactivate {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
-        'Eliminar Almacen',
-        'Por favor, seleccione Almacen para eliminar.',
+        this.translate.instant('modules.warehouses.ui.warehouseSetup.deleteWarehouse'),
+        this.translate.instant('modules.warehouses.ui.warehouseSetup.selectWarehouseToDelete'),
         'error'
       );
       return;
@@ -419,8 +420,8 @@ export class WarehousesComponent implements CanComponentDeactivate {
       .pipe(
         catchError(() => {
           alerts.basicAlert(
-            'Eliminar Almacen',
-            'Error al eliminar Almacen.',
+            this.translate.instant('modules.warehouses.ui.warehouseSetup.deleteWarehouse'),
+            this.translate.instant('modules.warehouses.ui.warehouseSetup.deleteFailed'),
             'error'
           );
           return EMPTY;
@@ -428,15 +429,15 @@ export class WarehousesComponent implements CanComponentDeactivate {
       )
       .subscribe(() => {
         alerts.basicAlert(
-          'Eliminar Almacen',
-          'Almacen Eliminado satisfactoriamente.',
+          this.translate.instant('modules.warehouses.ui.warehouseSetup.deleteWarehouse'),
+          this.translate.instant('modules.warehouses.ui.warehouseSetup.deletedSuccessfully'),
           'success'
         );
         this.obtenerDatos();
 
         alerts.basicAlert(
-          'Eliminar Almacen',
-          'Almacen eliminado satisfactoriamente.',
+          this.translate.instant('modules.warehouses.ui.warehouseSetup.deleteWarehouse'),
+          this.translate.instant('modules.warehouses.ui.warehouseSetup.deletedSuccessfully'),
           'success'
         );
         this.notSavedChanges = false;

@@ -15,6 +15,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { DashboardComponent as MaintenanceDashboardComponent } from 'app/domains/ModMaintenance/pages/dashboard/dashboard.component';
 import { AuthService } from 'app/services/auth.service';
 import { DashHumanResourcesComponent } from './components/dash-human-resources.component';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-dashboard-home',
@@ -98,7 +99,7 @@ import { DashHumanResourcesComponent } from './components/dash-human-resources.c
       </ul>
 
       <section class="dashboard-quick-tools" aria-label="Herramientas rápidas">
-        <div class="dashboard-rate">
+        <div class="dashboard-rate" *ngIf="!isEnglish">
           <span class="dashboard-rate-icon"><i class="bi bi-currency-dollar"></i></span>
           <div>
             <span>Tipo de cambio · USD/MXN</span>
@@ -109,6 +110,24 @@ import { DashHumanResourcesComponent } from './components/dash-human-resources.c
           <button type="button" class="btn btn-sm" (click)="loadExchangeRate()" [disabled]="isLoadingExchangeRate" title="Actualizar tipo de cambio">
             <i class="bi bi-arrow-clockwise" [class.spin]="isLoadingExchangeRate"></i>
           </button>
+        </div>
+        <!-- En inglés la referencia de pesos MXN no aplica: se muestra el
+             próximo feriado de USA y, si no hay uno próximo, un anuncio en
+             inglés (en vez del de México/español de /publicidad). -->
+        <div class="dashboard-rate" *ngIf="isEnglish">
+          <span class="dashboard-rate-icon"><i class="bi bi-calendar-event"></i></span>
+          <div *ngIf="nextEnHoliday as holiday; else enAnnouncement">
+            <span>Next US Holiday</span>
+            <strong>{{ holiday.localName || holiday.name }}</strong>
+            <small>{{ holiday.dateLabel }}</small>
+          </div>
+          <ng-template #enAnnouncement>
+            <div>
+              <span>Company Announcement</span>
+              <strong>New features for US operations</strong>
+              <small><a routerLink="/publicidad">See what's new</a></small>
+            </div>
+          </ng-template>
         </div>
         <div class="dashboard-quick-actions" *ngIf="favoriteActions.length">
           <span>Tus acciones frecuentes</span>
@@ -276,6 +295,7 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   private signalsService = inject(SignalsService);
   private usersService = inject(UsersService);
   private trackingService = inject(TrackingService);
+  private translate = inject(TranslateService);
   readonly quickActions = inject(QuickActionsService);
   readonly projectName = this.signalsService.getProjectNameBySidebar();
   readonly branchName = this.signalsService.getBranchNameSelectedBySidebar();
@@ -292,17 +312,36 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   private fullUserName = '';
   upcomingHolidays: Array<{ date: string; name: string; localName: string; dateLabel: string }> = [];
   holidayCountryName = '';
+  // Festivos de USA para el widget de arriba cuando la app está en inglés
+  // (independiente del país real del usuario, que sigue mostrándose en upcomingHolidays).
+  enHolidays: Array<{ date: string; name: string; localName: string; dateLabel: string }> = [];
+  isEnglish = false;
+  get nextEnHoliday() { return this.enHolidays[0] || null; }
   private clockTimer?: ReturnType<typeof setInterval>;
+  private langChangeSub?: { unsubscribe(): void };
 
   ngOnInit(): void {
     this.updateClock();
     this.clockTimer = setInterval(() => this.updateClock(), 60_000);
     this.loadExchangeRate();
     this.loadFullUserName();
+
+    this.isEnglish = this.translate.currentLang === 'en';
+    if (this.isEnglish) this.loadEnHolidays();
+    this.langChangeSub = this.translate.onLangChange.subscribe(event => {
+      const wasEnglish = this.isEnglish;
+      this.isEnglish = event.lang === 'en';
+      if (this.isEnglish && !wasEnglish && !this.enHolidays.length) this.loadEnHolidays();
+    });
   }
 
   ngOnDestroy(): void {
     if (this.clockTimer) clearInterval(this.clockTimer);
+    this.langChangeSub?.unsubscribe();
+  }
+
+  private loadEnHolidays(): void {
+    this.fetchUpcomingHolidays('United States', 'US', 'en');
   }
 
   get greeting(): string {
@@ -348,12 +387,13 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
     });
   }
 
-  private fetchUpcomingHolidays(country: string, countryCode: string): void {
+  private fetchUpcomingHolidays(country: string, countryCode: string, target: 'user' | 'en' = 'user'): void {
     this.http.get<any[]>(`https://date.nager.at/api/v3/NextPublicHolidays/${countryCode}`).subscribe({
       next: (holidays) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        this.upcomingHolidays = (holidays || [])
+        const locale = target === 'en' ? 'en-US' : 'es-MX';
+        const mapped = (holidays || [])
           .filter(holiday => holiday.date && new Date(`${holiday.date}T00:00:00`) >= today)
           .sort((a, b) => a.date.localeCompare(b.date))
           .slice(0, 3)
@@ -361,11 +401,16 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
             date: holiday.date,
             name: holiday.name,
             localName: holiday.localName,
-            dateLabel: new Date(`${holiday.date}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+            dateLabel: new Date(`${holiday.date}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'short' })
           }));
-        this.holidayCountryName = country.trim();
+        if (target === 'en') {
+          this.enHolidays = mapped;
+        } else {
+          this.upcomingHolidays = mapped;
+          this.holidayCountryName = country.trim();
+        }
       },
-      error: (error) => console.warn('No se pudieron consultar los días festivos del país del usuario:', error)
+      error: (error) => console.warn(`No se pudieron consultar los días festivos (${target}):`, error)
     });
   }
 

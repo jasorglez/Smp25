@@ -1,12 +1,13 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-eleccion-familias',
   standalone: true,
-  imports: [CommonModule, AgGridModule],
+  imports: [CommonModule, AgGridModule, TranslateModule],
   template: `
     <ag-grid-angular
       style="width: 100%; height: 400px;"
@@ -19,17 +20,18 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
   `
 })
 export class EleccionFamiliasComponent {
+  private translate = inject(TranslateService);
   private gridApi!: GridApi;
 
   columnDefs: ColDef[] = [
-    { headerName: 'Columna1', field: 'col1', flex: 1, filter: true },
-    { headerName: 'Columna2', field: 'col2', flex: 1, filter: true }
+    { headerName: this.translate.instant('modules.shopping.ui.catalogs.columnOne'), field: 'col1', flex: 1, filter: true },
+    { headerName: this.translate.instant('modules.shopping.ui.catalogs.columnTwo'), field: 'col2', flex: 1, filter: true }
   ];
 
   rowData = [
-    { col1: 'Dato Fila 1 - Col 1', col2: 'Dato Fila 1 - Col 2' },
-    { col1: 'Dato Fila 2 - Col 1', col2: 'Dato Fila 2 - Col 2' },
-    { col1: 'Dato Fila 3 - Col 1', col2: 'Dato Fila 3 - Col 2' }
+    { col1: this.translate.instant('modules.shopping.ui.catalogs.sampleRow', { row: 1, column: 1 }), col2: this.translate.instant('modules.shopping.ui.catalogs.sampleRow', { row: 1, column: 2 }) },
+    { col1: this.translate.instant('modules.shopping.ui.catalogs.sampleRow', { row: 2, column: 1 }), col2: this.translate.instant('modules.shopping.ui.catalogs.sampleRow', { row: 2, column: 2 }) },
+    { col1: this.translate.instant('modules.shopping.ui.catalogs.sampleRow', { row: 3, column: 1 }), col2: this.translate.instant('modules.shopping.ui.catalogs.sampleRow', { row: 3, column: 2 }) }
   ];
 
   gridOptions = {

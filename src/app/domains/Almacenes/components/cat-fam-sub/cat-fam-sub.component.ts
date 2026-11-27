@@ -9,11 +9,12 @@ import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-cat-fam-sub',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, TranslateModule],
   templateUrl: './cat-fam-sub.component.html',
   styleUrl: './cat-fam-sub.component.scss'
 })
@@ -23,6 +24,7 @@ export class CatFamSubComponent {
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private materialsService = inject(MaterialsService);
+  private translate = inject(TranslateService);
 
   constructor() {
     effect(() => {
@@ -247,7 +249,7 @@ export class CatFamSubComponent {
 
     this._columnDefs = [
       {
-        headerName: 'Categoría',
+        headerName: this.translate.instant('modules.shopping.ui.hierarchy.category'),
         field: 'categoryDisplay',
         width: 300,
         cellRenderer: (params: any) => {
@@ -296,7 +298,7 @@ export class CatFamSubComponent {
         }
       },
       {
-        headerName: 'Familia',
+        headerName: this.translate.instant('modules.shopping.ui.hierarchy.family'),
         field: 'familyDisplay',
         width: 300,
         cellRenderer: (params: any) => {
@@ -342,7 +344,7 @@ export class CatFamSubComponent {
         }
       },
       {
-        headerName: 'Sub Familia',
+        headerName: this.translate.instant('modules.shopping.ui.hierarchy.subfamily'),
         field: 'subfamilyDisplay',
         width: 300,
         cellRenderer: (params: any) => {
@@ -381,7 +383,7 @@ export class CatFamSubComponent {
       },
  
       {
-        headerName: 'Material Maestro',
+        headerName: this.translate.instant('modules.shopping.ui.hierarchy.masterMaterial'),
         field: 'valueAdditionBit',
         width: 210,
         editable: true,
@@ -392,7 +394,7 @@ export class CatFamSubComponent {
         }
       },
       {
-        headerName: 'Requisiciones',
+        headerName: this.translate.instant('modules.shopping.ui.requisitions.title'),
         field: 'valueAdditionBit2',
         width: 120,
         cellRenderer: (params: any) => {
@@ -405,7 +407,7 @@ export class CatFamSubComponent {
         }
       },
       {
-        headerName: 'Activo',
+        headerName: this.translate.instant('modules.shopping.ui.hierarchy.active'),
         field: 'vigente',
         width: 100,
         editable: true,

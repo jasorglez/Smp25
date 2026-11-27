@@ -1,0 +1,36 @@
+OBTENER LA LLAVE JWT QUE USA SECURITY
+
+IMPORTANTE
+Ejecuta esto en el servidor donde corre MicroservicioSecurity, no necesariamente
+en bi-server. La llave no es la contraseña de RabbitMQ. No la publiques ni la
+envíes por chat.
+
+1) Encuentra el nombre del servicio:
+
+  sudo systemctl list-units --type=service --state=running --all | grep -Ei 'security|smp'
+
+2) Copia el nombre exacto de la unidad que corresponda a MicroservicioSecurity
+   (por ejemplo, algo terminado en .service) y ejecútalo así, sustituyendo
+   NOMBRE.service por ese nombre:
+
+  sudo systemctl show NOMBRE.service -p MainPID -p WorkingDirectory -p EnvironmentFiles
+
+3) La llave efectiva puede estar en cualquiera de estas fuentes, en este orden:
+
+   a) Variable de entorno del servicio: Jwt__Key
+   b) Archivo de entorno indicado por EnvironmentFiles (busca Jwt__Key)
+   c) appsettings.Production.json del directorio de trabajo del servicio
+   d) appsettings.json de ese mismo directorio
+
+En los archivos JSON se ve como:
+
+  "Jwt": {
+    "Key": "VALOR_SECRETO"
+  }
+
+Usa el valor de la fuente activa de Security. Si existe Jwt__Key como variable,
+esa tiene prioridad sobre los archivos JSON. Si existe appsettings.Production.json,
+su valor de Jwt:Key normalmente sustituye al de appsettings.json.
+
+Después configura ese mismo valor como Jwt__Key en el servicio Telegram. No
+pegues el valor aquí ni lo guardes en Git.

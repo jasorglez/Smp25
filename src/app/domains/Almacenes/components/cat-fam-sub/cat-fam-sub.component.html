@@ -4,14 +4,14 @@
       <!-- Botones de acción -->
       <nav class="col-auto d-flex flex-column align-items-start">
         <div class="mb-2 small text-primary fw-bold">
-          <i class="bi bi-diagram-3"></i> CATÁLOGO
+          <i class="bi bi-diagram-3"></i> {{ 'modules.shopping.ui.hierarchy.catalog' | translate }}
         </div>
 
         <button 
           type="button" 
           class="btn btn-primary me-1 mb-2" 
           (click)="addCatalogItem()"
-          title="Agregar elemento según selección">
+          [title]="'modules.shopping.ui.hierarchy.addSelectedElement' | translate">
           <i class="bi bi-plus-lg"></i>
         </button>        
         
@@ -43,27 +43,27 @@
                  'bg-info': selectedNodeLevel === 'family', 
                  'bg-secondary': selectedNodeLevel === 'subfamily'
                }">
-            {{ selectedNodeLevel === 'category' ? 'Categoría' : 
-               selectedNodeLevel === 'family' ? 'Familia' : 'Subfamilia' }}
+            {{ selectedNodeLevel === 'category' ? ('modules.shopping.ui.hierarchy.category' | translate) : 
+               selectedNodeLevel === 'family' ? ('modules.shopping.ui.hierarchy.family' | translate) : ('modules.shopping.ui.hierarchy.subfamily' | translate) }}
           </div>
           <div class="text-truncate mt-1" style="font-size: 0.75rem;">
-            {{ selectedRowData?.description || 'Seleccionado' }}
+            {{ selectedRowData?.description || ('modules.shopping.ui.hierarchy.selected' | translate) }}
           </div>
         </div>
 
         <!-- Ayuda contextual -->
         <div class="mt-4 small text-muted" style="max-width: 160px;">
           <div class="mb-2">
-            <strong>💡 Flujo con modales:</strong>
+            <strong>💡 {{ 'modules.shopping.ui.hierarchy.modalWorkflow' | translate }}</strong>
           </div>
           <div style="font-size: 0.7rem;">
-            <strong>Agregar elemento:</strong><br>
-            • Click columna vacía → Crear hijo<br>
-            • Click elemento → Crear hermano<br>
-            • Click <span class="badge bg-primary">+</span> → Abrir modal<br>
+            <strong>{{ 'modules.shopping.ui.hierarchy.addElement' | translate }}</strong><br>
+            • {{ 'modules.shopping.ui.hierarchy.clickEmptyColumn' | translate }}<br>
+            • {{ 'modules.shopping.ui.hierarchy.clickElement' | translate }}<br>
+            • {{ 'modules.shopping.ui.hierarchy.clickPlus' | translate }} <span class="badge bg-primary">+</span> → {{ 'modules.shopping.ui.hierarchy.openModal' | translate }}<br>
             <br>
-            <strong>Editar:</strong><br>
-            Doble-click → Modal
+            <strong>{{ 'modules.shopping.ui.hierarchy.edit' | translate }}</strong><br>
+            {{ 'modules.shopping.ui.hierarchy.doubleClick' | translate }} → {{ 'modules.shopping.ui.hierarchy.modal' | translate }}
           </div>
         </div>
       </nav>
@@ -96,7 +96,7 @@
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
         <h5 class="modal-title">
-          <i class="bi bi-folder-plus"></i> Nueva Categoría
+          <i class="bi bi-folder-plus"></i> {{ 'modules.shopping.ui.hierarchy.newCategory' | translate }}
         </h5>
         <button type="button" class="btn-close btn-close-white" (click)="closeModals()"></button>
       </div>
@@ -106,7 +106,7 @@
 
           <div class="mb-3">
             <label for="categoryDescription" class="form-label">
-              <i class="bi bi-tag"></i> Nombre
+              <i class="bi bi-tag"></i> {{ 'modules.shopping.ui.hierarchy.name' | translate }}
             </label>
             <input
               type="text"
@@ -114,14 +114,14 @@
               id="categoryDescription"
               [(ngModel)]="modalForm.description"
               name="description"
-              placeholder="Ingrese el nombre de la categoría..."
+              [placeholder]="'modules.shopping.ui.hierarchy.enterCategoryName' | translate"
               maxlength="100"
               (input)="toUpperCase($event, 'description')"
               required>
           </div>
           <div class="mb-3">
           <label for="categoryValueAddition" class="form-label">
-            <i class="bi bi-pencil"></i> Descripción
+            <i class="bi bi-pencil"></i> {{ 'modules.shopping.ui.description' | translate }}
           </label>
           <input
             type="text"
@@ -129,7 +129,7 @@
             id="categoryValueAddition"
             [(ngModel)]="modalForm.valueAddition"
             name="valueAddition"
-            placeholder="Ingrese la descripción..."
+            [placeholder]="'modules.shopping.ui.hierarchy.enterDescription' | translate"
             maxlength="100"
             (input)="toUpperCase($event, 'valueAddition')"
             #descriptionInput>
@@ -137,7 +137,7 @@
 
           <div class="mb-3">
             <label for="categoryValueAddition2" class="form-label">
-              <i class="bi bi-fonts"></i> Abreviatura
+              <i class="bi bi-fonts"></i> {{ 'modules.shopping.ui.hierarchy.abbreviation' | translate }}
             </label>
             <input
               type="text"
@@ -145,7 +145,7 @@
               id="categoryValueAddition2"
               [(ngModel)]="modalForm.valueAddition2"
               name="valueAddition2"
-              placeholder="Ingrese la abreviatura..."
+              [placeholder]="'modules.shopping.ui.hierarchy.enterAbbreviation' | translate"
               maxlength="50"
               (input)="toUpperCase($event, 'valueAddition2')">
           </div>
@@ -160,7 +160,7 @@
                 [(ngModel)]="modalForm.valueAdditionBit"
                 name="valueAdditionBit">
               <label class="form-check-label" for="editMateriaPrima">
-                Materia Prima
+                {{ 'modules.shopping.ui.hierarchy.rawMaterial' | translate }}
               </label>
             </div>
             <!--<div class="form-check">
@@ -183,18 +183,18 @@
               [(ngModel)]="modalForm.active"
               name="active">
             <label class="form-check-label" for="categoryActive">
-              Activo
+              {{ 'modules.shopping.ui.hierarchy.active' | translate }}
             </label>
           </div>
         </form>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="closeModals()">
-          <i class="bi bi-x-circle"></i> Cancelar
+          <i class="bi bi-x-circle"></i> {{ 'modules.shopping.ui.cancel' | translate }}
         </button>
         <button type="button" class="btn btn-primary" (click)="saveNewCategory()"
                 [disabled]="!modalForm.description.trim()">
-          <i class="bi bi-check-circle"></i> Guardar Categoría
+          <i class="bi bi-check-circle"></i> {{ 'modules.shopping.ui.hierarchy.saveCategory' | translate }}
         </button>
       </div>
     </div>
@@ -208,14 +208,14 @@
     <div class="modal-content">
       <div class="modal-header bg-info text-white">
         <h5 class="modal-title">
-          <i class="bi bi-collection-plus"></i> Nueva Familia
+          <i class="bi bi-collection-plus"></i> {{ 'modules.shopping.ui.hierarchy.newFamily' | translate }}
         </h5>
         <button type="button" class="btn-close btn-close-white" (click)="closeModals()"></button>
       </div>
       <div class="modal-body">
         <!-- Mostrar categoría padre -->
         <div class="alert alert-info mb-3" *ngIf="selectedRowData">
-          <strong>Categoría padre:</strong>
+          <strong>{{ 'modules.shopping.ui.hierarchy.parentCategory' | translate }}</strong>
           <span class="badge bg-primary ms-2">
             {{ selectedNodeLevel === 'category' ? selectedRowData.description : getCategoryName(selectedRowData.parentCategoryId) }}
           </span>
@@ -224,7 +224,7 @@
         <form (ngSubmit)="saveNewFamily()">
           <div class="mb-3">
             <label for="familyDescription" class="form-label">
-              <i class="bi bi-tag"></i> Nombre
+              <i class="bi bi-tag"></i> {{ 'modules.shopping.ui.hierarchy.name' | translate }}
             </label>
             <input
               type="text"
@@ -232,14 +232,14 @@
               id="familyDescription"
               [(ngModel)]="modalForm.description"
               name="description"
-              placeholder="Ingrese el nombre de la familia..."
+              [placeholder]="'modules.shopping.ui.hierarchy.enterFamilyName' | translate"
               maxlength="100"
               (input)="toUpperCase($event, 'description')"
               required>
           </div>
           <div class="mb-3">
             <label for="familyValueAddition" class="form-label">
-              <i class="bi bi-pencil"></i> Descripción
+              <i class="bi bi-pencil"></i> {{ 'modules.shopping.ui.description' | translate }}
             </label>
             <input
               type="text"
@@ -247,14 +247,14 @@
               id="familyValueAddition"
               [(ngModel)]="modalForm.valueAddition"
               name="valueAddition"
-              placeholder="Ingrese la descripción..."
+              [placeholder]="'modules.shopping.ui.hierarchy.enterDescription' | translate"
               maxlength="100"
               (input)="toUpperCase($event, 'valueAddition')">
           </div>
 
           <div class="mb-3">
             <label for="familyValueAddition2" class="form-label">
-              <i class="bi bi-fonts"></i> Abreviatura
+              <i class="bi bi-fonts"></i> {{ 'modules.shopping.ui.hierarchy.abbreviation' | translate }}
             </label>
             <input
               type="text"
@@ -262,7 +262,7 @@
               id="familyValueAddition2"
               [(ngModel)]="modalForm.valueAddition2"
               name="valueAddition2"
-              placeholder="Ingrese la abreviatura..."
+              [placeholder]="'modules.shopping.ui.hierarchy.enterAbbreviation' | translate"
               maxlength="50"
               (input)="toUpperCase($event, 'valueAddition2')">
           </div>
@@ -307,11 +307,11 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="closeModals()">
-          <i class="bi bi-x-circle"></i> Cancelar
+          <i class="bi bi-x-circle"></i> {{ 'modules.shopping.ui.cancel' | translate }}
         </button>
         <button type="button" class="btn btn-info" (click)="saveNewFamily()"
                 [disabled]="!modalForm.description.trim()">
-          <i class="bi bi-check-circle"></i> Guardar Familia
+          <i class="bi bi-check-circle"></i> {{ 'modules.shopping.ui.hierarchy.saveFamily' | translate }}
         </button>
       </div>
     </div>
@@ -325,14 +325,14 @@
     <div class="modal-content">
       <div class="modal-header bg-secondary text-white">
         <h5 class="modal-title">
-          <i class="bi bi-file-earmark-plus"></i> Nueva Subfamilia
+          <i class="bi bi-file-earmark-plus"></i> {{ 'modules.shopping.ui.hierarchy.newSubfamily' | translate }}
         </h5>
         <button type="button" class="btn-close btn-close-white" (click)="closeModals()"></button>
       </div>
       <div class="modal-body">
         <!-- Mostrar jerarquía padre -->
         <div class="alert alert-secondary mb-3" *ngIf="selectedRowData">
-          <strong>Jerarquía:</strong><br>
+          <strong>{{ 'modules.shopping.ui.hierarchy.hierarchy' | translate }}</strong><br>
           <span class="badge bg-primary me-1">
             {{ getCategoryName(selectedRowData.parentCategoryId) }}
           </span>
@@ -345,7 +345,7 @@
         <form (ngSubmit)="saveNewSubfamily()">
           <div class="mb-3">
             <label for="subfamilyDescription" class="form-label">
-              <i class="bi bi-tag"></i> Nombre
+              <i class="bi bi-tag"></i> {{ 'modules.shopping.ui.hierarchy.name' | translate }}
             </label>
             <input
               type="text"
@@ -353,14 +353,14 @@
               id="subfamilyDescription"
               [(ngModel)]="modalForm.description"
               name="description"
-              placeholder="Ingrese el nombre de la subfamilia..."
+              [placeholder]="'modules.shopping.ui.hierarchy.enterSubfamilyName' | translate"
               maxlength="100"
               (input)="toUpperCase($event, 'description')"
               required>
           </div>
           <div class="mb-3">
             <label for="subfamilyValueAddition" class="form-label">
-              <i class="bi bi-pencil"></i> Descripción
+              <i class="bi bi-pencil"></i> {{ 'modules.shopping.ui.description' | translate }}
             </label>
             <input
               type="text"
@@ -368,13 +368,13 @@
               id="subfamilyValueAddition"
               [(ngModel)]="modalForm.valueAddition"
               name="valueAddition"
-              placeholder="Ingrese la descripción..."
+              [placeholder]="'modules.shopping.ui.hierarchy.enterDescription' | translate"
               maxlength="100"
               (input)="toUpperCase($event, 'valueAddition')">
           </div>
           <div class="mb-3">
             <label for="subfamilyValueAddition2" class="form-label">
-              <i class="bi bi-fonts"></i> Abreviatura
+              <i class="bi bi-fonts"></i> {{ 'modules.shopping.ui.hierarchy.abbreviation' | translate }}
             </label>
             <input
               type="text"
@@ -382,7 +382,7 @@
               id="subfamilyValueAddition2"
               [(ngModel)]="modalForm.valueAddition2"
               name="valueAddition2"
-              placeholder="Ingrese la abreviatura..."
+              [placeholder]="'modules.shopping.ui.hierarchy.enterAbbreviation' | translate"
               maxlength="50"
               (input)="toUpperCase($event, 'valueAddition2')">
           </div>
@@ -397,7 +397,7 @@
                 [(ngModel)]="modalForm.valueAdditionBit"
                 name="valueAdditionBit">
               <label class="form-check-label" for="editMateriaPrima">
-                Materia Prima
+                {{ 'modules.shopping.ui.hierarchy.rawMaterial' | translate }}
               </label>
             </div>
             <!--<div class="form-check">
@@ -420,18 +420,18 @@
               [(ngModel)]="modalForm.active"
               name="active">
             <label class="form-check-label" for="subfamilyActive">
-              Activo
+              {{ 'modules.shopping.ui.hierarchy.active' | translate }}
             </label>
           </div>
         </form>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="closeModals()">
-          <i class="bi bi-x-circle"></i> Cancelar
+          <i class="bi bi-x-circle"></i> {{ 'modules.shopping.ui.cancel' | translate }}
         </button>
         <button type="button" class="btn btn-secondary" (click)="saveNewSubfamily()"
                 [disabled]="!modalForm.description.trim()">
-          <i class="bi bi-check-circle"></i> Guardar Subfamilia
+          <i class="bi bi-check-circle"></i> {{ 'modules.shopping.ui.hierarchy.saveSubfamily' | translate }}
         </button>
       </div>
     </div>
@@ -445,26 +445,26 @@
     <div class="modal-content">
       <div class="modal-header bg-warning text-dark">
         <h5 class="modal-title">
-          <i class="bi bi-pencil-square"></i> Editar {{ editingItem?.nodeLevel === 'category' ? 'Categoría' : 
-                                                         editingItem?.nodeLevel === 'family' ? 'Familia' : 'Subfamilia' }}
+          <i class="bi bi-pencil-square"></i> {{ 'modules.shopping.ui.hierarchy.edit' | translate }} {{ editingItem?.nodeLevel === 'category' ? ('modules.shopping.ui.hierarchy.category' | translate) : 
+                                                         editingItem?.nodeLevel === 'family' ? ('modules.shopping.ui.hierarchy.family' | translate) : ('modules.shopping.ui.hierarchy.subfamily' | translate) }}
         </h5>
         <button type="button" class="btn-close" (click)="closeModals()"></button>
       </div>
       <div class="modal-body">
         <!-- Mostrar jerarquía actual -->
         <div class="alert alert-light mb-3" *ngIf="editingItem">
-          <strong>Tipo:</strong> 
+          <strong>{{ 'modules.shopping.ui.hierarchy.type' | translate }}:</strong> 
           <span class="badge" 
                 [ngClass]="{'bg-primary': editingItem.nodeLevel === 'category', 
                            'bg-info': editingItem.nodeLevel === 'family',
                            'bg-secondary': editingItem.nodeLevel === 'subfamily'}">
-            {{ editingItem.nodeLevel === 'category' ? 'Categoría' : 
-               editingItem.nodeLevel === 'family' ? 'Familia' : 'Subfamilia' }}
+            {{ editingItem.nodeLevel === 'category' ? ('modules.shopping.ui.hierarchy.category' | translate) : 
+               editingItem.nodeLevel === 'family' ? ('modules.shopping.ui.hierarchy.family' | translate) : ('modules.shopping.ui.hierarchy.subfamily' | translate) }}
           </span>
           
           <!-- Mostrar jerarquía si es familia o subfamilia -->
           <div class="mt-2" *ngIf="editingItem.nodeLevel !== 'category'">
-            <strong>Ubicación:</strong>
+            <strong>{{ 'modules.shopping.ui.hierarchy.location' | translate }}:</strong>
             <span *ngFor="let item of editingItem.orgHierarchy; let i = index" class="me-1">
               <span class="badge bg-light text-dark">{{ item }}</span>
               <i class="bi bi-arrow-right" *ngIf="i < editingItem.orgHierarchy.length - 1"></i>
@@ -475,7 +475,7 @@
         <form (ngSubmit)="saveEditChanges()">
           <div class="mb-3">
             <label for="editDescription" class="form-label">
-              <i class="bi bi-tag"></i> Nombre
+              <i class="bi bi-tag"></i> {{ 'modules.shopping.ui.hierarchy.name' | translate }}
             </label>
             <input
               type="text"
@@ -483,7 +483,7 @@
               id="editDescription"
               [(ngModel)]="modalForm.description"
               name="description"
-              placeholder="Ingrese el nombre..."
+              [placeholder]="'modules.shopping.ui.hierarchy.enterName' | translate"
               maxlength="100"
               (input)="toUpperCase($event, 'description')"
               required>
@@ -491,7 +491,7 @@
 
           <div class="mb-3">
             <label for="editValueAddition" class="form-label">
-              <i class="bi bi-pencil"></i> Descripción
+              <i class="bi bi-pencil"></i> {{ 'modules.shopping.ui.description' | translate }}
             </label>
             <input
               type="text"
@@ -499,14 +499,14 @@
               id="editValueAddition"
               [(ngModel)]="modalForm.valueAddition"
               name="valueAddition"
-              placeholder="Ingrese la descripción..."
+              [placeholder]="'modules.shopping.ui.hierarchy.enterDescription' | translate"
               maxlength="100"
               (input)="toUpperCase($event, 'valueAddition')">
           </div>
 
           <div class="mb-3">
             <label for="editValueAddition2" class="form-label">
-              <i class="bi bi-fonts"></i> Abreviatura
+              <i class="bi bi-fonts"></i> {{ 'modules.shopping.ui.hierarchy.abbreviation' | translate }}
             </label>
             <input
               type="text"
@@ -514,7 +514,7 @@
               id="editValueAddition2"
               [(ngModel)]="modalForm.valueAddition2"
               name="valueAddition2"
-              placeholder="Ingrese la abreviatura..."
+              [placeholder]="'modules.shopping.ui.hierarchy.enterAbbreviation' | translate"
               maxlength="50"
               (input)="toUpperCase($event, 'valueAddition2')">
           </div>
@@ -527,7 +527,7 @@
               [(ngModel)]="modalForm.active"
               name="active">
             <label class="form-check-label" for="editActive">
-              Activo
+              {{ 'modules.shopping.ui.hierarchy.active' | translate }}
             </label>
           </div>
 
@@ -541,7 +541,7 @@
                 [(ngModel)]="modalForm.valueAdditionBit"
                 name="valueAdditionBit">
               <label class="form-check-label" for="editMateriaPrima">
-                Materia Prima
+                {{ 'modules.shopping.ui.hierarchy.rawMaterial' | translate }}
               </label>
             </div>
             <div class="form-check">
@@ -552,7 +552,7 @@
                 [(ngModel)]="modalForm.valueAdditionBit2"
                 name="valueAdditionBit2">
               <label class="form-check-label" for="editRequisiciones">
-                Requisiciones
+                {{ 'modules.shopping.ui.requisitions.title' | translate }}
               </label>
             </div>
           </div>
@@ -560,11 +560,11 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="closeModals()">
-          <i class="bi bi-x-circle"></i> Cancelar
+          <i class="bi bi-x-circle"></i> {{ 'modules.shopping.ui.cancel' | translate }}
         </button>
         <button type="button" class="btn btn-warning" (click)="saveEditChanges()"
                 [disabled]="!modalForm.description.trim()">
-          <i class="bi bi-check-circle"></i> Guardar Cambios
+          <i class="bi bi-check-circle"></i> {{ 'modules.shopping.ui.saveChanges' | translate }}
         </button>
       </div>
     </div>

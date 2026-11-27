@@ -10,6 +10,7 @@ import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { CatalogsService } from 'app/services/catalogs.service';
@@ -44,11 +45,12 @@ interface Provider {
 @Component({
   selector: 'app-quote',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent, DetailCellRendererPedimentosComponent, DetalleCuadroComparativoComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, TranslateModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent, DetailCellRendererPedimentosComponent, DetalleCuadroComparativoComponent],
   templateUrl: './quote.component.html',
   styleUrl: './quote.component.scss'
 })
 export class QuoteComponent implements CanComponentDeactivate {
+  private translate = inject(TranslateService);
   // Inject of new way for Angular 18
 private quotesService = inject(OcAndReqsService);
   private customersService = inject(CustomersService);
@@ -260,14 +262,14 @@ public gridOptions: any = {
     this._colMaster = [
 {
   field: 'folio',
-  headerName: 'Número Doc',
+  headerName: this.translate.instant('modules.shopping.ui.columns.documentNumber'),
   editable: (params) => !params.data?.locked,
   filter: true,
   width: 150,
 },
       {
         field: 'dateCreate',
-        headerName: 'Fecha Cotizacion',
+        headerName: this.translate.instant('modules.shopping.ui.columns.quoteDate'),
         editable: (params) => !params.data?.locked,
         width: 150,
         cellDataType: 'dateString',
@@ -281,7 +283,7 @@ public gridOptions: any = {
 
       {
         field: 'idDepartament',
-        headerName: 'Departamento Solicita',
+        headerName: this.translate.instant('modules.shopping.ui.columns.requestingDepartment'),
         editable: (params) => !params.data?.locked,
         width: 190,
         cellEditor: 'agSelectCellEditor',
@@ -295,13 +297,13 @@ public gridOptions: any = {
       },
       {
         field: 'solicit',
-        headerName: 'Solicitante',
+        headerName: this.translate.instant('modules.shopping.ui.columns.requester'),
         editable: (params) => !params.data?.locked,
         width: 190,
       },
 {
   field: 'idReq',
-  headerName: 'Requisición',
+  headerName: this.translate.instant('modules.shopping.ui.columns.requisition'),
   editable: (params) => !params.data?.locked,
   width: 180,
   cellEditor: 'agSelectCellEditor',
@@ -318,7 +320,7 @@ public gridOptions: any = {
 },
 {
   field: 'comparativo',
-  headerName: 'Comparativo',
+  headerName: this.translate.instant('modules.shopping.ui.columns.comparison'),
   editable: false,
   width: 150,
   cellRenderer: (params: any) => {
@@ -337,7 +339,7 @@ public gridOptions: any = {
 
 {
   field: 'proveedor1',
-  headerName: 'Proveedor 1',
+  headerName: this.translate.instant('modules.shopping.ui.quote.supplierNumber', { number: 1 }),
   width: 150,
   cellRenderer: (params: any) => {
     // Get provider info from the row data itself, not global slots
@@ -358,7 +360,7 @@ public gridOptions: any = {
 },
 {
   field: 'proveedor2',
-  headerName: 'Proveedor 2',
+  headerName: this.translate.instant('modules.shopping.ui.quote.supplierNumber', { number: 2 }),
   width: 150,
   cellRenderer: (params: any) => {
     // Get provider info from the row data itself, not global slots
@@ -379,7 +381,7 @@ public gridOptions: any = {
 },
 {
   field: 'proveedor3',
-  headerName: 'Proveedor 3',
+  headerName: this.translate.instant('modules.shopping.ui.quote.supplierNumber', { number: 3 }),
   width: 150,
   cellRenderer: (params: any) => {
     // Get provider info from the row data itself, not global slots
@@ -401,7 +403,7 @@ public gridOptions: any = {
 
 {
  field: 'comments',
- headerName: 'Comentario',
+ headerName: this.translate.instant('modules.shopping.ui.columns.comment'),
  editable: false,
  width: 150,
  cellEditor: 'agPopupTextCellEditor',
@@ -436,7 +438,7 @@ public gridOptions: any = {
     if (!this.activateOc) {
       this._colMaster.push({
         field: 'comparacion',
-        headerName: 'Comparación',
+        headerName: this.translate.instant('modules.shopping.ui.columns.comparison'),
         width: 130,
         cellRenderer: (params: any) => {
           // Only show button if at least 2 providers have quotes
@@ -580,7 +582,7 @@ public gridOptions: any = {
     return [
       {
         field: 'requisitionItemId',
-        headerName: 'Material Requisición',
+        headerName: this.translate.instant('modules.shopping.ui.columns.requisitionMaterial'),
         editable: true,
         flex: 3,
         cellEditor: 'agSelectCellEditor',
@@ -613,14 +615,14 @@ public gridOptions: any = {
       },
       {
         field: 'quantity',
-        headerName: 'Cantidad a Cotizar',
+        headerName: this.translate.instant('modules.shopping.ui.columns.quantityToQuote'),
         editable: true,
         filter: true,
         flex: 1,
       },
       {
         field: 'price',
-        headerName: 'Precio',
+        headerName: this.translate.instant('modules.shopping.ui.columns.price'),
         editable: true,
         filter: true,
         flex: 1,
@@ -630,7 +632,7 @@ public gridOptions: any = {
       },
       {
         field: 'comment',
-        headerName: 'Comentarios',
+        headerName: this.translate.instant('modules.shopping.ui.columns.comments'),
         editable: true,
         filter: true,
         flex: 2,

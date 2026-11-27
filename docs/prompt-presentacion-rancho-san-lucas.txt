@@ -1,0 +1,158 @@
+PROMPT PARA CHATGPT — PRESENTACIÓN VISUAL DE RANCHO SAN LUCAS EN BIAPP
+Fecha de preparación: 26 de noviembre de 2026
+
+INSTRUCCIÓN PRINCIPAL
+Actúa como diseñador de presentaciones empresariales. Crea una presentación de EXACTAMENTE 5 páginas horizontales 16:9, en español, para mostrar a los responsables de RANCHO SAN LUCAS cómo se representa su empresa en BIAPP. Genera las imágenes y diagramas de cada página; entrega la presentación en PDF y, si tus herramientas lo permiten, también en PowerPoint editable. Si no puedes producir archivos, entrega las cinco imágenes por separado y el texto editable de cada una.
+
+Queremos que reconozcan SU EMPRESA en cada página. El protagonista es Rancho San Lucas, no una empresa genérica. Presenta un recorrido visual por su organización, sus compras, sus almacenes, sus gastos y sus permisos. Usa el nombre Rancho San Lucas en las cabeceras de los diagramas y pantallas ilustrativas.
+
+DATOS REALES VERIFICADOS EN EL SISTEMA
+- Empresa: RANCHO SAN LUCAS. Nombre corto: SAN LUCAS. Identificador interno: 62; no es necesario mostrarlo al público.
+- Sucursal activa: PRINCIPAL. Descripción: RANCHO SAN LUCAS - Oficina.
+- Contrato registrado: CONTRATO-001, descrito como Contrato Principal.
+- Hay 2 clientes registrados. No se proporcionan sus nombres ni datos personales.
+- Almacén de demostración ya creado: ALMACEN PRINCIPAL DEMO RSL (ID interno 63), asociado a PRINCIPAL. No se creó ningún proyecto; los documentos de compras trabajan por sucursal y se vinculan al contrato existente.
+- Están habilitados a nivel empresa, entre otros: Administración, Configuración, Logística, Mantenimiento, Recursos Humanos, Ventas, Proyectos, Dashboard, Compras, Compras TD, Almacenes TD, Presupuestos, PMO, Precios Unitarios y Cobranzas. La visibilidad para cada usuario depende de sus permisos.
+- Que un módulo esté habilitado no demuestra que tenga operaciones registradas ni que todos los usuarios puedan acceder.
+
+ESTADO DE LOS EJEMPLOS
+CARGA CONFIRMADA EN LA BASE DE DATOS el 26 de noviembre de 2026: cinco materiales, cinco proveedores, cinco requisiciones, cinco órdenes de compra, cinco entradas, cinco salidas y cinco gastos. Los conteos, relaciones, importes y saldos fueron verificados después de confirmar la transacción. El script también se volvió a validar sin duplicar registros. Son registros persistidos de DEMOSTRACIÓN, no operaciones comerciales reales. El acceso al almacén nuevo requiere una asignación de usuario; no se modificaron permisos existentes.
+Los proveedores son ficticios y llevan DEMO en el nombre. El almacén de demostración sí quedó registrado. No se creó el proyecto ilustrativo: mencionar proyectos solo como capacidad del sistema pendiente de configurar.
+
+ESTRUCTURA DEL SISTEMA EN LENGUAJE DE NEGOCIO
+1. Empresa: agrupa la organización y la configuración de sus módulos.
+2. Sucursales: identifican las unidades donde se opera. Para esta presentación usar PRINCIPAL, que sí existe.
+3. Contratos y proyectos: el contrato delimita un trabajo; los proyectos organizan su ejecución. Mostrar CONTRATO-001 como existente. No hay proyecto cargado para esta demostración; el mantenimiento se describe como destino operativo de los materiales.
+4. Almacenes: controlan materiales y movimientos de la sucursal. Almacén registrado: “ALMACEN PRINCIPAL DEMO RSL”.
+5. Materiales: catálogo de artículos, unidades y precios de referencia; las entradas aumentan existencias y las salidas las reducen.
+6. Proveedores y compras: proveedores → requisiciones → órdenes de compra → recepción de materiales. Cada documento contiene cabecera y partidas de detalle.
+7. Clientes: catálogo de relaciones comerciales. No confundir clientes con proveedores. No asociar un cliente concreto a un contrato sin evidencia.
+8. Administración: ingresos, egresos y reportes para el seguimiento del negocio. Los gastos ilustrativos de esta presentación se muestran separados de las compras de materiales, para no duplicarlas.
+9. Usuarios y permisos: acceso por empresa, sucursal y módulos; existen permisos detallados y acciones de consultar, crear, modificar y eliminar. Los perfiles de ejemplo son propuestas, no asignaciones de usuarios verificadas.
+10. Otras áreas: Ventas, Logística, Recursos Humanos, Mantenimiento, Presupuestos, Precios Unitarios, PMO y Cobranzas, según configuración y uso de la empresa. Cobranza permite organizar clientes, préstamos y abonos; no afirmar que Rancho San Lucas opera como financiera.
+
+IMPORTANTE PARA LOS DIAGRAMAS
+No dibujar todos los módulos como una jerarquía rígida. Dibujar Empresa → Sucursal; Contrato → Proyecto como rama operativa; Almacén como unidad de inventario de la sucursal; Proveedores, Clientes, Administración y Permisos como áreas relacionadas. Las flechas del flujo de compras representan una secuencia de trabajo, no automatizaciones que deban darse por comprobadas.
+
+DATOS DE DEMOSTRACIÓN RELACIONADOS
+Moneda: MXN. Los precios y valores siguientes se registraron como importes de demostración con impuestos en cero. No representan un criterio fiscal. No agregar IVA a estos ejemplos ni inventar comprobantes fiscales.
+Los folios siguientes están registrados en BIAPP. Conservar la relación entre documentos. Fechas: requisiciones del 19 al 23 de noviembre de 2026; OC del 20 al 24; entradas del 21 al 25; salidas y gastos del 22 al 26.
+
+Cinco materiales y cinco proveedores ficticios:
+Código | Material | Unidad | Precio base unitario | Proveedor de demostración
+DEMO-RSL-M01 | Cemento gris, saco de 50 kg | saco | 250.00 | DEMO Suministros San Lucas
+DEMO-RSL-M02 | Tubería PVC de 1 pulgada, tramo de 6 m | pieza | 180.00 | DEMO Hidráulica del Campo
+DEMO-RSL-M03 | Pintura blanca, cubeta de 19 L | cubeta | 1,200.00 | DEMO Pinturas del Valle
+DEMO-RSL-M04 | Cable eléctrico calibre 12 | metro | 18.00 | DEMO Eléctrica Regional
+DEMO-RSL-M05 | Guantes de trabajo | par | 65.00 | DEMO Seguridad y Herramientas
+
+Cinco requisiciones y cinco órdenes de compra, una partida cada una:
+Requisición | OC | Material | Cantidad | Base MXN | Uso ilustrativo
+DEMO-RSL-REQ01 | DEMO-RSL-OC01 | M01 Cemento | 40 | 10,000.00 | Mantenimiento de instalaciones
+DEMO-RSL-REQ02 | DEMO-RSL-OC02 | M02 Tubería PVC | 30 | 5,400.00 | Reparación de conducción de agua
+DEMO-RSL-REQ03 | DEMO-RSL-OC03 | M03 Pintura | 8 | 9,600.00 | Conservación de oficinas
+DEMO-RSL-REQ04 | DEMO-RSL-OC04 | M04 Cable | 200 | 3,600.00 | Mantenimiento eléctrico
+DEMO-RSL-REQ05 | DEMO-RSL-OC05 | M05 Guantes | 50 | 3,250.00 | Protección del personal
+Total base de las cinco OC: 31,850.00 MXN.
+Cada OC corresponde al proveedor de su material y a la requisición de la misma fila.
+
+Cinco entradas y cinco salidas:
+Entrada | OC origen | Material | Cantidad recibida | Salida | Cantidad entregada | Existencia resultante
+DEMO-RSL-ENT01 | OC01 | M01 Cemento | 40 sacos | DEMO-RSL-SAL01 | 15 sacos | 25 sacos
+DEMO-RSL-ENT02 | OC02 | M02 Tubería PVC | 30 piezas | DEMO-RSL-SAL02 | 12 piezas | 18 piezas
+DEMO-RSL-ENT03 | OC03 | M03 Pintura | 8 cubetas | DEMO-RSL-SAL03 | 3 cubetas | 5 cubetas
+DEMO-RSL-ENT04 | OC04 | M04 Cable | 200 metros | DEMO-RSL-SAL04 | 80 metros | 120 metros
+DEMO-RSL-ENT05 | OC05 | M05 Guantes | 50 pares | DEMO-RSL-SAL05 | 20 pares | 30 pares
+Supuesto del ejemplo: inventario inicial cero y sin otros movimientos.
+Valor de entradas a precios base: 31,850.00 MXN.
+Valor ilustrativo de salidas al mismo precio: 12,250.00 MXN.
+Valor ilustrativo del saldo: 19,600.00 MXN.
+No sumar cantidades de diferentes unidades ni confundir valor de inventario con dinero disponible.
+
+Cinco gastos independientes de las compras anteriores:
+Referencia | Concepto | Base MXN
+DEMO-RSL-GAS01 | Servicio de limpieza de oficinas | 1,500.00
+DEMO-RSL-GAS02 | Servicio de internet | 800.00
+DEMO-RSL-GAS03 | Servicio de transporte local | 1,200.00
+DEMO-RSL-GAS04 | Servicio de mantenimiento de equipo | 2,500.00
+DEMO-RSL-GAS05 | Servicio de jardinería | 1,000.00
+Total base de gastos de demostración: 7,000.00 MXN.
+No inventar comprobantes fiscales, pagos bancarios, autorizaciones ni utilidades. Estos gastos están registrados como Pendiente en la cuenta existente RANCHO SAN LUCAS, con clasificación GASTOS OPERATIVOS y beneficiario OTROS. No se simuló pago ni se alteró el saldo de la cuenta; no se emitió ni timbró ninguna factura.
+
+GUION EXACTO DE LAS CINCO PÁGINAS
+
+PÁGINA 1 — “Rancho San Lucas ya tiene su espacio en BIAPP”
+Mensaje: La empresa ya está creada y cuenta con una estructura inicial para organizar su operación.
+Visual principal: mapa organizacional elegante con RANCHO SAN LUCAS arriba, sucursal PRINCIPAL y CONTRATO-001 / Contrato Principal. Agregar una tarjeta “2 clientes registrados”. Usar una etiqueta discreta “Verificado” en estos datos.
+Alrededor: tarjetas conectadas de Compras TD, Almacenes TD, Proyectos, Administración y Usuarios y permisos. Rotularlas como módulos habilitados, no como operaciones ya realizadas.
+No inventar sucursales, edificios reales, logotipos ni ubicaciones. Si usas un fondo arquitectónico, debe ser conceptual y no una fotografía atribuida a la empresa.
+
+PÁGINA 2 — “De la necesidad a la compra”
+Mensaje: Cada solicitud puede seguirse desde el material y el proveedor hasta la orden de compra.
+Visual principal: cinco carriles, uno por material, con icono del material, proveedor, requisición y OC conectados. Mostrar cantidad e importe base de cada fila, sin texto diminuto.
+Destacar el ejemplo completo: 40 sacos de cemento → DEMO Suministros San Lucas → REQ01 → OC01 → 10,000 MXN base.
+Indicadores: 5 materiales, 5 proveedores, 5 requisiciones y 5 OC. Total base: 31,850 MXN.
+Etiqueta visible: “Datos de demostración”. No presentar compras como pagadas ni autorizadas: los documentos tienen estado de autorización Pendiente.
+
+PÁGINA 3 — “Lo que entra, lo que se utiliza y lo que queda”
+Mensaje: Las existencias se entienden a partir de sus movimientos.
+Visual principal: ALMACEN PRINCIPAL DEMO RSL al centro, cinco flechas de entrada a la izquierda y cinco de salida a la derecha. Al pie, una tabla de cinco filas con recibido, entregado y saldo por material, con sus unidades.
+Indicadores: 5 entradas, 5 salidas y saldo valorado ilustrativo de 19,600 MXN base.
+Mostrar salidas para mantenimiento de la sucursal PRINCIPAL. No dibujar un proyecto como creado; si aparece la tarjeta Proyectos, rotular “Disponible para configurar”.
+No mezclar sacos, metros, piezas, cubetas y pares en un total de unidades.
+
+PÁGINA 4 — “Administración con información visible”
+Mensaje: Rancho San Lucas puede organizar sus gastos y consultar la información de su operación.
+Visual principal: tablero conceptual con los cinco gastos y una gráfica horizontal por concepto. Mostrar total base de gastos: 7,000 MXN.
+Tarjetas de contexto separadas: Compras de materiales 31,850 MXN base; inventario ilustrativo 19,600 MXN base; gastos de servicios 7,000 MXN base. No sumarlas como si fueran una sola métrica.
+Mostrar conexiones discretas con clientes, proveedores, contratos y proyectos; no inventar ingresos, margen, cuentas bancarias ni resultados financieros.
+Rotular “Vista ilustrativa — datos de demostración”, no “captura del sistema”.
+
+PÁGINA 5 — “Cada persona accede a lo que le corresponde”
+Mensaje: La empresa organiza el acceso de su equipo por ámbito y funciones.
+Visual principal: Empresa → Sucursal → Módulos → Acciones. Mostrar consultar, crear, modificar y eliminar como acciones configurables.
+Agregar una matriz simple de perfiles propuestos:
+- Dirección: consulta de información y reportes de las áreas asignadas.
+- Compras: proveedores, requisiciones y órdenes de compra asignadas.
+- Almacén: entradas, salidas y consulta de inventario asignado.
+- Administración: gastos y reportes asignados.
+- Administrador del sistema: configuración de usuarios y permisos.
+Marcar “Ejemplo de distribución de permisos; sujeto a configuración”. No afirmar que estos perfiles estén creados o asignados a personas reales, ni que un nombre de rol conceda permisos automáticamente.
+Cerrar con una franja visual: “Empresa organizada · Compras identificables · Inventario visible · Gastos consultables · Accesos configurables”.
+En notas del presentador, mencionar que existen también Ventas, Logística, Recursos Humanos, Mantenimiento, Presupuestos, Precios Unitarios, PMO y Cobranzas; no saturar la lámina ni prometer que ya están operando.
+
+DIRECCIÓN VISUAL
+- Estética empresarial sobria, fondo blanco, azul profundo como color principal y azul claro en conexiones. Verde reservado para datos verificados; ámbar para ejemplos o pendientes. Estos colores son una propuesta visual, no una identidad de marca confirmada.
+- Dar prioridad a diagramas, tarjetas, iconos y tablas breves: aproximadamente 70% visual y 30% texto.
+- Máximo un mensaje central por página. Tipografía grande, contraste alto, márgenes generosos y etiquetas legibles.
+- Mantener los cinco materiales con el mismo icono y color en las páginas 2 y 3.
+- Las pantallas dibujadas son ilustraciones conceptuales, no capturas reales de BIAPP.
+- No inventar logo de Rancho San Lucas; usar su nombre en texto si no se proporciona uno.
+- No presentar funcionalidades agrícolas, ganaderas, hoteleras o inmobiliarias por deducción del nombre de la empresa.
+- Evitar términos técnicos como tablas SQL, endpoints o microservicios en las láminas.
+- La presentación tiene exactamente cinco páginas; no agregar portada o cierre adicionales.
+- Para cada página, entregar también notas breves del expositor (40–70 palabras) fuera de la imagen, explicando qué existe y qué ilustra el ejemplo.
+
+CONTROL FINAL ANTES DE ENTREGAR
+Verifica nombres, sumas, unidades y relaciones. Mantén claramente separados los datos reales verificados y los ejemplos. Genera las cinco páginas con el mismo estilo. No sustituyas Rancho San Lucas por otra empresa.
+
+FIN DEL PROMPT
+
+NOTA DE TRAZABILIDAD PARA QUIEN PREPARA LA PRESENTACIÓN
+Estructura contrastada con smp.dbo.root, smp.dbo.branchs, smp.dbo.contracts, smp.dbo.contract_branch, smp.dbo.projects, warehouses.dbo.warehouses, administration.dbo.customers y security.dbo.MenuXCompanyView. Capacidades y permisos contrastados con las rutas Angular, interfaces de contratos/proyectos y componentes de permisos del repositorio Smp25. Esta nota no debe aparecer en las láminas.
+
+REFERENCIAS DE LOS REGISTROS CARGADOS (PARA CONSULTA, NO PARA MOSTRAR EN LAS LÁMINAS)
+Empresa 62; sucursal 167; contrato 218; almacén 63.
+Fila | Material ID | Proveedor ID | Requisición ID | OC ID | Entrada ID | Salida ID | Gasto ID
+1 | 6339 | 111 | 881 | 886 | 869 | 874 | 1027
+2 | 6335 | 112 | 882 | 887 | 870 | 875 | 1028
+3 | 6337 | 113 | 883 | 888 | 871 | 876 | 1029
+4 | 6336 | 114 | 884 | 889 | 872 | 877 | 1030
+5 | 6338 | 115 | 885 | 890 | 873 | 878 | 1031
+
+CÓMO REVISARLOS EN BIAPP
+Seleccionar Rancho San Lucas y la sucursal PRINCIPAL, sin proyecto seleccionado.
+Compras TD: Materiales, Proveedores, Requisiciones y Órdenes de compra. Buscar DEMO o DEMO-RSL.
+Almacenes TD: seleccionar ALMACEN PRINCIPAL DEMO RSL; revisar Entradas, Salidas e Inventario. El usuario necesita permiso sobre ese almacén.
+Administración: Egresos/Gastos, noviembre de 2026; folios DEMO-RSL-GAS01 a DEMO-RSL-GAS05.
+Script de carga: docs/sql/BIAPP_SQL_HISTORICO.sql, bloque RSL62_DEMO_20261126. Ejecutar solo ese bloque si se requiere repetir la verificación; nunca todo el histórico.

@@ -53,6 +53,7 @@ import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
+import { TranslateService } from '@ngx-translate/core';
 //import { DetailCellRendererComponent_1 as DetailCellRendererComponent } from "./details/detail-cell-renderer-contact.component";  
 
 @Component({
@@ -75,6 +76,7 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
   styleUrls: ['./providers.component.scss'],
 })
 export class ProvidersComponent implements CanComponentDeactivate {
+  private translate = inject(TranslateService);
 
   private trackingService = inject(TrackingService);
   private customerService = inject(CustomersService);
@@ -416,13 +418,13 @@ export class ProvidersComponent implements CanComponentDeactivate {
       },
       {
         field: 'vigente',
-        headerName: 'Activo',
+        headerName: this.translate.instant('modules.shopping.ui.columns.active'),
         editable: true,
       },
 
       {
         field: 'company',
-        headerName: 'Compañía *',
+        headerName: this.translate.instant('modules.shopping.ui.columns.companyRequired'),
         editable: true,
         headerClass: 'my-header-red',
         cellEditor: 'autocompleteEditor',
@@ -481,7 +483,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       {
         field: 'imageUrl',
-        headerName: 'Logo',
+        headerName: this.translate.instant('modules.shopping.ui.columns.logo'),
         editable: false,
         width: 72,
         minWidth: 72,
@@ -496,7 +498,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       {
         field: 'nameContact',
-        headerName: 'Contacto principal *',
+        headerName: this.translate.instant('modules.shopping.ui.columns.primaryContactRequired'),
         editable: true,
         filter: true,
         cellEditor: 'autocompleteEditor',
@@ -574,7 +576,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       {
         field: 'position',
-        headerName: 'Puesto/Area',
+        headerName: this.translate.instant('modules.shopping.ui.columns.jobTitleArea'),
         editable: true,
         headerClass: 'my-header-red',
         valueSetter: (params) => {
@@ -592,7 +594,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       // Nuevo campo: Tipo (Interno/Externo)
       {
         field: 'typeIntOrExt',
-        headerName: 'Tipo',
+        headerName: this.translate.instant('modules.shopping.ui.columns.type'),
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -603,7 +605,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       //Es un combo de Tipo de Proveedor qe le compro
       {
         field: 'typeProvider',
-        headerName: 'Tipo Proveedor',
+        headerName: this.translate.instant('modules.shopping.ui.columns.supplierType'),
         editable: false,
         cellRenderer: (params: any): HTMLElement => {
           const div = document.createElement('div');
@@ -630,7 +632,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       {
         field: 'fieldBank',
-        headerName: 'Bancos',
+        headerName: this.translate.instant('modules.shopping.ui.columns.banks'),
         editable: false,
         cellRenderer: this.createDetailToggleCellRenderer('bank'),
         cellStyle: { backgroundColor: '#d4edda' },
@@ -638,7 +640,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       {
         field: 'fieldCuenta',
-        headerName: 'Cuentas x Pagar',
+        headerName: this.translate.instant('modules.shopping.ui.columns.accountsPayable'),
         cellRenderer: this.createDetailToggleCellRenderer('Cuentas'),
         cellStyle: { backgroundColor: '#d4edda' },
         editable: false
@@ -646,7 +648,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       {
         field: 'fieldMaterial',
-        headerName: 'Materiales y Sucursales',
+        headerName: this.translate.instant('modules.shopping.ui.columns.materialsAndBranches'),
         cellRenderer: this.createDetailToggleCellRenderer('materiales'),
         editable: false,
         cellStyle: { backgroundColor: '#d4edda' },
@@ -654,7 +656,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
        {
         field: 'fieldContact',
-        headerName: 'Contactos',
+        headerName: this.translate.instant('modules.shopping.ui.columns.contacts'),
         cellRenderer: this.createDetailToggleCellRenderer('contact'),
         editable: false,
         cellStyle: { backgroundColor: '#d4edda' },
@@ -662,7 +664,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       {
         field: 'phone',
-        headerName: 'Telefono principal',
+        headerName: this.translate.instant('modules.shopping.ui.columns.primaryPhone'),
         editable: true,
         valueSetter: (params) => {
           const rawValue = params.newValue;
@@ -688,7 +690,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       {
         field: 'email',
-        headerName: 'Email Principal',
+        headerName: this.translate.instant('modules.shopping.ui.columns.primaryEmail'),
         editable: true,
         valueSetter: (params) => {
           const rawValue = params.newValue;
@@ -715,27 +717,27 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       {
         field: 'cp',
-        headerName: 'Cp',
+        headerName: this.translate.instant('modules.shopping.ui.columns.postalCode'),
         editable: true,
       },
       {
         field: 'address',
-        headerName: 'Dirección',
+        headerName: this.translate.instant('modules.shopping.ui.columns.address'),
         editable: true,
       },
       {
         field: 'city',
-        headerName: 'Ciudad',
+        headerName: this.translate.instant('modules.shopping.ui.columns.city'),
         editable: true,
       },
       {
         field: 'state',
-        headerName: 'Estado',
+        headerName: this.translate.instant('modules.shopping.ui.columns.state'),
         editable: true,
       },
       {
         field: '',
-        headerName: 'Colonia',
+        headerName: this.translate.instant('modules.shopping.ui.columns.neighborhood'),
         editable: true,
       },
     ];

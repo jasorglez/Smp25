@@ -1,0 +1,38 @@
+DIAGNOSTICAR EL ERROR AL CONFIRMAR UN ABONO DE TELEGRAM
+
+No vuelvas a enviar "1. Confirmar y registrar" hasta verificar si el abono ya
+se guardó. La pantalla de confirmación muestra un cálculo previo; no confirma
+que la base de datos haya recibido el pago.
+
+1) En SQL Server Management Studio, conectado a la base administration, ejecuta
+esta consulta de solo lectura para el cliente y pago de la prueba:
+
+USE administration;
+GO
+SELECT TOP (20)
+    a.id,
+    a.fecha_pago,
+    a.monto,
+    a.id_usuario_cobrador,
+    a.active
+FROM dbo.abonos_cobranza AS a
+JOIN dbo.cuotas_cobranza AS q ON q.id = a.id_cuota
+JOIN dbo.prestamos_cobranza AS p ON p.id = q.id_prestamo
+WHERE p.id_customer = 1849
+  AND a.fecha_pago = '20261121'
+  AND a.monto = 400.00
+ORDER BY a.id DESC;
+GO
+
+Si aparece una fila activa, el abono sí se registró: no lo repitas. Si no
+aparece, continúa con el paso 2.
+
+2) En la terminal de bi-server, consulta la excepción reciente del bot:
+
+sudo docker logs --since 30m chatbot-telegram 2>&1 | grep -A14 -B2 -E 'Error procesando mensaje para|FALLO DOC|SqlException|TelegramApiException|Exception' | tail -n 80 | sed -E 's/(Error procesando mensaje para )[0-9]+/\1[chat oculto]/g'
+
+La ubicación faltante, si se detecta antes de guardar, produce el mensaje
+"No encuentro la ubicación de la visita". El mensaje genérico apunta a una
+excepción distinta; la causa exacta debe aparecer en los logs.
+
+Antes de compartir logs, oculta cualquier teléfono, chat ID o dato privado.

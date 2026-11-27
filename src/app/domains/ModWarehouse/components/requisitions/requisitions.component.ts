@@ -38,6 +38,7 @@ import { PdfButtonCellRendererRequisitionsComponent } from './pdf-button-cell-re
 import { DetallesRequisicionesComponent } from './detalles-requisiciones.component';
 import { DetailCellRendererRequisitionReportComponent } from './detail-cell-renderer-requisition-report.component';
 import { BranchsService } from 'app/services/branchs.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface Catalog {
   id: number;
@@ -52,11 +53,12 @@ interface Provider {
 @Component({
   selector: 'app-requisitions',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, MultiLineEditorComponent, DeleteButtonCellRendererComponent, PdfButtonCellRendererRequisitionsComponent, DetailCellRendererRequisitionReportComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, TranslateModule, MultiLineEditorComponent, DeleteButtonCellRendererComponent, PdfButtonCellRendererRequisitionsComponent, DetailCellRendererRequisitionReportComponent],
   templateUrl: './requisitions.component.html',
   styleUrl: './requisitions.component.scss',
 })
 export class RequisitionsComponent implements CanComponentDeactivate {
+  private translate = inject(TranslateService);
   // Inject of new way for Angular 18
   private requisitionsService = inject(OcAndReqsService);
   private providersService = inject(ProvidersService);
@@ -351,7 +353,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     this._colMaster = [
       {
         field: 'countItem',
-        headerName: 'Items',
+        headerName: this.translate.instant('modules.shopping.ui.columns.items'),
         width: 60,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
@@ -363,7 +365,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       },
       {
         field: 'pdf',
-        headerName: 'PDF',
+        headerName: this.translate.instant('modules.shopping.ui.columns.pdf'),
         width: 50, pinned: 'right', lockPinned: true, suppressMovable: true,
         cellRenderer: PdfButtonCellRendererRequisitionsComponent,
         cellRendererParams: {
@@ -377,7 +379,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       },
       {
         field: 'branchName',
-        headerName: 'Sucursal',
+        headerName: this.translate.instant('modules.shopping.ui.columns.branch'),
         editable: false,
         filter: true,
         width: 180,
@@ -389,7 +391,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       { field: 'idWarehouse', hide: true, filter: 'agNumberColumnFilter' },
       {
         field: 'folio',
-        headerName: 'Número Doc',
+        headerName: this.translate.instant('modules.shopping.ui.columns.documentNumber'),
         headerClass: 'required-column-header',
         cellClassRules: {
           'required-cell-missing': (params) => this.isBlank(params.value),
@@ -400,7 +402,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       },
       {
         field: 'dateCreate',
-        headerName: 'Fecha Solicitud',
+        headerName: this.translate.instant('modules.shopping.ui.columns.requestDate'),
         headerClass: 'required-column-header',
         cellClassRules: {
           'required-cell-missing': (params) => this.isBlank(params.value),
@@ -418,7 +420,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
       {
         field: 'idDepartament',
-        headerName: 'Departamento solicitante',
+        headerName: this.translate.instant('modules.shopping.ui.columns.requestingDepartment'),
         headerClass: 'required-column-header',
         cellClassRules: {
           'required-cell-missing': (params) => !this.isPositiveNumber(params.value),
@@ -442,7 +444,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       },
       {
         field: 'solicit',
-        headerName: 'Solicitante',
+        headerName: this.translate.instant('modules.shopping.ui.columns.requester'),
         headerClass: 'required-column-header',
         cellClassRules: {
           'required-cell-missing': (params) => this.isBlank(params.value),
@@ -452,7 +454,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       },
       {
         field: 'deliveryTime',
-        headerName: 'Tiempo Entrega',
+        headerName: this.translate.instant('modules.shopping.ui.columns.deliveryTime'),
         headerClass: 'required-column-header',
         cellClassRules: {
           'required-cell-missing': (params) => this.isBlank(params.value),
@@ -464,7 +466,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
       {
         field: 'priority',
-        headerName: 'Prioridad',
+        headerName: this.translate.instant('modules.shopping.ui.columns.priority'),
         headerClass: 'required-column-header',
         cellClassRules: {
           'required-cell-missing': (params) => this.isBlank(params.value),
@@ -475,7 +477,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
       {
         field: 'idAuthorize',
-        headerName: 'Autoriza',
+        headerName: this.translate.instant('modules.shopping.ui.columns.authorizedBy'),
         editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 170,
         cellEditor: 'agRichSelectCellEditor',
@@ -490,7 +492,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         },
       },
       {
-        headerName: 'Abrir',
+        headerName: this.translate.instant('modules.shopping.ui.columns.open'),
         colId: 'authorizationAction',
         width: 64,
         editable: false,
@@ -515,7 +517,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
       {
         field: 'comments',
-        headerName: 'Comentario',
+        headerName: this.translate.instant('modules.shopping.ui.columns.comment'),
         editable: false,
         width: 150,
         cellEditor: 'agPopupTextCellEditor',
@@ -553,7 +555,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     return [
       {
         field: 'idSupplie',
-        headerName: 'Producto',
+        headerName: this.translate.instant('modules.shopping.ui.columns.product'),
         editable: true,
         flex: 3,
         cellEditor: 'agSelectCellEditor',
@@ -569,14 +571,14 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       },
       {
         field: 'quantity',
-        headerName: 'Cantidad',
+        headerName: this.translate.instant('modules.shopping.ui.columns.quantity'),
         editable: true,
         filter: true,
         flex: 1,
       },
       {
         field: 'dateuse',
-        headerName: 'Fecha de uso',
+        headerName: this.translate.instant('modules.shopping.ui.columns.neededBy'),
         editable: true,
         flex: 2,
         cellDataType: 'dateString',
@@ -589,7 +591,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       },
       {
         field: 'comment',
-        headerName: 'Comentarios',
+        headerName: this.translate.instant('modules.shopping.ui.columns.comments'),
         editable: false,
         filter: true,
         flex: 2,

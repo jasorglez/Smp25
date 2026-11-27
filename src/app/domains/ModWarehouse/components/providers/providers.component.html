@@ -7,7 +7,7 @@
         <!-- *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri','create')" -->
 
         <button 
-              type="button" class="btn btn-primary ms-1 me-1" (click)="addRow()" title="Agregar Proveedor">     <i class="bi bi-plus-lg"></i>
+              type="button" class="btn btn-primary ms-1 me-1" (click)="addRow()" [title]="'modules.shopping.ui.providers.add' | translate">     <i class="bi bi-plus-lg"></i>
         </button>                      
 
         <!-- *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri','create') || authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri','update')" -->
@@ -16,7 +16,7 @@
           <i class="bi bi-floppy"></i>
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
             *ngIf="notSavedChanges">
-            <span class="visually-hidden">Hay cambios sin guardar</span>
+            <span class="visually-hidden">{{ 'modules.shopping.ui.unsavedChanges' | translate }}</span>
           </span>
         </button>
 

@@ -5,7 +5,7 @@
           <div class="row">
             <div class="col-auto">
               <div class="d-flex flex-column gap-2 align-items-center">
-                <button type="button" class="btn btn-primary" (click)="addRow()">
+                <button type="button" class="btn btn-primary" (click)="addRow()" [title]="'modules.shopping.ui.add' | translate">
                   <i class="bi bi-plus-lg"></i>
                 </button>
                 <button
@@ -18,13 +18,13 @@
                     class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
                     *ngIf="notSavedChanges"
                   >
-                    <span class="visually-hidden">Hay cambios sin guardar</span>
+                    <span class="visually-hidden">{{ 'modules.shopping.ui.unsavedChanges' | translate }}</span>
                   </span>
                 </button>
-                <button type="button" class="btn btn-warning" (click)="revert()">
+                <button type="button" class="btn btn-warning" (click)="revert()" [title]="'modules.shopping.ui.undo' | translate">
                   <i class="bi bi-arrow-clockwise"></i>
                 </button>
-                <button type="button" class="btn btn-danger" (click)="close()">
+                <button type="button" class="btn btn-danger" (click)="close()" [title]="'modules.shopping.ui.close' | translate">
                   <i class="bi bi-x-circle-fill"></i>
                 </button>
               </div>

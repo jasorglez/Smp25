@@ -8,11 +8,12 @@ import { BranchsService } from 'app/services/branchs.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { PrefixSetupService, PrefixSetup } from 'app/services/prefix-setup.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-setupwarehouse',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslateModule],
   templateUrl: './setupwarehouse.component.html',
   styleUrl: './setupwarehouse.component.scss'
 })

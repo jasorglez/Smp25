@@ -7505,6 +7505,174 @@ SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administ
 COMMIT TRANSACTION;
 GO
 
+
+-- BEGIN RSL62_DEMO_20261126
+-- 2026-11-26 | Rancho San Lucas | Datos de demostracion autorizados por usuario.
+-- Repositorio: Smp25. Origen: docs/sql/BIAPP_SQL_HISTORICO.sql, bloque RSL62_DEMO_20261126.
+-- Ejecutar SOLO este bloque. Idempotente; sin modificar datos previos, saldos bancarios ni permisos.
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+DECLARE @Commit bit = 1;
+DECLARE @Root int=62, @Branch int=167, @Contract int=218, @Warehouse int, @Lock int;
+DECLARE @D TABLE(n int PRIMARY KEY,code varchar(35),material varchar(150),unit nvarchar(20),price decimal(18,2),qty decimal(18,2),outqty decimal(18,2),provider varchar(200),expense varchar(150),expenseamount decimal(18,2),mid int,pid int,rid int,oid int,eid int,sid int,gid int);
+INSERT @D(n,code,material,unit,price,qty,outqty,provider,expense,expenseamount) VALUES
+(1,'DEMO-RSL-M01','Cemento gris, saco de 50 kg','SACO',250,40,15,'DEMO Suministros San Lucas','Servicio de limpieza de oficinas',1500),
+(2,'DEMO-RSL-M02','Tuberia PVC de 1 pulgada, tramo de 6 m','PZA',180,30,12,'DEMO Hidraulica del Campo','Servicio de internet',800),
+(3,'DEMO-RSL-M03','Pintura blanca, cubeta de 19 L','CUBETA',1200,8,3,'DEMO Pinturas del Valle','Servicio de transporte local',1200),
+(4,'DEMO-RSL-M04','Cable electrico calibre 12','M',18,200,80,'DEMO Electrica Regional','Servicio de mantenimiento de equipo',2500),
+(5,'DEMO-RSL-M05','Guantes de trabajo','PAR',65,50,20,'DEMO Seguridad y Herramientas','Servicio de jardineria',1000);
+BEGIN TRY
+ BEGIN TRANSACTION;
+ EXEC @Lock=sys.sp_getapplock @Resource='RSL62_DEMO_20261126',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=10000;
+ IF @Lock<0 THROW 52100,'No se obtuvo bloqueo para la carga de demostracion.',1;
+ IF NOT EXISTS(SELECT 1 FROM smp.dbo.root WITH(UPDLOCK,HOLDLOCK) WHERE id=@Root AND namesmall='SAN LUCAS' AND active=1)
+  THROW 52101,'Empresa 62 no coincide con Rancho San Lucas.',1;
+ IF NOT EXISTS(SELECT 1 FROM smp.dbo.branchs WHERE id=@Branch AND id_company=@Root AND active=1)
+  THROW 52102,'La sucursal no pertenece a Rancho San Lucas.',1;
+ IF NOT EXISTS(SELECT 1 FROM smp.dbo.contracts WHERE id=@Contract AND id_branch=@Branch AND contract='CONTRATO-001' AND active=1)
+  THROW 52103,'Contrato de demostracion no coincide.',1;
+ IF NOT EXISTS(SELECT 1 FROM administration.dbo.accountbanks WHERE id=63 AND id_Bussines=@Root AND active=1)
+  THROW 52104,'Cuenta de la empresa no encontrada.',1;
+ IF NOT EXISTS(SELECT 1 FROM administration.dbo.cuentascontables WHERE id=304 AND idCompany=@Root AND nombre='GASTOS OPERATIVOS' AND active=1)
+  THROW 52105,'Clasificacion de gastos no encontrada.',1;
+
+ IF NOT EXISTS(SELECT 1 FROM warehouses.dbo.setup WITH(UPDLOCK,HOLDLOCK) WHERE id_company=@Root)
+  INSERT warehouses.dbo.setup(id_company,description,project_or_branch,activate_oc,active) VALUES(@Root,'RSL DEMO - Operacion por sucursal',0,1,1);
+ IF (SELECT COUNT(*) FROM warehouses.dbo.setup WHERE id_company=@Root AND active=1 AND project_or_branch=0)<>1
+  THROW 52106,'La configuracion de compras cambio; revisar antes de cargar.',1;
+ IF NOT EXISTS(SELECT 1 FROM warehouses.dbo.prefix_setup WITH(UPDLOCK,HOLDLOCK) WHERE type='branch' AND id_project_or_branch=@Branch)
+  INSERT warehouses.dbo.prefix_setup(id_project_or_branch,type,prefix_req,consecutive_req,prefix_cotiz,consecutive_cotiz,prefix_oc,consecutive_oc,prefix_entry,consecutive_entry,prefix_out,consecutive_out,active)
+  VALUES(@Branch,'branch','RSL-REQ-',0,'RSL-C-',0,'RSL-OC-',0,'RSL-ENT-',0,'RSL-SAL-',0,1);
+ IF NOT EXISTS(SELECT 1 FROM warehouses.dbo.warehouses WITH(UPDLOCK,HOLDLOCK) WHERE id_branch=@Branch AND name='ALMACEN PRINCIPAL DEMO RSL')
+  INSERT warehouses.dbo.warehouses(id_branch,place,name,address,state,city,codepostal,phone,leader,principal,active)
+  VALUES(@Branch,'DEMO','ALMACEN PRINCIPAL DEMO RSL',N'DEMOSTRACION - sin domicilio real','',NULL,'','0000000000',N'DEMOSTRACION',1,1);
+ IF (SELECT COUNT(*) FROM warehouses.dbo.warehouses WHERE id_branch=@Branch AND name='ALMACEN PRINCIPAL DEMO RSL' AND active=1)<>1
+  THROW 52107,'Almacen de demostracion ambiguo o inactivo.',1;
+ SELECT @Warehouse=id FROM warehouses.dbo.warehouses WHERE id_branch=@Branch AND name='ALMACEN PRINCIPAL DEMO RSL';
+
+ INSERT warehouses.dbo.catalog(id_company,description,type,valueaddition,active,vigente)
+ SELECT DISTINCT @Root,d.unit,'MEASURE','DEMO-RSL',1,1 FROM @D d
+ WHERE NOT EXISTS(SELECT 1 FROM warehouses.dbo.catalog WITH(UPDLOCK,HOLDLOCK) WHERE id_company=@Root AND type='MEASURE' AND description=d.unit);
+ IF EXISTS(SELECT 1 FROM @D d WHERE (SELECT COUNT(*) FROM warehouses.dbo.catalog c WHERE c.id_company=@Root AND c.type='MEASURE' AND c.description=d.unit AND c.active=1)<>1)
+  THROW 52108,'Unidad de demostracion ambigua o inactiva.',1;
+ IF NOT EXISTS(SELECT 1 FROM warehouses.dbo.catalog WHERE id=2225 AND id_company=@Root AND type='FAMILY' AND active=1)
+ OR NOT EXISTS(SELECT 1 FROM warehouses.dbo.catalog WHERE id=2226 AND id_company=@Root AND type='SUBFAMILY' AND active=1)
+ OR NOT EXISTS(SELECT 1 FROM warehouses.dbo.catalog WHERE id=2227 AND id_company=@Root AND type='IN' AND valueaddition='STANDARD' AND active=1)
+ OR NOT EXISTS(SELECT 1 FROM warehouses.dbo.catalog WHERE id=2231 AND id_company=@Root AND type='OUT' AND valueaddition='STANDARD' AND active=1)
+  THROW 52109,'Catalogos de Rancho San Lucas no coinciden.',1;
+
+ INSERT smp.dbo.providers(id_root,type,name,nameshort,rfc,address,state,phone,consortium,active,city,country,contact,email)
+ SELECT @Root,'PROVIDERS',d.provider,LEFT(d.provider,30),'','DEMO - sin domicilio real','','0000000000','NO',1,'','Mexico','DEMO',''
+ FROM @D d WHERE NOT EXISTS(SELECT 1 FROM smp.dbo.providers WITH(UPDLOCK,HOLDLOCK) WHERE id_root=@Root AND name COLLATE DATABASE_DEFAULT=d.provider);
+ IF EXISTS(SELECT 1 FROM @D d WHERE (SELECT COUNT(*) FROM smp.dbo.providers WHERE id_root=@Root AND name COLLATE DATABASE_DEFAULT=d.provider AND active=1)<>1)
+  THROW 52110,'Proveedor de demostracion ambiguo o inactivo.',1;
+ UPDATE d SET pid=p.id FROM @D d JOIN smp.dbo.providers p ON p.id_root=@Root AND p.name COLLATE DATABASE_DEFAULT=d.provider;
+
+ INSERT warehouses.dbo.materials(id_company,id_branch,insumo,articulo,barcode,id_familia,id_subfamilia,id_medida,description,date,fecha,costoMN,ventaMN,costoDLL,ventaDLL,quantity,stockmin,stockmax,typematerial,aplicaResg,vigente,active)
+ SELECT @Root,@Branch,d.code,LEFT(d.material,50),d.code,2225,2226,u.id,'DEMO - '+d.material,'20261126','20261126',d.price,d.price,0,0,0,2,CONVERT(int,d.qty),'CONSUMABLE',0,1,1
+ FROM @D d JOIN warehouses.dbo.catalog u ON u.id_company=@Root AND u.type='MEASURE' AND u.description=d.unit AND u.active=1
+ WHERE NOT EXISTS(SELECT 1 FROM warehouses.dbo.materials WITH(UPDLOCK,HOLDLOCK) WHERE id_company=@Root AND insumo=d.code);
+ IF EXISTS(SELECT 1 FROM @D d WHERE (SELECT COUNT(*) FROM warehouses.dbo.materials WHERE id_company=@Root AND insumo=d.code AND active=1 AND costoMN=d.price AND ventaMN=d.price)<>1)
+  THROW 52111,'Material de demostracion ambiguo o con datos modificados.',1;
+ UPDATE d SET mid=m.id FROM @D d JOIN warehouses.dbo.materials m ON m.id_company=@Root AND m.insumo=d.code;
+
+ INSERT warehouses.bi2.ocandreq(id_root,folio,type_reference,id_reference,datecreate,id_provider,id_departament,delivery,deliverytime,typeoc,id_payment,id_currency,priority,solicit,type,comments,createdBy,countitem,[close],locked,authorization_status,active,id_warehouse,id_contract,id_branch_execution,iva)
+ SELECT @Root,'DEMO-RSL-REQ0'+CONVERT(varchar,n),'branch',@Branch,DATEADD(day,n,'20261118'),pid,0,'ALMACEN PRINCIPAL DEMO RSL','1 DIA','INSUMOS',0,0,'NORMAL','DEMOSTRACION','REQUIS','DEMO RSL - sin operacion comercial real','DEMO-RSL',1,0,0,'Pendiente',1,@Warehouse,@Contract,@Branch,0
+ FROM @D d WHERE NOT EXISTS(SELECT 1 FROM warehouses.bi2.ocandreq WITH(UPDLOCK,HOLDLOCK) WHERE id_root=@Root AND folio='DEMO-RSL-REQ0'+CONVERT(varchar,d.n));
+ UPDATE d SET rid=o.id FROM @D d JOIN warehouses.bi2.ocandreq o ON o.id_root=@Root AND o.folio='DEMO-RSL-REQ0'+CONVERT(varchar,d.n) AND o.type='REQUIS';
+
+ INSERT warehouses.bi2.ocandreq(id_root,folio,type_reference,id_reference,id_req,datecreate,id_provider,id_departament,delivery,deliverytime,typeoc,id_payment,id_currency,priority,solicit,type,comments,createdBy,countitem,[close],locked,authorization_status,active,id_warehouse,id_contract,id_branch_execution,iva)
+ SELECT @Root,'DEMO-RSL-OC0'+CONVERT(varchar,n),'branch',@Branch,rid,DATEADD(day,n+1,'20261118'),pid,0,'ALMACEN PRINCIPAL DEMO RSL','1 DIA','INSUMOS',0,0,'NORMAL','DEMOSTRACION','OC','DEMO RSL - sin operacion comercial real','DEMO-RSL',1,0,0,'Pendiente',1,@Warehouse,@Contract,@Branch,0
+ FROM @D d WHERE NOT EXISTS(SELECT 1 FROM warehouses.bi2.ocandreq WITH(UPDLOCK,HOLDLOCK) WHERE id_root=@Root AND folio='DEMO-RSL-OC0'+CONVERT(varchar,d.n));
+ UPDATE d SET oid=o.id FROM @D d JOIN warehouses.bi2.ocandreq o ON o.id_root=@Root AND o.folio='DEMO-RSL-OC0'+CONVERT(varchar,d.n) AND o.type='OC';
+
+ INSERT warehouses.dbo.detailsreqoc(id_movement,id_supplie,id_provider,name_provider,quantity,price,type,namearticle,numarticle,comment,active,iva,retention)
+ SELECT v.id,d.mid,d.pid,d.provider,d.qty,d.price,v.type,LEFT(d.material,50),d.code,'DEMO RSL',1,0,0
+ FROM @D d CROSS APPLY(VALUES(d.rid,'REQUIS'),(d.oid,'OC'))v(id,type)
+ WHERE NOT EXISTS(SELECT 1 FROM warehouses.dbo.detailsreqoc WITH(UPDLOCK,HOLDLOCK) WHERE id_movement=v.id);
+
+ INSERT warehouses.dbo.inandout(folio,date,delivery_date,id_oc,id_project,deliver_name,type,id_warehouse,id_type,countrow,comment,active)
+ SELECT 'DEMO-RSL-ENT0'+CONVERT(varchar,n),DATEADD(day,n+2,'20261118'),DATEADD(day,n+2,'20261118'),oid,NULL,'DEMOSTRACION','IN',@Warehouse,2227,1,'DEMO RSL - recepcion de materiales',1
+ FROM @D d WHERE NOT EXISTS(SELECT 1 FROM warehouses.dbo.inandout WITH(UPDLOCK,HOLDLOCK) WHERE id_warehouse=@Warehouse AND folio='DEMO-RSL-ENT0'+CONVERT(varchar,d.n));
+ UPDATE d SET eid=i.id FROM @D d JOIN warehouses.dbo.inandout i ON i.id_warehouse=@Warehouse AND i.folio='DEMO-RSL-ENT0'+CONVERT(varchar,d.n) AND i.type='IN';
+
+ INSERT warehouses.dbo.inandout(folio,date,delivery_date,id_project,id_entry,deliver_name,type,id_warehouse,id_type,countrow,comment,active)
+ SELECT 'DEMO-RSL-SAL0'+CONVERT(varchar,n),DATEADD(day,n+3,'20261118'),DATEADD(day,n+3,'20261118'),NULL,eid,'DEMOSTRACION','OUT',@Warehouse,2231,1,'DEMO RSL - consumo para mantenimiento',1
+ FROM @D d WHERE NOT EXISTS(SELECT 1 FROM warehouses.dbo.inandout WITH(UPDLOCK,HOLDLOCK) WHERE id_warehouse=@Warehouse AND folio='DEMO-RSL-SAL0'+CONVERT(varchar,d.n));
+ UPDATE d SET sid=i.id FROM @D d JOIN warehouses.dbo.inandout i ON i.id_warehouse=@Warehouse AND i.folio='DEMO-RSL-SAL0'+CONVERT(varchar,d.n) AND i.type='OUT';
+
+ INSERT warehouses.dbo.detailsinandout(id_inandout,id_product,quantity,pending,total,type,comment,active)
+ SELECT v.id,d.mid,v.qty,d.qty,v.qty,v.type,'DEMO RSL',1
+ FROM @D d CROSS APPLY(VALUES(d.eid,d.qty,'IN'),(d.sid,d.outqty,'OUT'))v(id,qty,type)
+ WHERE NOT EXISTS(SELECT 1 FROM warehouses.dbo.detailsinandout WITH(UPDLOCK,HOLDLOCK) WHERE id_inandout=v.id);
+
+ INSERT administration.dbo.incomeandexpense(numberdocument,[id_businnes ],id_branch,id_account,id_expend,id_cuenta_contable,date,description,subtotal,tax,isr,total,total_mxn,totalcomp,createdBy,createdAt,modifiedAt,status,type,moneda,tipo_cambio,countitems,countdocomps,authorization_status,facturado,cancelado,afecta_corte,active,accepts_oc)
+ SELECT 'DEMO-RSL-GAS0'+CONVERT(varchar,n),@Root,@Branch,63,304,304,DATEADD(day,n+3,'20261118'),'DEMO - '+expense,expenseamount,0,0,expenseamount,expenseamount,0,'DEMO-RSL','20261126','20261126','Pendiente','GASTO','MXN',1,1,0,'Pendiente',0,0,0,1,0
+ FROM @D d WHERE NOT EXISTS(SELECT 1 FROM administration.dbo.incomeandexpense WITH(UPDLOCK,HOLDLOCK) WHERE [id_businnes ]=@Root AND numberdocument COLLATE DATABASE_DEFAULT='DEMO-RSL-GAS0'+CONVERT(varchar,d.n));
+ UPDATE d SET gid=g.[id ] FROM @D d JOIN administration.dbo.incomeandexpense g ON g.[id_businnes ]=@Root AND g.numberdocument COLLATE DATABASE_DEFAULT='DEMO-RSL-GAS0'+CONVERT(varchar,d.n) AND g.type='GASTO';
+ INSERT administration.dbo.conceptsxincorexp(id_incorexp,typeexpense,id_spend,dateexpend,quantity,description,unit,price,iva,aplicaisr,isr,iva2,comment,graficar,active)
+ SELECT gid,'OTROS',0,DATEADD(day,n+3,'20261118'),1,'DEMO - '+expense,'SERVICIO',expenseamount,0,0,0,0,'DEMO RSL - sin pago real',1,1
+ FROM @D d WHERE NOT EXISTS(SELECT 1 FROM administration.dbo.conceptsxincorexp WITH(UPDLOCK,HOLDLOCK) WHERE id_incorexp=d.gid);
+
+ -- Validar identidades y relaciones antes de confirmar. Un conflicto cancela TODO el bloque.
+ IF EXISTS(SELECT 1 FROM @D WHERE mid IS NULL OR pid IS NULL OR rid IS NULL OR oid IS NULL OR eid IS NULL OR sid IS NULL OR gid IS NULL)
+  THROW 52112,'Faltan identidades de documentos de demostracion.',1;
+ IF (SELECT COUNT(*) FROM warehouses.bi2.ocandreq o JOIN @D d ON o.id IN(d.rid,d.oid) WHERE o.id_root=@Root AND o.id_reference=@Branch AND o.type_reference='branch' AND o.id_warehouse=@Warehouse AND o.id_contract=@Contract AND o.active=1 AND o.id_provider=d.pid AND (o.type='REQUIS' OR o.id_req=d.rid))<>10
+  THROW 52113,'No se verificaron las diez cabeceras de compras.',1;
+ IF (SELECT COUNT(*) FROM warehouses.dbo.detailsreqoc x JOIN @D d ON x.id_movement IN(d.rid,d.oid))<>10 OR
+    (SELECT COUNT(*) FROM warehouses.dbo.detailsreqoc x JOIN @D d ON x.id_movement IN(d.rid,d.oid) WHERE x.id_supplie=d.mid AND x.id_provider=d.pid AND x.quantity=d.qty AND x.price=d.price AND x.total=d.qty*d.price AND x.active=1)<>10
+  THROW 52114,'Partidas de compras no coinciden.',1;
+ IF (SELECT COUNT(*) FROM warehouses.dbo.inandout i JOIN @D d ON i.id IN(d.eid,d.sid) WHERE i.id_warehouse=@Warehouse AND i.active=1 AND ((i.id=d.eid AND i.id_oc=d.oid AND i.type='IN') OR (i.id=d.sid AND i.id_entry=d.eid AND i.type='OUT')))<>10
+  THROW 52115,'Cabeceras de inventario no coinciden.',1;
+ IF (SELECT COUNT(*) FROM warehouses.dbo.detailsinandout x JOIN @D d ON x.id_inandout IN(d.eid,d.sid))<>10 OR
+    (SELECT COUNT(*) FROM warehouses.dbo.detailsinandout x JOIN @D d ON x.id_inandout IN(d.eid,d.sid) WHERE x.id_product=d.mid AND x.active=1 AND x.quantity=CASE WHEN x.id_inandout=d.eid THEN d.qty ELSE d.outqty END)<>10
+  THROW 52116,'Partidas de inventario no coinciden.',1;
+ IF (SELECT COUNT(*) FROM warehouses.dbo.VW_InventarioTotal v JOIN @D d ON d.mid=v.id WHERE v.id_company=@Root AND v.entrada=d.qty AND v.salida=d.outqty AND v.existencia=d.qty-d.outqty AND v.total=(d.qty-d.outqty)*d.price)<>5
+  THROW 52117,'No se verificaron los cinco saldos de inventario.',1;
+ IF (SELECT COUNT(*) FROM administration.dbo.incomeandexpense g JOIN @D d ON d.gid=g.[id ] WHERE g.[id_businnes ]=@Root AND g.id_branch=@Branch AND g.id_account=63 AND g.total=d.expenseamount AND g.active=1 AND g.type='GASTO')<>5
+  THROW 52118,'No se verificaron los cinco gastos.',1;
+ IF (SELECT COUNT(*) FROM administration.dbo.conceptsxincorexp c JOIN @D d ON c.id_incorexp=d.gid)<>5 OR
+    (SELECT COUNT(*) FROM administration.dbo.conceptsxincorexp c JOIN @D d ON c.id_incorexp=d.gid WHERE c.total=d.expenseamount AND c.active=1)<>5
+  THROW 52119,'No se verificaron los cinco detalles de gastos.',1;
+ SELECT @Root empresa,@Branch sucursal,@Contract contrato,@Warehouse almacen;
+ SELECT n,code,mid material_id,pid proveedor_id,rid requisicion_id,oid oc_id,eid entrada_id,sid salida_id,gid gasto_id,qty entrada,outqty salida,qty-outqty existencia FROM @D ORDER BY n;
+ SELECT SUM(qty*price) compras_base,SUM(outqty*price) consumo_base,SUM((qty-outqty)*price) inventario_base,SUM(expenseamount) gastos_base FROM @D;
+ IF @Commit=1 BEGIN COMMIT TRANSACTION; SELECT 'COMMIT: carga verificada' resultado; END
+ ELSE BEGIN ROLLBACK TRANSACTION; SELECT 'ROLLBACK: validacion sin guardar' resultado; END
+END TRY
+BEGIN CATCH
+ IF XACT_STATE()<>0 ROLLBACK TRANSACTION;
+ THROW;
+END CATCH;
+-- END RSL62_DEMO_20261126
+GO
+
+-- 2026-11-26 | Almacenes TD / Entradas y Salidas | Repositorio: Smp25
+-- Origen: inandout-st.component.ts, inandout-st.component.html y assets/i18n/{en,es}.json
+-- Ejecutar solo este bloque. El aviso se publica; releaseStatus permanece LOCAL hasta verificar despliegue.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Almacenes TD / Entradas y Salidas' AND title=N'Consulta movimientos por proyecto o contrato'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT INTO administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.643',N'Almacenes TD / Entradas y Salidas','IMPROVEMENT',N'Consulta movimientos por proyecto o contrato',
+ N'Permite consultar los movimientos de todo el almacén, solo los del contrato seleccionado o solo los del proyecto seleccionado. Los movimientos se agrupan por proyecto y la columna Contrato aparece al mostrar todos.',
+ N'Ayuda a revisar existencias y rastrear movimientos sin perder el contexto del proyecto o contrato.',
+ N'Consulta los movimientos del almacén por proyecto, contrato o en conjunto.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PASSED','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+UPDATE administration.dbo.product_updates SET version=N'5.00.643', description=N'Permite consultar los movimientos de todo el almacén, solo los del contrato seleccionado o solo los del proyecto seleccionado. Los movimientos se agrupan por proyecto y la columna Contrato aparece al mostrar todos.', userBenefit=N'Ayuda a revisar existencias y rastrear movimientos sin perder el contexto del proyecto o contrato.', promoText=N'Consulta los movimientos del almacén por proyecto, contrato o en conjunto.', validationStatus='PASSED', releaseStatus='LOCAL'
+ WHERE module=N'Almacenes TD / Entradas y Salidas' AND title=N'Consulta movimientos por proyecto o contrato'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Almacenes TD / Entradas y Salidas' AND title=N'Consulta movimientos por proyecto o contrato'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+GO
+
 -- BEGIN REPORT_RABBITMQ_650
 -- 2026-11-26 | Proyectos / Reportes diarios | Repositorio: Smp25
 -- Origen: docs/configurar-avisos-reportes-rabbitmq.txt
@@ -7543,6 +7711,15 @@ WHERE id=326 AND module=N'Proyectos / Reportes diarios'
 SELECT id,version,validationStatus,releaseStatus,publicationStatus
 FROM administration.dbo.product_updates WHERE id=326;
 -- END REPORT_PHOTO_NOTICE_651
+GO
+
+-- 2026-11-26 | ModProjects / Proyectos | Repositorio: Smp25
+-- Origen: SMP/Models/Project.cs, tabla projects.
+-- Migración idempotente; ejecuta solo este bloque.
+IF COL_LENGTH(N'dbo.projects', N'supervisor') IS NULL
+BEGIN
+    ALTER TABLE dbo.projects ADD supervisor varchar(100) NULL;
+END;
 GO
 
 -- BEGIN OT_TELEGRAM_NOTICE_653

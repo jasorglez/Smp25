@@ -13,6 +13,7 @@ import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { CatalogsService } from 'app/services/catalogs.service';
@@ -56,11 +57,12 @@ interface Provider {
 @Component({
   selector: 'app-purchaseorder',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, DetailCellRendererPurchaseOrderItemsComponent, DetailCellRendererPurchaseOrderReportComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, TranslateModule, MultiLineEditorComponent, DetailCellRendererPurchaseOrderItemsComponent, DetailCellRendererPurchaseOrderReportComponent],
   templateUrl: './purchaseorder.component.html',
   styleUrl: './purchaseorder.component.scss',
 })
 export class PurchaseOrderComponent implements CanComponentDeactivate {
+  private translate = inject(TranslateService);
   // Inject of new way for Angular 18
   private requisitionsService = inject(OcAndReqsService);
   private requisitionBalanceRequest = 0;
@@ -354,7 +356,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     this._colMaster = [
       {
         field: 'countrow',
-        headerName: 'Items',
+        headerName: this.translate.instant('modules.shopping.ui.columns.items'),
         width: 60,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
@@ -366,7 +368,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'pdf',
-        headerName: 'PDF',
+        headerName: this.translate.instant('modules.shopping.ui.columns.pdf'),
         width: 50, pinned: 'right', lockPinned: true, suppressMovable: true,
         cellRenderer: PdfButtonCellRendererPurchaseOrderComponent,
         cellRendererParams: {
@@ -380,7 +382,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'folio',
-        headerName: 'Orden de compra',
+        headerName: this.translate.instant('modules.shopping.ui.columns.purchaseOrder'),
         editable: (params) => this.canEditAuthorizedRow(params.data),
         filter: true,
         width: 150,
@@ -396,7 +398,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'dateCreate',
-        headerName: 'Fecha Solicitud',
+        headerName: this.translate.instant('modules.shopping.ui.columns.requestDate'),
         editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
         cellDataType: 'dateString',
@@ -409,7 +411,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'dateSupply',
-        headerName: 'Fecha envío',
+        headerName: this.translate.instant('modules.shopping.ui.columns.shipDate'),
         editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
         cellDataType: 'dateString',
@@ -422,7 +424,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'idReq',
-        headerName: 'Requisición',
+        headerName: this.translate.instant('modules.shopping.ui.columns.requisition'),
         editable: (params) => this.isPurchaseOrdersLoaded && this.canEditAuthorizedRow(params.data),
         filter: true,
         width: 150,
@@ -438,14 +440,14 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         },
       },
       {
-        field: 'idWarehouse', headerName: 'Almacén destino', width: 190,
+        field: 'idWarehouse', headerName: this.translate.instant('modules.shopping.ui.requisitions.destinationWarehouse'), width: 190,
         editable: (params) => !params.data?.idRequisition && this.canEditAuthorizedRow(params.data),
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({ values: this.almacenes.map((warehouse: any) => warehouse.id) }),
         valueFormatter: (params) => this.almacenes.find((warehouse: any) => Number(warehouse.id) === Number(params.value))?.name || ''
       },
       {
-        field: 'idDepartament', headerName: 'Departamento solicita', width: 190, editable: (params) => this.canEditAuthorizedRow(params.data),
+        field: 'idDepartament', headerName: this.translate.instant('modules.shopping.ui.columns.requestingDepartment'), width: 190, editable: (params) => this.canEditAuthorizedRow(params.data),
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({ values: [...(this.departamentos ?? []).map((item: any) => item.id), '__ADD_NEW__'] }),
         valueFormatter: (params) => params.value === '__ADD_NEW__' ? '＋ Agregar nuevo...' :
@@ -453,7 +455,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'idProvider',
-        headerName: 'Proveedor',
+        headerName: this.translate.instant('modules.shopping.ui.columns.supplier'),
         editable: (params) => this.canEditAuthorizedRow(params.data),
         filter: true,
         width: 300,
@@ -470,7 +472,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },     
       {
         field: 'idIncorExp',
-        headerName: 'Gasto destino',
+        headerName: this.translate.instant('modules.shopping.ui.columns.destinationExpense'),
         editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 270,
         cellEditor: 'agSelectCellEditor',
@@ -483,7 +485,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'idCurrency',
-        headerName: 'Moneda',
+        headerName: this.translate.instant('modules.shopping.ui.columns.currency'),
         editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
         cellEditor: 'agSelectCellEditor',
@@ -498,7 +500,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'idPayment',
-        headerName: 'Forma de pago',
+        headerName: this.translate.instant('modules.shopping.ui.columns.paymentMethod'),
         editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
         cellEditor: 'agSelectCellEditor',
@@ -515,34 +517,34 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'discount',
-        headerName: 'Descuento',
+        headerName: this.translate.instant('modules.shopping.ui.columns.discount'),
         editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
       },
       {
         field: 'iva',
-        headerName: 'IVA',
+        headerName: this.translate.instant('modules.shopping.ui.columns.tax'),
         editable: false,
         width: 110,
         type: 'numericColumn',
       },
       {
         field: 'ivaRetention',
-        headerName: 'Retención',
+        headerName: this.translate.instant('modules.shopping.ui.columns.withholding'),
         editable: false,
         width: 150,
         type: 'numericColumn',
       },
        {
         field: 'delivery',
-        headerName: 'Entrega',
+        headerName: this.translate.instant('modules.shopping.ui.columns.delivery'),
         editable: (params) => this.canEditAuthorizedRow(params.data),
         filter: true,
         width: 150,
       },
       {
         field: 'deliveryTime',
-        headerName: 'Tipo',
+        headerName: this.translate.instant('modules.shopping.ui.columns.type'),
         editable: (params) => this.canEditAuthorizedRow(params.data),
         filter: true,
         width: 150,
@@ -562,13 +564,13 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'conditions',
-        headerName: 'Condición',
+        headerName: this.translate.instant('modules.shopping.ui.columns.condition'),
         editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
       },     
       {
         field: 'idSolicit',
-        headerName: 'Solicita',
+        headerName: this.translate.instant('modules.shopping.ui.columns.requestedBy'),
         editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
         cellEditor: 'agSelectCellEditor',
@@ -584,7 +586,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'idAuthorize',
-        headerName: 'Autoriza',
+        headerName: this.translate.instant('modules.shopping.ui.columns.authorizedBy'),
         editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
         cellEditor: 'agRichSelectCellEditor',
@@ -601,7 +603,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         },
       },
       {
-        headerName: 'Abrir',
+        headerName: this.translate.instant('modules.shopping.ui.columns.open'),
         colId: 'authorizationAction',
         width: 64,
         editable: false,
@@ -625,7 +627,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
        {
         field: 'comments',
-        headerName: 'Comentario',
+        headerName: this.translate.instant('modules.shopping.ui.columns.comment'),
         editable: false,
         width: 150,
         cellEditor: 'agPopupTextCellEditor',
@@ -656,7 +658,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       }
     /*  {
         field: 'address',
-        headerName: 'Dirección',
+        headerName: this.translate.instant('modules.shopping.ui.columns.address'),
         editable: false,
         width: 150,
         cellEditor: 'agPopupTextCellEditor',
@@ -687,7 +689,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'city',
-        headerName: 'Ciudad',
+        headerName: this.translate.instant('modules.shopping.ui.columns.city'),
         editable: false,
         width: 150,
         cellEditor: 'agPopupTextCellEditor',
@@ -718,7 +720,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'phone',
-        headerName: 'Teléfono',
+        headerName: this.translate.instant('modules.shopping.ui.columns.phone'),
         editable: false,
         width: 150,
         cellEditor: 'agPopupTextCellEditor',
@@ -757,7 +759,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     return [
       {
         field: 'idSupplie',
-        headerName: 'Producto',
+        headerName: this.translate.instant('modules.shopping.ui.columns.product'),
         editable: true,
         flex: 3,
         cellEditor: 'agSelectCellEditor',
@@ -773,7 +775,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'quantity',
-        headerName: 'Cantidad',
+        headerName: this.translate.instant('modules.shopping.ui.columns.quantity'),
         editable: true,
         filter: true,
         flex: 1,
@@ -785,7 +787,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'price',
-        headerName: 'Precio',
+        headerName: this.translate.instant('modules.shopping.ui.columns.price'),
         editable: true,
         filter: true,
         flex: 1,
@@ -800,7 +802,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'total',
-        headerName: 'Total',
+        headerName: this.translate.instant('modules.shopping.ui.columns.total'),
         editable: false,
         filter: true,
         flex: 1,
@@ -814,7 +816,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'comment',
-        headerName: 'Comentarios',
+        headerName: this.translate.instant('modules.shopping.ui.columns.comments'),
         editable: false,
         filter: true,
         flex: 2,

@@ -1,0 +1,4 @@
+# Ejecutar estos comandos en la terminal conectada al servidor Linux
+sudo rabbitmq-diagnostics status
+sudo rabbitmq-diagnostics listeners
+sudo rabbitmq-plugins list -e

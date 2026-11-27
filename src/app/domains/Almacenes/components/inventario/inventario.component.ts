@@ -13,21 +13,22 @@ import { alerts } from 'app/helpers/alerts';
 import { MaterialsService } from 'app/services/materials.service';
 import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { InventoryMovementsDetailComponent } from './inventory-movements-detail.component';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-inventario',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, InventoryMovementsDetailComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, InventoryMovementsDetailComponent, TranslateModule],
   template: `
     <!-- Barra superior -->
     <div class="d-flex flex-wrap align-items-center gap-2 mb-2 px-1">
 
       <!-- Selector de almacén -->
       <div class="d-flex align-items-center gap-1">
-        <small class="text-muted fw-semibold">Almacén:</small>
+        <small class="text-muted fw-semibold">{{ 'modules.warehouses.ui.inventory.warehouse' | translate }}:</small>
         <select class="form-select form-select-sm" style="min-width:180px; max-width:240px"
                 [(ngModel)]="selectedWarehouse" (ngModelChange)="loadData()">
-          <option [ngValue]="0" disabled>— Seleccione —</option>
+          <option [ngValue]="0" disabled>— {{ 'modules.warehouses.ui.inventory.select' | translate }} —</option>
           <option *ngFor="let w of warehouses" [ngValue]="warehouseId(w)">{{ warehouseName(w) }}</option>
         </select>
       </div>
@@ -35,23 +36,23 @@ import { InventoryMovementsDetailComponent } from './inventory-movements-detail.
       <div class="input-group input-group-sm" style="width:min(340px, 100%)">
         <span class="input-group-text"><i class="bi bi-search"></i></span>
         <input type="search" class="form-control" [(ngModel)]="searchTerm"
-          (ngModelChange)="applyTextFilter()" placeholder="Buscar material por código, descripción o marca"
-          aria-label="Buscar material por código, descripción o marca">
+          (ngModelChange)="applyTextFilter()" [placeholder]="'modules.warehouses.ui.inventory.searchPlaceholder' | translate"
+          [attr.aria-label]="'modules.warehouses.ui.inventory.searchPlaceholder' | translate">
         <button *ngIf="searchTerm" class="btn btn-outline-secondary" type="button"
-          (click)="searchTerm = ''; applyTextFilter()" title="Limpiar búsqueda">
+          (click)="searchTerm = ''; applyTextFilter()" [title]="'modules.warehouses.ui.inventory.clearSearch' | translate">
           <i class="bi bi-x-lg"></i>
         </button>
       </div>
 
       <!-- Botón refrescar -->
-      <button class="btn btn-sm btn-outline-secondary" (click)="loadData()" title="Refrescar">
+      <button class="btn btn-sm btn-outline-secondary" (click)="loadData()" [title]="'modules.warehouses.ui.inventory.refresh' | translate" [attr.aria-label]="'modules.warehouses.ui.inventory.refresh' | translate">
         <i class="bi bi-arrow-clockwise"></i>
       </button>
 
       <label class="form-check form-switch d-flex align-items-center gap-2 mb-0 ms-1 small text-nowrap">
         <input class="form-check-input m-0" type="checkbox" [(ngModel)]="showZeroStock"
           (ngModelChange)="applyInventoryFilter()">
-        <span>Mostrar existencias en cero <span class="badge bg-light text-secondary">{{ zeroStockCount }}</span></span>
+        <span>{{ 'modules.warehouses.ui.inventory.showZero' | translate }} <span class="badge bg-light text-secondary">{{ zeroStockCount }}</span></span>
       </label>
 
       <!-- Separador -->
@@ -59,35 +60,35 @@ import { InventoryMovementsDetailComponent } from './inventory-movements-detail.
 
       <!-- Chips resumen -->
       <span class="badge bg-secondary fs-xs">
-        <i class="bi bi-box-seam me-1"></i>{{ totalMateriales }} materiales
+        <i class="bi bi-box-seam me-1"></i>{{ totalMateriales }} {{ 'modules.warehouses.ui.inventory.materials' | translate }}
       </span>
-      <span class="badge bg-danger fs-xs" *ngIf="criticos > 0" title="Stock crítico">
-        <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ criticos }} críticos
+      <span class="badge bg-danger fs-xs" *ngIf="criticos > 0" [title]="'modules.warehouses.ui.inventory.criticalStock' | translate">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ criticos }} {{ 'modules.warehouses.ui.inventory.critical' | translate }}
       </span>
-      <span class="badge bg-warning text-dark fs-xs" *ngIf="bajos > 0" title="Stock bajo">
-        <i class="bi bi-arrow-down-circle me-1"></i>{{ bajos }} bajos
+      <span class="badge bg-warning text-dark fs-xs" *ngIf="bajos > 0" [title]="'modules.warehouses.ui.inventory.lowStock' | translate">
+        <i class="bi bi-arrow-down-circle me-1"></i>{{ bajos }} {{ 'modules.warehouses.ui.inventory.low' | translate }}
       </span>
-      <span class="badge bg-success fs-xs" *ngIf="optimos > 0" title="Stock óptimo">
-        <i class="bi bi-check-circle me-1"></i>{{ optimos }} óptimos
+      <span class="badge bg-success fs-xs" *ngIf="optimos > 0" [title]="'modules.warehouses.ui.inventory.optimalStock' | translate">
+        <i class="bi bi-check-circle me-1"></i>{{ optimos }} {{ 'modules.warehouses.ui.inventory.optimal' | translate }}
       </span>
-      <span class="badge bg-primary fs-xs" *ngIf="altos > 0" title="Stock alto">
-        <i class="bi bi-arrow-up-circle me-1"></i>{{ altos }} altos
+      <span class="badge bg-primary fs-xs" *ngIf="altos > 0" [title]="'modules.warehouses.ui.inventory.highStock' | translate">
+        <i class="bi bi-arrow-up-circle me-1"></i>{{ altos }} {{ 'modules.warehouses.ui.inventory.high' | translate }}
       </span>
 
       <!-- Valor total (derecha) -->
       <span class="ms-auto badge bg-dark fs-xs">
-        Valor total: {{ valorTotal | currency:'MXN':'symbol':'1.0-0' }}
+        {{ 'modules.warehouses.ui.inventory.totalValue' | translate }}: {{ valorTotal | currency:'MXN':'symbol':'1.0-0' }}
       </span>
     </div>
 
     <!-- Spinner -->
     <div *ngIf="loading" class="text-center py-4">
       <div class="spinner-border text-primary" style="width:2rem;height:2rem;"></div>
-      <p class="text-muted mt-2 small">Cargando inventario...</p>
+      <p class="text-muted mt-2 small">{{ 'modules.warehouses.ui.inventory.loading' | translate }}</p>
     </div>
 
     <div *ngIf="dataWarnings.length" class="alert alert-warning py-2 small" role="alert">
-      <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>Inventario incompleto; revisa antes de usar estas existencias.</strong>
+      <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>{{ 'modules.warehouses.ui.inventory.incompleteWarning' | translate }}</strong>
       <div *ngFor="let warning of dataWarnings">{{ warning }}</div>
     </div>
 
@@ -107,6 +108,7 @@ import { InventoryMovementsDetailComponent } from './inventory-movements-detail.
   `,
 })
 export class InventarioComponent {
+  private translate = inject(TranslateService);
   private router = inject(Router);
   private signalsService     = inject(SignalsService);
   private inventarioService  = inject(InventarioWarehouseService);
@@ -163,27 +165,27 @@ export class InventarioComponent {
       valueGetter: p => (p.node?.rowIndex ?? 0) + 1,
       cellStyle: { textAlign: 'center', color: '#999' },
     },
-    { field: 'insumo',      headerName: 'Código',       width: 100, filter: 'agTextColumnFilter' },
+    { field: 'insumo',      headerName: this.translate.instant('modules.warehouses.ui.inventory.code'),       width: 100, filter: 'agTextColumnFilter' },
     {
-      field: 'description', headerName: 'Descripción', width: 320, minWidth: 200,
+      field: 'description', headerName: this.translate.instant('modules.warehouses.ui.inventory.description'), width: 320, minWidth: 200,
       resizable: true, suppressSizeToFit: true, filter: 'agTextColumnFilter',
       cellRenderer: 'agGroupCellRenderer',
       cellRendererParams: { suppressCount: true, innerRenderer: (p: any) => p.value ?? '' },
     },
-    { field: 'measure',     headerName: 'Unidad',       width: 90, filter: 'agTextColumnFilter' },
-    { field: 'brand',       headerName: 'Marca',        width: 180, minWidth: 150, filter: 'agTextColumnFilter' },
+    { field: 'measure',     headerName: this.translate.instant('modules.warehouses.ui.inventory.unit'),       width: 90, filter: 'agTextColumnFilter' },
+    { field: 'brand',       headerName: this.translate.instant('modules.warehouses.ui.inventory.brand'),        width: 180, minWidth: 150, filter: 'agTextColumnFilter' },
     {
-      field: 'entrada', headerName: 'Entradas', width: 90, type: 'numericColumn',
+      field: 'entrada', headerName: this.translate.instant('modules.warehouses.ui.inventory.receipts'), width: 90, type: 'numericColumn',
       cellStyle: { color: '#198754', fontWeight: '600' },
       valueFormatter: p => this.formatQuantity(p.value),
     },
     {
-      field: 'salida', headerName: 'Salidas', width: 90, type: 'numericColumn',
+      field: 'salida', headerName: this.translate.instant('modules.warehouses.ui.inventory.issues'), width: 90, type: 'numericColumn',
       cellStyle: { color: '#dc3545', fontWeight: '600' },
       valueFormatter: p => this.formatQuantity(p.value),
     },
     {
-      field: 'existencia', headerName: 'Existencia', width: 100, type: 'numericColumn',
+      field: 'existencia', headerName: this.translate.instant('modules.warehouses.ui.inventory.onHand'), width: 100, type: 'numericColumn',
       cellRenderer: (p: any) => {
         const c: any = { 'CRÍTICO': '#dc3545', 'BAJO': '#fd7e14', 'ÓPTIMO': '#198754', 'ALTO': '#0d6efd' };
         const color  = c[p.data?.estadoStock] || '#333';
@@ -191,52 +193,54 @@ export class InventarioComponent {
       },
     },
     {
-      headerName: 'Kardex', width: 82, editable: false, sortable: false, resizable: false,
+      headerName: this.translate.instant('modules.warehouses.ui.inventory.kardex'), width: 82, editable: false, sortable: false, resizable: false,
       cellStyle: { textAlign: 'center', paddingTop: '3px' },
       cellRenderer: () =>
-        `<button class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size:0.7rem" title="Ver Kardex del material">
-           <i class="bi bi-journal-arrow-up"></i> Kardex
+        `<button class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size:0.7rem" title="${this.translate.instant('modules.warehouses.ui.inventory.viewKardex')}">
+           <i class="bi bi-journal-arrow-up"></i> ${this.translate.instant('modules.warehouses.ui.inventory.kardex')}
          </button>`,
       onCellClicked: params => this.openKardex(params.data),
     },
     {
-      field: 'stockMin', headerName: 'Mín', width: 68, type: 'numericColumn',
+      field: 'stockMin', headerName: this.translate.instant('modules.warehouses.ui.inventory.minimum'), width: 68, type: 'numericColumn',
       cellStyle: { color: '#aaa', fontSize: '0.8rem' },
     },
     {
-      field: 'stockMax', headerName: 'Máx', width: 68, type: 'numericColumn',
+      field: 'stockMax', headerName: this.translate.instant('modules.warehouses.ui.inventory.maximum'), width: 68, type: 'numericColumn',
       cellStyle: { color: '#aaa', fontSize: '0.8rem' },
     },
     {
-      field: 'costoMN', headerName: 'Costo Unit.', width: 115, type: 'numericColumn',
+      field: 'costoMN', headerName: this.translate.instant('modules.warehouses.ui.inventory.unitCost'), width: 115, type: 'numericColumn',
       valueFormatter: p => this.formatCurrency(p.value),
     },
     {
-      field: 'total', headerName: 'Valor Inventario', flex: 1, minWidth: 135, type: 'numericColumn',
+      field: 'total', headerName: this.translate.instant('modules.warehouses.ui.inventory.inventoryValue'), flex: 1, minWidth: 135, type: 'numericColumn',
       cellStyle: { fontWeight: '600', color: '#0e4491' },
       valueFormatter: p => this.formatCurrency(p.value),
     },
     {
-      field: 'ventaMN', headerName: 'P. Venta', width: 110, type: 'numericColumn',
+      field: 'ventaMN', headerName: this.translate.instant('modules.warehouses.ui.inventory.salePrice'), width: 110, type: 'numericColumn',
       valueFormatter: p => this.formatCurrency(p.value),
     },
     {
-      field: 'ventaTotal', headerName: 'Valor Venta', flex: 1, minWidth: 120, type: 'numericColumn',
+      field: 'ventaTotal', headerName: this.translate.instant('modules.warehouses.ui.inventory.saleValue'), flex: 1, minWidth: 120, type: 'numericColumn',
       valueFormatter: p => this.formatCurrency(p.value),
     },
     {
-      field: 'estadoStock', headerName: 'Estado', width: 90,
+      field: 'estadoStock', headerName: this.translate.instant('modules.warehouses.ui.inventory.status'), width: 90,
       cellRenderer: (p: any) => {
         const m: any = { 'CRÍTICO': 'bg-danger', 'BAJO': 'bg-warning text-dark', 'ÓPTIMO': 'bg-success', 'ALTO': 'bg-primary' };
-        return `<span class="badge ${m[p.value] ?? 'bg-secondary'}" style="font-size:0.68rem">${p.value ?? ''}</span>`;
+        const statusKeys: any = { 'CRÍTICO': 'critical', 'BAJO': 'low', 'ÓPTIMO': 'optimal', 'ALTO': 'high' };
+        const label = statusKeys[p.value] ? this.translate.instant(`modules.warehouses.ui.inventory.${statusKeys[p.value]}`) : (p.value ?? '');
+        return `<span class="badge ${m[p.value] ?? 'bg-secondary'}" style="font-size:0.68rem">${label}</span>`;
       },
     },
     {
       headerName: '', width: 72, editable: false, sortable: false, resizable: false,
       cellStyle: { textAlign: 'center', paddingTop: '3px' },
       cellRenderer: () =>
-        `<button class="btn btn-sm btn-outline-warning py-0 px-1" style="font-size:0.7rem" title="Ajuste físico">
-           <i class="bi bi-pencil-square"></i> Ajustar
+        `<button class="btn btn-sm btn-outline-warning py-0 px-1" style="font-size:0.7rem" title="${this.translate.instant('modules.warehouses.ui.inventory.physicalAdjustment')}">
+           <i class="bi bi-pencil-square"></i> ${this.translate.instant('modules.warehouses.ui.inventory.adjust')}
          </button>`,
       onCellClicked: p => this.openAjuste(p.data),
     },
@@ -345,13 +349,13 @@ export class InventarioComponent {
           // Compatibilidad mientras se actualiza el contenedor: las versiones
           // anteriores exigían idProject, aunque Inventario es por almacén.
           if (selectedWarehouseRows.length || !this.projectId) {
-            if (warehouseRows === null) warn('No se pudieron consultar los encabezados de movimientos del almacén.');
+            if (warehouseRows === null) warn(this.translate.instant('modules.warehouses.ui.inventory.warnings.movementHeaders'));
             return of(selectedWarehouseRows);
           }
           return this.inventarioService.getMovements(this.projectId, this.selectedWarehouse, type).pipe(
             map(rows => forSelectedWarehouse(rows)),
             catchError(() => {
-              warn('No se pudieron cargar los encabezados de ' + (type === 'IN' ? 'entradas' : 'salidas') + '.');
+              warn(this.translate.instant('modules.warehouses.ui.inventory.warnings.movementHeadersByType', { type: this.translate.instant(type === 'IN' ? 'modules.warehouses.ui.inventory.receipts' : 'modules.warehouses.ui.inventory.issues') }));
               return of([]);
             })
           );
@@ -364,7 +368,7 @@ export class InventarioComponent {
             movementMasters.map(master =>
               this.inventarioService.getMovementItems(Number(master.id ?? master.Id)).pipe(
                 catchError(() => {
-                  warn('No se pudieron cargar las partidas del movimiento ' + (master.folio || master.id || master.Id) + '.');
+                  warn(this.translate.instant('modules.warehouses.ui.inventory.warnings.movementItems', { folio: master.folio || master.id || master.Id }));
                   return of([]);
                 }),
               map(details => this.asArray(details).map(detail => ({
@@ -381,11 +385,11 @@ export class InventarioComponent {
 
     forkJoin({
       materials: this.materialsService.getMaterialsForPosCache(this.idCompany).pipe(catchError(() => {
-        warn('No se pudo cargar el catálogo de materiales.');
+        warn(this.translate.instant('modules.warehouses.ui.inventory.warnings.materialCatalog'));
         return of([]);
       })),
       brands: this.materialsService.getMaterialBrands(this.idCompany).pipe(catchError(() => {
-        warn('No se pudo cargar el catálogo de marcas.');
+        warn(this.translate.instant('modules.warehouses.ui.inventory.warnings.brandCatalog'));
         return of([]);
       })),
       movements: forkJoin(movementRequests),
@@ -400,7 +404,7 @@ export class InventarioComponent {
         this.allInventoryRows = [];
         this.rowData = [];
         this.loading = false;
-        warn('No se pudo completar la consulta de existencias.');
+        warn(this.translate.instant('modules.warehouses.ui.inventory.warnings.stockQuery'));
       },
     });
   }
@@ -554,21 +558,21 @@ export class InventarioComponent {
   }
 
   private formatQuantity(value: unknown): string {
-    return new Intl.NumberFormat('es-MX', { maximumFractionDigits: 3 }).format(this.toNumber(value));
+    return new Intl.NumberFormat(this.translate.currentLang === 'en' ? 'en-US' : 'es-MX', { maximumFractionDigits: 3 }).format(this.toNumber(value));
   }
 
   private formatCurrency(value: unknown): string {
-    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(this.toNumber(value));
+    return new Intl.NumberFormat(this.translate.currentLang === 'en' ? 'en-US' : 'es-MX', { style: 'currency', currency: 'MXN' }).format(this.toNumber(value));
   }
 
   async openAjuste(row: any): Promise<void> {
     if (!this.selectedWarehouse) {
-      alerts.basicAlert('Almacén requerido', 'Selecciona un almacén para realizar el ajuste.', 'warning');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.inventory.warehouseRequired'), this.translate.instant('modules.warehouses.ui.inventory.selectWarehouseForAdjustment'), 'warning');
       return;
     }
 
     const brandOptions = row.brands?.length > 1
-      ? `<label class="form-label fw-semibold mb-1" style="font-size:0.85rem">Marca:</label>
+      ? `<label class="form-label fw-semibold mb-1" style="font-size:0.85rem">${this.translate.instant('modules.warehouses.ui.inventory.brand')}:</label>
          <select id="aju-brand" class="swal2-select" style="display:block;width:100%;margin:0 0 10px 0">
            ${row.brandStocks.map((stock: any) => `<option value="${stock.idBrand}" ${Number(stock.idBrand) === Number(row.idBrand) ? 'selected' : ''}>${stock.name} (${this.formatQuantity(stock.quantity)})</option>`).join('')}
          </select>`
@@ -576,34 +580,34 @@ export class InventarioComponent {
     const chosenBrand = row.brands?.length === 1 ? row.brands[0] : null;
     const initialStock = Number(row.existencia || 0);
     const result = await Swal.fire({
-      title:  'Ajuste Físico de Inventario',
+      title:  this.translate.instant('modules.warehouses.ui.inventory.adjustmentTitle'),
       width:  460,
       html: `
         <div class="text-start px-1">
           <div class="mb-1 fw-semibold" style="font-size:0.95rem">${row.description}</div>
           <div class="mb-3 text-muted" style="font-size:0.8rem">
-            Código: <code>${row.insumo}</code> &nbsp;|&nbsp; Marca: <strong>${row.brand || 'Sin marca'}</strong>
-            &nbsp;|&nbsp; Existencia actual: <strong id="aju-current">${this.formatQuantity(initialStock)}</strong>
-            &nbsp;|&nbsp; Estado: <strong>${row.estadoStock ?? '—'}</strong>
+            ${this.translate.instant('modules.warehouses.ui.inventory.code')}: <code>${row.insumo}</code> &nbsp;|&nbsp; ${this.translate.instant('modules.warehouses.ui.inventory.brand')}: <strong>${row.brand || this.translate.instant('modules.warehouses.ui.inventory.noBrand')}</strong>
+            &nbsp;|&nbsp; ${this.translate.instant('modules.warehouses.ui.inventory.currentStock')}: <strong id="aju-current">${this.formatQuantity(initialStock)}</strong>
+            &nbsp;|&nbsp; ${this.translate.instant('modules.warehouses.ui.inventory.status')}: <strong>${row.estadoStock ? this.translate.instant(`modules.warehouses.ui.inventory.${row.estadoStock === 'CRÍTICO' ? 'critical' : row.estadoStock === 'BAJO' ? 'low' : row.estadoStock === 'ÓPTIMO' ? 'optimal' : 'high'}`) : '—'}</strong>
           </div>
 
           ${brandOptions}
 
-          <label class="form-label fw-semibold mb-1" style="font-size:0.85rem">Cantidad física real:</label>
+          <label class="form-label fw-semibold mb-1" style="font-size:0.85rem">${this.translate.instant('modules.warehouses.ui.inventory.physicalQuantity')}:</label>
           <input id="aju-qty" type="number" min="0" step="0.01" value="${initialStock}"
                  class="swal2-input" style="margin:0 0 6px 0; width:100%">
 
           <div id="aju-delta" class="text-center fw-bold mb-2" style="font-size:1.05rem; min-height:1.6rem"></div>
 
-          <label class="form-label fw-semibold mb-1" style="font-size:0.85rem">Comentario (opcional):</label>
+          <label class="form-label fw-semibold mb-1" style="font-size:0.85rem">${this.translate.instant('modules.warehouses.ui.inventory.commentOptional')}:</label>
           <textarea id="aju-comment" class="swal2-textarea"
                     style="margin:0; width:100%; height:58px; font-size:0.85rem"
-                    placeholder="Motivo del ajuste..."></textarea>
+                    placeholder="${this.translate.instant('modules.warehouses.ui.inventory.adjustmentReason')}"></textarea>
         </div>
       `,
       showCancelButton:  true,
-      confirmButtonText: '<i class="bi bi-floppy me-1"></i>Guardar ajuste',
-      cancelButtonText:  'Cancelar',
+      confirmButtonText: `<i class="bi bi-floppy me-1"></i>${this.translate.instant('modules.warehouses.ui.inventory.saveAdjustment')}`,
+      cancelButtonText:  this.translate.instant('modules.warehouses.ui.inventory.cancel'),
       confirmButtonColor: '#0d6efd',
       focusConfirm: false,
       didOpen: () => {
@@ -617,10 +621,10 @@ export class InventarioComponent {
         const update = () => {
           const delta = (parseFloat(qEl.value) || 0) - getCurrent();
           dEl.innerHTML = delta === 0
-            ? `<span class="text-muted small">Sin cambios</span>`
+            ? `<span class="text-muted small">${this.translate.instant('modules.warehouses.ui.inventory.noChange')}</span>`
             : delta > 0
-              ? `<span class="text-success">▲ +${delta.toFixed(0)} — se generará <em>entrada</em></span>`
-              : `<span class="text-danger">▼ ${delta.toFixed(0)} — se generará <em>salida</em></span>`;
+              ? `<span class="text-success">▲ +${delta.toFixed(0)} — ${this.translate.instant('modules.warehouses.ui.inventory.receiptWillBeCreated')} <em>${this.translate.instant('modules.warehouses.ui.inventory.receipts').toLocaleLowerCase()}</em></span>`
+              : `<span class="text-danger">▼ ${delta.toFixed(0)} — ${this.translate.instant('modules.warehouses.ui.inventory.issueWillBeCreated')} <em>${this.translate.instant('modules.warehouses.ui.inventory.issues').toLocaleLowerCase()}</em></span>`;
         };
         qEl.addEventListener('input', update);
         brandEl?.addEventListener('change', () => {
@@ -634,7 +638,7 @@ export class InventarioComponent {
       preConfirm: (): { qty: number; comment: string; idBrand: number | null } | null => {
         const qty = parseFloat((document.getElementById('aju-qty') as HTMLInputElement).value);
         if (isNaN(qty) || qty < 0) {
-          Swal.showValidationMessage('Ingresa una cantidad válida (≥ 0)');
+          Swal.showValidationMessage(this.translate.instant('modules.warehouses.ui.inventory.enterValidQuantity'));
           return null;
         }
         const comment = (document.getElementById('aju-comment') as HTMLTextAreaElement).value;
@@ -656,10 +660,10 @@ export class InventarioComponent {
         idCompany:      this.idCompany,
         idBrand:        result.value.idBrand,
       }).toPromise();
-      alerts.basicAlert('¡Ajuste guardado!', 'El inventario fue actualizado correctamente.', 'success');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.inventory.adjustmentSaved'), this.translate.instant('modules.warehouses.ui.inventory.inventoryUpdated'), 'success');
       this.loadData();
     } catch {
-      alerts.basicAlert('Error', 'No se pudo guardar el ajuste. Verifica que el almacén seleccionado sea correcto.', 'error');
+      alerts.basicAlert(this.translate.instant('modules.warehouses.ui.inventory.error'), this.translate.instant('modules.warehouses.ui.inventory.adjustmentFailed'), 'error');
     }
   }
 

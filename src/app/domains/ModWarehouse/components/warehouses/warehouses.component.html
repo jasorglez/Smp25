@@ -8,22 +8,22 @@
       <div class="row">
         <nav class="col-auto d-flex flex-column align-items-start">
           
-          <button type="button" class="btn btn-primary me-1 mb-2" (click)="addRow()">
+          <button type="button" class="btn btn-primary me-1 mb-2" (click)="addRow()" [title]="'modules.warehouses.ui.warehouseSetup.add' | translate" [attr.aria-label]="'modules.warehouses.ui.warehouseSetup.add' | translate">
             <i class="bi bi-plus-lg" style="font-size: 1rem;"></i>
           </button>
 
-          <button type="button" class="btn btn-success position-relative mb-2" (click)="saveChanges()">
+          <button type="button" class="btn btn-success position-relative mb-2" (click)="saveChanges()" [title]="'modules.warehouses.ui.warehouseSetup.save' | translate" [attr.aria-label]="'modules.warehouses.ui.warehouseSetup.save' | translate">
             <i class="bi bi-floppy" style="font-size: 1rem;"></i>
             <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
               *ngIf="notSavedChanges">
-              <span class="visually-hidden">Hay cambios sin guardar</span>
+              <span class="visually-hidden">{{ 'modules.userSetup.unsavedChanges' | translate }}</span>
             </span>
           </button>
 
-          <button type="button" class="btn btn-warning mb-2" (click)="revert()">
+          <button type="button" class="btn btn-warning mb-2" (click)="revert()" [title]="'modules.warehouses.ui.warehouseSetup.undo' | translate" [attr.aria-label]="'modules.warehouses.ui.warehouseSetup.undo' | translate">
             <i class="bi bi-arrow-clockwise" style="font-size: 1rem;"></i>
           </button>
-          <button type="button" class="btn btn-danger mb-2" (click)="Delete()">
+          <button type="button" class="btn btn-danger mb-2" (click)="Delete()" [title]="'modules.warehouses.ui.warehouseSetup.delete' | translate" [attr.aria-label]="'modules.warehouses.ui.warehouseSetup.delete' | translate">
             <i class="bi bi-trash" style="font-size: 1rem;"></i>
           </button>
         </nav>

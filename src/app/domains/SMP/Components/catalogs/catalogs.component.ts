@@ -3,12 +3,12 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { TablesxmodulesService } from 'app/services/tablesxmodules.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ActivatedRoute } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { concat, EMPTY, lastValueFrom } from 'rxjs';
 import { toArray } from 'rxjs/operators';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
-import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { AG_GRID_LOCALE } from 'assets/i18n/ag-grid.locale';
 import { CatFamSubComponent } from 'app/domains/Almacenes/components/cat-fam-sub/cat-fam-sub.component';
 import { EleccionFamiliasComponent } from './eleccion-familias.component';
 import {
@@ -50,8 +50,9 @@ import { PosicionesService } from 'app/services/posiciones.service';
 })
 export class CatalogsComponent implements CanComponentDeactivate {
   authService = inject(AuthService);
+  private translate = inject(TranslateService);
   private trackingService = inject(TrackingService);
-  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE;
   notSavedChanges: boolean = false;
   saving: boolean = false;
   rowData: any;
@@ -306,7 +307,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
     return [
       {
         field: 'id',
-        headerName: 'Id',
+        headerName: this.translate.instant('modules.shopping.ui.catalogs.id'),
         editable: (params) => {
           if (params.data.__isNew) {
             return true;
@@ -322,7 +323,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
       },
       {
         field: 'valueAddition',
-        headerName: 'name',
+        headerName: this.translate.instant('modules.shopping.ui.catalogs.name'),
         editable: (params) => {
           if (params.data.__isNew) {
             return true;
@@ -334,7 +335,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
       },
       {
         field: 'description',
-        headerName: 'Descripción',
+        headerName: this.translate.instant('modules.shopping.ui.description'),
         filterParams: {
           // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
@@ -351,14 +352,14 @@ export class CatalogsComponent implements CanComponentDeactivate {
         valueSetter: (params) => {
           const rawValue = params.newValue;
           if (!rawValue || typeof rawValue !== 'string') {
-            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            alerts.basicAlert(this.translate.instant('modules.shopping.ui.catalogs.requiredField'), this.translate.instant('modules.shopping.ui.catalogs.nameRequired'), 'error');
             return false;
           }
 
           const normalizedValue = rawValue.trim().toUpperCase();
 
           if (!normalizedValue) {
-            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            alerts.basicAlert(this.translate.instant('modules.shopping.ui.catalogs.requiredField'), this.translate.instant('modules.shopping.ui.catalogs.nameRequired'), 'error');
             return false;
           }
 
@@ -370,8 +371,8 @@ export class CatalogsComponent implements CanComponentDeactivate {
 
           if (duplicateExists) {
             alerts.basicAlert(
-              'Nombre duplicado',
-              `Ya existe un  con ese nombre.`,//${}
+              this.translate.instant('modules.shopping.ui.catalogs.duplicateName'),
+              this.translate.instant('modules.shopping.ui.catalogs.nameAlreadyExists'),
               'error'
             );
             return false;
@@ -383,7 +384,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
       },
       {
         field: 'idRoles',
-        headerName: 'Departamento',
+        headerName: this.translate.instant('modules.shopping.ui.catalogs.department'),
         hide: this.typeCatalog !== 'hr' || this.selectedCatalog !== 'POSITION',
         editable: (params) => params.data.__isNew || this.authService.getCrudPermission(this.typeCatalog, 'catalogs', '', '', '', 'update'),
         cellEditor: 'agSelectCellEditor',
@@ -401,10 +402,10 @@ export class CatalogsComponent implements CanComponentDeactivate {
         field: 'valueAddition',
         headerName:
           this.selectedCatalog === 'BONUS'
-            ? 'Monto'
+            ? this.translate.instant('modules.shopping.ui.catalogs.amount')
             : this.selectedCatalog === 'CUSTOMERS'
-            ? 'Color'
-            : 'Campo',
+            ? this.translate.instant('modules.shopping.ui.catalogs.color')
+            : this.translate.instant('modules.shopping.ui.catalogs.field'),
         cellRenderer:
           this.selectedCatalog === 'CUSTOMERS' ? ColorPickerRenderer : '',
         cellRendererParams: {
@@ -441,10 +442,10 @@ export class CatalogsComponent implements CanComponentDeactivate {
         field: 'valueAdditionBit',
         headerName: 
         this.selectedCatalog === 'ABSENCES'
-            ? 'Suma a horas ajustadas'
+            ? this.translate.instant('modules.shopping.ui.catalogs.addToAdjustedHours')
             : this.selectedCatalog === 'REASON'
-            ? 'Aplicacion de horas a nomina'
-            : 'Campo',
+            ? this.translate.instant('modules.shopping.ui.catalogs.applyHoursToPayroll')
+            : this.translate.instant('modules.shopping.ui.catalogs.field'),
         editable: (params) => {
           if (params.data.__isNew) {
             return true;
@@ -456,7 +457,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
       },
       {
         field: 'price',
-        headerName: 'Precio',
+        headerName: this.translate.instant('modules.shopping.ui.columns.price'),
         editable: (params) => {
           if (params.data.__isNew) {
             return true;
@@ -476,7 +477,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
       },
       {
         field: 'vigente',
-        headerName: 'Activo',
+        headerName: this.translate.instant('modules.shopping.ui.columns.active'),
         editable: (params) => {
           if (params.data.__isNew) {
             return true;

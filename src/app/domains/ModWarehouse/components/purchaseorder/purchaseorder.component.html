@@ -8,53 +8,53 @@
   <!-- Mensaje cuando no hay configuración -->
   <div *ngIf="projectOrBranch === null" class="alert alert-info" role="alert">
     <i class="bi bi-info-circle-fill me-2"></i>
-    Primero debe configurar el almacén en <strong>Setup</strong> para indicar si trabajará por Proyectos o Sucursales.
+    {{ 'modules.shopping.ui.requisitions.setupRequired' | translate }} <strong>{{ 'modules.shopping.ui.setup.title' | translate }}</strong> {{ 'modules.shopping.ui.requisitions.setupSuffix' | translate }}
   </div>
 
   <!-- Mensaje cuando no hay proyecto/sucursal seleccionado -->
   <div *ngIf="projectOrBranch !== null && !idReference && activateOc" class="alert alert-warning" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i>
-    <span *ngIf="projectOrBranch">Seleccione un <strong>Proyecto</strong> en el menú lateral para ver las órdenes de compra.</span>
-    <span *ngIf="!projectOrBranch">Seleccione una <strong>Sucursal</strong> en el menú lateral para ver las órdenes de compra.</span>
+    <span *ngIf="projectOrBranch">{{ 'modules.shopping.ui.requisitions.selectA' | translate }} <strong>{{ 'modules.shopping.ui.project' | translate }}</strong> {{ 'modules.shopping.ui.requisitions.selectSidebar' | translate }} {{ 'modules.shopping.ui.purchaseOrders' | translate }}.</span>
+    <span *ngIf="!projectOrBranch">{{ 'modules.shopping.ui.requisitions.selectA' | translate }} <strong>{{ 'modules.shopping.ui.branch' | translate }}</strong> {{ 'modules.shopping.ui.requisitions.selectSidebar' | translate }} {{ 'modules.shopping.ui.purchaseOrders' | translate }}.</span>
   </div>
 
   <!-- Mensaje cuando OC está desactivado -->
   <div *ngIf="projectOrBranch !== null && !activateOc" class="alert alert-secondary" role="alert">
     <i class="bi bi-x-circle-fill me-2"></i>
-    El módulo de <strong>Órdenes de Compra</strong> está desactivado.
-    Para habilitarlo, vaya a <strong>Setup</strong> y active la opción "Activar Órdenes de Compra".
+    {{ 'modules.shopping.ui.purchaseOrders' | translate }} {{ 'modules.shopping.ui.purchaseOrderModuleDisabled' | translate }}
+    {{ 'modules.shopping.ui.purchaseOrdersEnableInstruction' | translate }} <strong>{{ 'modules.shopping.ui.setup.title' | translate }}</strong> {{ 'modules.shopping.ui.purchaseOrdersEnableOption' | translate }}
   </div>
 
   <!-- Botones y grid principal con master-detail -->
   <div class="row mb-3" *ngIf="idReference && activateOc">
     <div class="col-auto">
       <div class="d-flex flex-column gap-1">
-        <button type="button" class="btn btn-primary" (click)="addMasterRow()" title="Agregar nueva orden de compra">
+        <button type="button" class="btn btn-primary" (click)="addMasterRow()" [title]="'modules.shopping.ui.purchaseOrder.add' | translate">
           <i class="bi bi-plus-lg"></i>
         </button>
         <button type="button" class="btn btn-success position-relative" (click)="saveMasterChanges()"
-          title="Guardar cambios (F10)">
+          [title]="'modules.shopping.ui.requisitions.saveF10' | translate">
           <i class="bi bi-floppy"></i>
           <span
             class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
             *ngIf="masterNotSavedChanges">
-            <span class="visually-hidden">Hay cambios sin guardar</span>
+            <span class="visually-hidden">{{ 'modules.shopping.ui.unsavedChanges' | translate }}</span>
           </span>
         </button>
-        <button type="button" class="btn btn-warning" (click)="revertMasterData()" title="Deshacer cambios">
+        <button type="button" class="btn btn-warning" (click)="revertMasterData()" [title]="'modules.shopping.ui.undoChanges' | translate">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
-        <button type="button" class="btn btn-danger" (click)="deleteMasterEntry()" title="Eliminar orden de compra">
+        <button type="button" class="btn btn-danger" (click)="deleteMasterEntry()" [title]="'modules.shopping.ui.purchaseOrder.delete' | translate">
           <i class="bi bi-trash"></i>
         </button>
         <hr class="my-1">
-        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="openAddProveedorDialog()" title="Agregar nuevo proveedor">
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="openAddProveedorDialog()" [title]="'modules.shopping.ui.purchaseOrder.addSupplier' | translate">
           <i class="bi bi-building-add"></i>
         </button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="openAddMonedaDialog()" title="Agregar nueva moneda">
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="openAddMonedaDialog()" [title]="'modules.shopping.ui.purchaseOrder.addCurrency' | translate">
           <i class="bi bi-currency-exchange"></i>
         </button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="openAddTipoPagoDialog()" title="Agregar forma de pago">
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="openAddTipoPagoDialog()" [title]="'modules.shopping.ui.purchaseOrder.addPaymentMethod' | translate">
           <i class="bi bi-credit-card-2-front"></i>
         </button>
       </div>

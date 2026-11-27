@@ -35,7 +35,7 @@
               [routerLink]="['/almacenes/producto-terminado']"
               routerLinkActive="active"
               (click)="refres(true)">
-              <i class="bi bi-box-seam"></i> PRODUCTO TERMINADO
+              <i class="bi bi-box-seam"></i> {{ 'modules.shopping.ui.catalogs.finishedProduct' | translate }}
             </a>
           </li>
 
@@ -43,7 +43,7 @@
             <a class="nav-link green-tab"
               (click)="openEleccionFamiliasModal()"
               style="cursor: pointer;">
-              <i class="bi bi-box-seam"></i> ELECCION DE FAMILIAS
+              <i class="bi bi-box-seam"></i> {{ 'modules.shopping.ui.catalogs.familySelection' | translate }}
             </a>
           </li>
           
@@ -68,13 +68,11 @@
                 class="form-control select-side"
                 [value]="selectedCatalog || ''"
                 size="10"
-                title="{{ 'select' | translate }} {{ 'list' | translate }} {{
-                  ' ' | translate
-                }} {{ 'tables' | translate }}"
+              [title]="'modules.shopping.ui.catalogs.selectTableList' | translate"
               >
                 >
                 <option selected value="" disabled>
-                  {{ "Lista Tablas" | translate }}
+                  {{ 'modules.shopping.ui.catalogs.tableList' | translate }}
                 </option>
                 <option *ngFor="let item of table" [value]="item.name"  (click)="onOptionSelected(item)">
                   {{ item.nameSpanish }}
@@ -86,14 +84,14 @@
               <div class="row">
                 <div class="col-auto">
                   <div class="d-flex flex-column gap-2 align-items-center">
-                    <button type="button" class="btn btn-primary" (click)="addRow()"
+                    <button type="button" class="btn btn-primary" (click)="addRow()" [title]="'modules.shopping.ui.add' | translate"
                     >
                       <i class="bi bi-plus-lg"></i>
                     </button>
                     <button
                       type="button"
                       class="btn btn-success position-relative"
-                      (click)="saveChanges()"
+                      (click)="saveChanges()" [title]="'modules.shopping.ui.save' | translate"
                       [disabled]="saving"
                     >
                       <i class="bi bi-floppy"></i>
@@ -101,10 +99,10 @@
                         class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
                         *ngIf="notSavedChanges"
                       >
-                        <span class="visually-hidden">Hay cambios sin guardar</span>
+                        <span class="visually-hidden">{{ 'modules.shopping.ui.unsavedChanges' | translate }}</span>
                       </span>
                     </button>
-                    <button type="button" class="btn btn-warning" (click)="revert()">
+                    <button type="button" class="btn btn-warning" (click)="revert()" [title]="'modules.shopping.ui.undo' | translate">
                       <i class="bi bi-arrow-clockwise"></i>
                     </button>
                   </div>
@@ -150,7 +148,7 @@
     <div class="modal-content">
       <div class="modal-header bg-info text-white">
         <h5 class="modal-title">
-          <i class="bi bi-check2-square"></i> Elección de Familias
+          <i class="bi bi-check2-square"></i> {{ 'modules.shopping.ui.catalogs.familySelection' | translate }}
         </h5>
         <button type="button" class="btn-close btn-close-white" (click)="closeEleccionFamiliasModal()"></button>
       </div>
@@ -160,10 +158,10 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="closeEleccionFamiliasModal()">
-          Cerrar
+          {{ 'modules.shopping.ui.close' | translate }}
         </button>
         <button type="button" class="btn btn-primary">
-          Aceptar
+          {{ 'modules.shopping.ui.accept' | translate }}
         </button>
       </div>
     </div>

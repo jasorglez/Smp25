@@ -3,12 +3,12 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { TablesxmodulesService } from 'app/services/tablesxmodules.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ActivatedRoute } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { concat, EMPTY, lastValueFrom } from 'rxjs';
 import { toArray } from 'rxjs/operators';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
-import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { AG_GRID_LOCALE } from 'assets/i18n/ag-grid.locale';
 
 import {
   ColDef,
@@ -41,7 +41,8 @@ import { TrackingService } from 'app/services/tracking.service';
 })
 export class SubatalogsComponent implements CanComponentDeactivate {
   private trackingService = inject(TrackingService);
-  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  private translate = inject(TranslateService);
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE;
   notSavedChanges: boolean = false;
   rowData: any;
 
@@ -189,14 +190,14 @@ export class SubatalogsComponent implements CanComponentDeactivate {
     return [
       /*{
         field: 'id',
-        headerName: 'Id',
+        headerName: this.translate.instant('modules.shopping.ui.catalogs.id'),
         editable: true,
         filter: false,
         width: 80,
       },*/
       {
         field: 'description',
-        headerName: 'Descripción',
+        headerName: this.translate.instant('modules.shopping.ui.description'),
         filterParams: {
           // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
@@ -240,7 +241,7 @@ export class SubatalogsComponent implements CanComponentDeactivate {
       },
       {
         field: 'subParentId',
-        headerName: 'Unidades',
+        headerName: this.translate.instant('modules.shopping.ui.catalogs.units'),
         editable: true,
         width: 150,
         cellEditor: 'agSelectCellEditor',
@@ -267,7 +268,7 @@ export class SubatalogsComponent implements CanComponentDeactivate {
       },
       {
         field: 'vigente',
-        headerName: 'Activo',
+        headerName: this.translate.instant('modules.shopping.ui.columns.active'),
         editable: true,
         width: 100,
       },

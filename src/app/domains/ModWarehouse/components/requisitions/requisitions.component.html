@@ -5,59 +5,59 @@
   <!-- Mensaje cuando no hay configuración -->
   <div *ngIf="projectOrBranch === null" class="alert alert-info" role="alert">
     <i class="bi bi-info-circle-fill me-2"></i>
-    Primero debe configurar el almacén en <strong>Setup</strong> para indicar si trabajará por Proyectos o Sucursales.
+    {{ 'modules.shopping.ui.requisitions.setupRequired' | translate }} <strong>{{ 'modules.shopping.ui.setup.title' | translate }}</strong> {{ 'modules.shopping.ui.requisitions.setupSuffix' | translate }}
   </div>
 
   <!-- Mensaje cuando no hay proyecto/sucursal seleccionado -->
   <div *ngIf="projectOrBranch !== null && !idReference" class="alert alert-warning" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i>
-    <span *ngIf="projectOrBranch">Seleccione un <strong>Proyecto</strong> en el menú lateral para ver las requisiciones.</span>
-    <span *ngIf="!projectOrBranch">Seleccione una <strong>Sucursal</strong> en el menú lateral para ver las requisiciones.</span>
+    <span *ngIf="projectOrBranch">{{ 'modules.shopping.ui.requisitions.selectA' | translate }} <strong>{{ 'modules.shopping.ui.project' | translate }}</strong> {{ 'modules.shopping.ui.requisitions.selectSidebar' | translate }} {{ 'modules.shopping.ui.requisitions.title' | translate }}.</span>
+    <span *ngIf="!projectOrBranch">{{ 'modules.shopping.ui.requisitions.selectA' | translate }} <strong>{{ 'modules.shopping.ui.branch' | translate }}</strong> {{ 'modules.shopping.ui.requisitions.selectSidebar' | translate }} {{ 'modules.shopping.ui.requisitions.title' | translate }}.</span>
   </div>
 
   <!-- Botones y grid principal con master-detail -->
   <div class="row mb-3" *ngIf="idReference">
     <div class="col-12 mb-2">
       <div class="d-flex align-items-center flex-wrap gap-3">
-        <label class="fw-semibold mb-0">Almacén destino</label>
+        <label class="fw-semibold mb-0">{{ 'modules.shopping.ui.requisitions.destinationWarehouse' | translate }}</label>
         <div class="warehouse-picker">
           <span class="warehouse-picker-icon"><i class="bi bi-building-fill-gear"></i></span>
           <ng-select
             class="warehouse-select"
-            aria-label="Almacén destino"
+            [attr.aria-label]="'modules.shopping.ui.requisitions.destinationWarehouse' | translate"
             [items]="almacenes"
             bindLabel="name"
             bindValue="id"
             [(ngModel)]="selectedWarehouseId"
             (ngModelChange)="onWarehouseChange()"
-            placeholder="Selecciona el almacén"
+            [placeholder]="'modules.shopping.ui.requisitions.selectWarehouse' | translate"
             [clearable]="false"
             [searchable]="true">
           </ng-select>
         </div>
-        <small class="text-muted">Contrato y sucursal se toman del sidebar.</small>
+        <small class="text-muted">{{ 'modules.shopping.ui.requisitions.sidebarContext' | translate }}</small>
       </div>
     </div>
     <div class="col-auto">
       <div class="d-flex flex-column gap-1">
-        <button type="button" class="btn btn-primary" (click)="addMasterRow()" [disabled]="isGeneratingFolio" title="Agregar nueva requisición">
+        <button type="button" class="btn btn-primary" (click)="addMasterRow()" [disabled]="isGeneratingFolio" [title]="'modules.shopping.ui.requisitions.add' | translate">
           <i class="bi bi-plus-lg"></i>
         </button>
 
-        <button type="button" class="btn btn-success position-relative" (click)="saveMasterChanges()" title="Guardar cambios (F10)">
+        <button type="button" class="btn btn-success position-relative" (click)="saveMasterChanges()" [title]="'modules.shopping.ui.requisitions.saveF10' | translate">
           <i class="bi bi-floppy"></i>
           <span
             class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
             *ngIf="masterNotSavedChanges">
-            <span class="visually-hidden">Hay cambios sin guardar</span>
+            <span class="visually-hidden">{{ 'modules.shopping.ui.unsavedChanges' | translate }}</span>
           </span>
         </button>
 
-        <button type="button" class="btn btn-warning" (click)="revertMasterData()" title="Deshacer cambios">
+        <button type="button" class="btn btn-warning" (click)="revertMasterData()" [title]="'modules.shopping.ui.undoChanges' | translate">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
 
-        <button type="button" class="btn btn-danger" (click)="deleteMasterEntry()" title="Eliminar requisición">
+        <button type="button" class="btn btn-danger" (click)="deleteMasterEntry()" [title]="'modules.shopping.ui.requisitions.delete' | translate">
           <i class="bi bi-trash"></i>
         </button>
         
@@ -66,7 +66,7 @@
 
     <div class="col">
       <div class="required-fields-legend mb-1">
-        <span class="required-mark">*</span> Campos obligatorios
+        <span class="required-mark">*</span> {{ 'modules.shopping.ui.requiredFields' | translate }}
       </div>
       <ag-grid-angular
         style="width: 100%; height: 75vh;"
