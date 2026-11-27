@@ -318,9 +318,15 @@ export class InandoutStComponent implements OnInit {
 
   private getMovementTypeLabel(idType: any): string {
     if (idType == null || idType === '') return '';
-    const catalog = this.catalogs.find(item => Number(item.id) === Number(idType))
-      || this.movementTypeCatalogs.find(item => Number(item.id) === Number(idType));
+    const catalog = this.getMovementCatalogById(idType);
     return catalog?.description || `Tipo no disponible (#${idType})`;
+  }
+
+  private getMovementCatalogById(idType: any): any {
+    if (idType == null || idType === '') return null;
+    return this.catalogs.find(item => Number(item.id) === Number(idType))
+      || this.movementTypeCatalogs.find(item => Number(item.id) === Number(idType))
+      || null;
   }
 
   loadOts() {
@@ -601,14 +607,12 @@ export class InandoutStComponent implements OnInit {
   }
 
   private isTransferType(idType: any): boolean {
-    const catalog = this.catalogs.find(item => Number(item.id) === Number(idType));
-    return String(catalog?.valueAddition || '').trim().toUpperCase() === 'TRANSFER';
+    return String(this.getMovementCatalogById(idType)?.valueAddition || '').trim().toUpperCase() === 'TRANSFER';
   }
 
   private isInventorySetupType(idType: any): boolean {
-    const catalog = this.catalogs.find(item => Number(item.id) === Number(idType));
     return ['INITIAL_INVENTORY', 'INVENTORY_ADJUSTMENT']
-      .includes(String(catalog?.valueAddition || '').trim().toUpperCase());
+      .includes(String(this.getMovementCatalogById(idType)?.valueAddition || '').trim().toUpperCase());
   }
 
   onWarehouseChange(id?: number | string) {
@@ -1281,7 +1285,7 @@ export class InandoutStComponent implements OnInit {
         detailInnerGridHeight: this.detailInnerGridHeight,
         detailInnerReportHeight: this.detailInnerReportHeight,
         isTransferType: (idType: any) => this.isTransferType(idType),
-        getMovementTypeBehavior: (idType: any) => this.catalogs.find(catalog => Number(catalog.id) === Number(idType))?.valueAddition || '',
+        getMovementTypeBehavior: (idType: any) => this.getMovementCatalogById(idType)?.valueAddition || '',
         idRoot: this.idRoot,
         projectId: this.projectId,
         getSelectedProjectId: () => Number(this.projectId || 0),

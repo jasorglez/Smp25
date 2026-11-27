@@ -7756,3 +7756,32 @@ SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administ
 COMMIT TRANSACTION;
 -- END WAREHOUSE_TRANSFER_ITEMS_654
 GO
+
+-- BEGIN WAREHOUSE_TRANSFER_ITEMS_655
+-- 2026-11-27 | Almacenes TD / Entradas y Salidas | Repositorio: Smp25
+-- Origen: src/app/domains/ModWareHousesTD/components/inandout-st/inandout-st.component.ts
+-- Actualiza idempotentemente el anuncio anterior de transferencias; el código no está desplegado.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Almacenes TD / Entradas y Salidas' AND title=N'Agregar partidas a transferencias sin vale'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT INTO administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.655',N'Almacenes TD / Entradas y Salidas','CORRECTION',N'Agregar partidas a transferencias sin vale',
+ N'Las salidas de transferencia se reconocen por su tipo aunque el catálogo que define ese tipo pertenezca a Entradas. Ya permiten agregar partidas y dejan de mostrar el aviso de vale.',
+ N'Evita que una transferencia se trate como una salida normal y permite capturar sus materiales desde el almacén origen.',
+ N'Agrega partidas a tus transferencias de salida sin que el sistema solicite un vale.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+UPDATE administration.dbo.product_updates
+ SET version=N'5.00.655', description=N'Las salidas de transferencia se reconocen por su tipo aunque el catálogo que define ese tipo pertenezca a Entradas. Ya permiten agregar partidas y dejan de mostrar el aviso de vale.', userBenefit=N'Evita que una transferencia se trate como una salida normal y permite capturar sus materiales desde el almacén origen.', promoText=N'Agrega partidas a tus transferencias de salida sin que el sistema solicite un vale.', validationStatus='PENDING', releaseStatus='LOCAL'
+ WHERE module=N'Almacenes TD / Entradas y Salidas' AND title=N'Agregar partidas a transferencias sin vale'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Almacenes TD / Entradas y Salidas' AND title=N'Agregar partidas a transferencias sin vale'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+-- END WAREHOUSE_TRANSFER_ITEMS_655
+GO
