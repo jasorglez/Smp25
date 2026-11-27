@@ -7963,3 +7963,20 @@ SELECT id,version,releaseStatus,publicationStatus FROM administration.dbo.produc
  WHERE module=N'Publicidad' AND title=N'Imágenes propias por empresa' AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 -- END COMPANY_PUBLICITY_IMAGES_667
 GO
+
+-- BEGIN COMPANY_PUBLICITY_UPLOAD_FIX_668
+-- Fecha: 2026-11-27 | Módulo: Publicidad | Repositorio: Smp25
+-- Origen: src/app/services/company-publicity.service.ts
+-- Mantiene un solo anuncio para la entrega de Publicidad.
+UPDATE administration.dbo.product_updates
+SET version=N'5.00.668',
+    description=N'Publicidad muestra las imágenes de la empresa seleccionada y permite a su usuario root subirlas y borrarlas.',
+    validationStatus='PENDING', releaseStatus='LOCAL'
+WHERE module=N'Publicidad' AND title=N'Imágenes propias por empresa'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates
+WHERE module=N'Publicidad' AND title=N'Imágenes propias por empresa'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+-- END COMPANY_PUBLICITY_UPLOAD_FIX_668
+GO

@@ -30,7 +30,7 @@ export class CompanyPublicityService {
     const form = new FormData();
     form.append('image', image);
     return this.http.post(`${this.baseUrl}/${companyId}`, form,
-      { headers: this.tracking.getHeaders() });
+      { headers: this.tracking.getHeaders().delete('Content-Type') });
   }
 
   delete(companyId: number, id: number) {

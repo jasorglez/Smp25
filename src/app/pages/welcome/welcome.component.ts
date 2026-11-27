@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { catchError, firstValueFrom, of } from 'rxjs';
 import { CompanyPublicityImage, CompanyPublicityService } from 'app/services/company-publicity.service';
@@ -284,8 +285,13 @@ export class WelcomeComponent implements OnInit, OnDestroy {
         this.imageUrls.push(URL.createObjectURL(item.blob));
         this.alts.push(item.image.altText || item.image.fileName || 'Publicidad');
       }
-    } catch {
-      if (requestId === this.imageRequestId) this.imageError = 'El servicio de publicidad de la empresa aún no está disponible. Faltan la tabla SQL y la publicación del microservicio.';
+    } catch (error) {
+      const response = error as HttpErrorResponse;
+      if (requestId === this.imageRequestId) {
+        this.imageError = response.error?.message
+          || `No se pudieron cargar las imágenes de esta empresa${response.status ? ` (HTTP ${response.status})` : ''}.`;
+      }
+      console.error('Error al cargar publicidad:', error);
     } finally {
       if (requestId === this.imageRequestId) {
         this.loading = false;
@@ -308,7 +314,13 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     try {
       await firstValueFrom(this.publicity.upload(this.companyId, file));
       await this.loadCompanyImages();
-    } catch { this.imageError = 'No se pudo subir la imagen.'; }
+    } catch (error) {
+      const response = error as HttpErrorResponse;
+      this.imageError = response.error?.message
+        || (response.status === 403 ? 'No tienes permiso para administrar las imágenes de esta empresa.'
+          : `No se pudo subir la imagen${response.status ? ` (HTTP ${response.status})` : ''}.`);
+      console.error('Error al subir publicidad:', error);
+    }
     finally { this.uploadBusy = false; }
   }
 
