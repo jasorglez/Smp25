@@ -1284,6 +1284,8 @@
         "entryDetail": {
           "evidenceTitle": "Fotos de soporte",
           "addEvidence": "Agregar foto",
+          "evidenceCommentTitle": "Descripción de la foto",
+          "evidenceCommentPrompt": "Agrega una descripción para esta foto (opcional)",
           "noEvidenceYet": "Todavía no hay fotos de soporte.",
           "deleteEvidence": "Eliminar foto",
           "confirmDeleteEvidence": "¿Deseas eliminar esta foto de soporte?",
