@@ -260,8 +260,8 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
         },
       },
       { field: 'detail', headerName: 'Descripción', editable: true, width: 500 },
-      { field: 'quantity', headerName: 'Cantidad', editable: true, width: 100, type: 'numericColumn', valueSetter: p => { p.data.quantity = Number(p.newValue) || 0; this.updatePercentageFromQuantity(p.data); return true; } },
       { field: 'percentage', headerName: '% Avance', editable: true, width: 105, type: 'numericColumn', valueSetter: p => { p.data.percentage = Math.min(100, Math.max(0, Number(p.newValue) || 0)); this.updateQuantityFromPercentage(p.data); return true; }, valueFormatter: p => p.value == null ? '' : `${p.value}%` },
+      { field: 'quantity', headerName: 'Cantidad', editable: true, width: 100, type: 'numericColumn', valueSetter: p => { p.data.quantity = Number(p.newValue) || 0; this.updatePercentageFromQuantity(p.data); return true; } },
     ];
   }
 

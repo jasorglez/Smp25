@@ -419,8 +419,8 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
         hCell('INICIO',  'center'),
         hCell('TÉRMINO', 'center'),
         hCell('DESCRIPCIÓN DE LAS ACTIVIDADES'),
-        hCell('CANT.', 'right'),
         hCell('% AVANCE', 'right'),
+        hCell('CANT.', 'right'),
       ]];
       // Avance = cantidad registrada en la entrada / cantidad planeada del concepto (workprogram), en %
       const pctCell = (entryQty: any, plannedQty: any, alt: boolean) => {
@@ -463,8 +463,8 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
               dCell(`${edtC}.${SEQ[ei] ?? String(ei + 1)}`, alt),
               dCell(fmtT(e.start), alt, 'center'), dCell(fmtT(e.end), alt, 'center'),
               dCell(String(e.description ?? e.metadata ?? ''), alt),
-              dCell(e.quantity != null ? String(e.quantity) : '', alt, 'right'),
               pctCell(e.quantity, plannedQty, alt),
+              dCell(e.quantity != null ? String(e.quantity) : '', alt, 'right'),
             ]);
           }
         }
@@ -529,8 +529,8 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
                 dCell(fmtT(e.start), alt, 'center'),
                 dCell(fmtT(e.end),   alt, 'center'),
                 dCell(String(e.description ?? e.metadata ?? ''), alt),
-                dCell(e.quantity != null ? String(e.quantity) : '', alt, 'right'),
                 pctCell(e.quantity, plannedQty, alt),
+                dCell(e.quantity != null ? String(e.quantity) : '', alt, 'right'),
               ]);
             }
           }
@@ -541,7 +541,7 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
         mkSectionTitle('Bitácora de Conceptos'),
         cRows.length > 1
           ? {
-              table: { widths: [50, 32, 38, '*', 32, 42], headerRows: 1, body: cRows },
+              table: { widths: [50, 32, 38, '*', 42, 32], headerRows: 1, body: cRows },
               layout: TBL_LAYOUT,
               margin: [0, 0, 0, 10],
             }
