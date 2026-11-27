@@ -25,6 +25,8 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { RootService } from 'app/services/root.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { AuthService } from 'app/services/auth.service';
+import { AttachHandlerService } from 'app/services/attach-handler.service';
+import { ImageCellRendererComponent } from 'app/domains/Almacenes/components/materiales-maestro/renderers/image-cell-renderer.component';
 
 @Component({
   selector: 'app-branches',
@@ -45,6 +47,11 @@ export class BranchesComponent implements CanComponentDeactivate {
   private rootService = inject(RootService);
   private trackingService = inject(TrackingService);
   authService = inject(AuthService);
+  private attachHandler = inject(AttachHandlerService);
+
+  // Modal de imagen
+  showImageModal = false;
+  selectedImageUrl = '';
 
   //Variables master
   masterRowData: any[] = [];
@@ -230,6 +237,7 @@ export class BranchesComponent implements CanComponentDeactivate {
       name: data.name,
       description: data.description,
       address: data.address,
+      image: data.image,
       orden: data.orden,
       active: data.active
     });
@@ -263,6 +271,15 @@ export class BranchesComponent implements CanComponentDeactivate {
 
     // Agregar el resto de las columnas
     columns.push(
+      {
+        field: 'image',
+        headerName: 'Logo',
+        editable: false,
+        filter: false,
+        sortable: false,
+        width: 90,
+        cellRenderer: ImageCellRendererComponent,
+      },
       {
         field: 'name',
         headerName: 'Nombre *',
@@ -465,6 +482,7 @@ export class BranchesComponent implements CanComponentDeactivate {
       name: '',
       description: '',
       address: '*',
+      image: '',
       orden: 0,
       active: true,
       __isNew: true,
@@ -501,6 +519,7 @@ export class BranchesComponent implements CanComponentDeactivate {
         name: formData.name.toUpperCase(),
         description: formData.description.toUpperCase(),
         address: formData.address.toUpperCase(),
+        image: formData.image || '',
         orden: formData.orden || 0,
         vigente: formData.vigente || 1,
         __isNew: !formData.id,
@@ -797,8 +816,32 @@ export class BranchesComponent implements CanComponentDeactivate {
       name: new FormControl('', [Validators.required]),
       description: new FormControl('', [Validators.required]),
       address: new FormControl('*', [Validators.required]),
+      image: new FormControl(''),
       orden: new FormControl(0),
       vigente: new FormControl(true)
     });
+  }
+
+  // ==================== LOGO / IMAGEN ====================
+
+  openImageModal(imageUrl: string) {
+    this.selectedImageUrl = imageUrl;
+    this.showImageModal = true;
+  }
+
+  closeImageModal() {
+    this.showImageModal = false;
+    this.selectedImageUrl = '';
+  }
+
+  async uploadFormImage() {
+    try {
+      const url = await this.attachHandler.uploadImg();
+      if (url) {
+        this.addBranch.patchValue({ image: url });
+      }
+    } catch (error) {
+      console.error('Error uploading branch logo:', error);
+    }
   }
 }

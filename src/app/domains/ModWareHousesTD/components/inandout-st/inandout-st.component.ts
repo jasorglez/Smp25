@@ -31,6 +31,13 @@ import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-
 import { navigateEditableCellOnEnter } from 'app/helpers/ag-grid-enter-navigation';
 import { ProjectsComponent } from 'app/domains/ModProjects/components/projects/projects.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { InandoutEvidenceService } from 'app/services/inandout-evidence.service';
+import pdfMake from 'pdfmake/build/pdfmake';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+import { Base64EncodeService } from 'app/services/base64encode.service';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+const evidencePdfFontsBaseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
 @Component({
   selector: 'app-inandout-st',
@@ -63,6 +70,9 @@ export class InandoutStComponent implements OnInit {
   private branchesService = inject(BranchsService);
   private warehousesService = inject(WarehousesService);
   private translate = inject(TranslateService);
+  private base64EncodeService = inject(Base64EncodeService);
+  private pdfPreview = inject(PdfPreviewService);
+  private inandoutEvidenceService = inject(InandoutEvidenceService);
 
   private isGeneratingReport: boolean = false;
   private warehouseLoadRequest = 0;
@@ -711,6 +721,7 @@ export class InandoutStComponent implements OnInit {
             idWarehouseOrigin: entry.idWarehouse,
           } : {}),
           countrow: entry.countRow || 0,
+          evidenceCount: 0,
           detailType: null,
           detailData: []
         })).sort((entryA, entryB) => {
@@ -721,6 +732,7 @@ export class InandoutStComponent implements OnInit {
           if (projectCompare !== 0) return projectCompare;
           return (Number(entryB.id) || 0) - (Number(entryA.id) || 0);
         });
+        this.loadEvidenceCounts();
       },
       error: (error) => {
         if (requestWarehouseId !== Number(this.selectedWarehouse?.idAlmacen) ||
@@ -769,6 +781,7 @@ export class InandoutStComponent implements OnInit {
       // El reporte PDF siempre con altura generosa fija (necesita espacio para
       // renderizar el documento); solo el grid de items se adapta al viewport.
       if (params.node.parent?.data?.detailType === 'report') return 1080;
+      if (params.node.parent?.data?.detailType === 'evidence') return 480;
       return this.detailRowHeightItems;
     },
     isRowMaster: (dataItem: any) => true,
@@ -855,12 +868,20 @@ export class InandoutStComponent implements OnInit {
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
       {
-        field: 'projectName',
-        headerName: this.translate.instant('modules.warehouses.ui.movements.project'),
-        width: 180,
+        field: 'evidenceCount',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.support'),
+        width: 90,
+        cellRenderer: ButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleEvidence(node),
+          icon: 'bi-camera',
+          title: this.translate.instant('modules.warehouses.ui.movements.evidenceDetail')
+        },
+        valueGetter: params => params.data?.evidenceCount || 0,
         editable: false,
-        valueFormatter: (params: any) => params.value || this.getProjectName(params.data?.idProject),
-        cellStyle: (params: any) => ({ backgroundColor: this.getProjectBandColor(params.data?.idProject), fontWeight: '600' }),
+        filter: false,
+        sortable: false,
+        cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer', textDecoration: 'underline' }
       },
       {
         field: 'contractName',
@@ -888,7 +909,8 @@ export class InandoutStComponent implements OnInit {
         valueFormatter: (params: any) => {
           const p = this.projectList.find(x => Number(x.id) === Number(params.value));
           return p ? (p.description || p.name || `#${params.value}`) : (params.value || '');
-        }
+        },
+        cellStyle: (params: any) => ({ backgroundColor: this.getProjectBandColor(params.data?.idProject), fontWeight: '600' }),
       },
       {
         field: 'idWarehouse',
@@ -1191,6 +1213,41 @@ export class InandoutStComponent implements OnInit {
     this.onCellClicked(event);
   }
 
+  toggleEvidence(node: any) {
+    const api = this.gridApi;
+    const isCurrentlyExpanded = node.expanded && node.data.detailType === 'evidence';
+
+    if (isCurrentlyExpanded) {
+      node.setExpanded(false);
+      api.forEachNode((otherNode: any) => otherNode.setRowHeight(undefined));
+      api.onRowHeightChanged();
+      return;
+    }
+
+    api.forEachNode((otherNode: any) => {
+      if (otherNode.expanded && otherNode.id !== node.id) otherNode.setExpanded(false);
+    });
+    api.forEachNode((otherNode: any) => {
+      if (otherNode.id !== node.id) otherNode.setRowHeight(0);
+    });
+    if (node.expanded && node.data.detailType !== 'evidence') node.setExpanded(false);
+    node.data.detailType = 'evidence';
+    api.onRowHeightChanged();
+    setTimeout(() => node.setExpanded(true), 0);
+  }
+
+  collapseEvidenceDetail(entryId: number): void {
+    if (!this.gridApi) return;
+    this.gridApi.forEachNode((node: any) => {
+      if (Number(node.data?.id) === Number(entryId)) {
+        node.data.detailType = null;
+        node.setExpanded(false);
+      }
+      node.setRowHeight(undefined);
+    });
+    this.gridApi.onRowHeightChanged();
+  }
+
   async toggleReportDetail(node: any) {
     const api = this.gridApi;
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'report';
@@ -1325,6 +1382,20 @@ export class InandoutStComponent implements OnInit {
           },
           importFromEntry: (sourceEntryId: number, outingId: any, callback: (data: any[]) => void) => {
             this.importItemsFromEntry(sourceEntryId, outingId, callback);
+          }
+        },
+        EVIDENCE: {
+          load: (entryId: number, callback: (data: any[]) => void) => {
+            this.loadEntryEvidence(entryId, callback);
+          },
+          add: (entryId: number, imageUrl: string, callback: (saved: any) => void) => {
+            this.addEntryEvidence(entryId, imageUrl, callback);
+          },
+          delete: (id: number, callback: () => void) => {
+            this.deleteEntryEvidence(id, callback);
+          },
+          updateCount: (entryId: number, count: number) => {
+            this.updateEvidenceCount(entryId, count);
           }
         },
         materialsService: this.materialsService
@@ -1497,6 +1568,7 @@ export class InandoutStComponent implements OnInit {
       active: true,
       directEntry: false,
       countrow: 0,
+      evidenceCount: 0,
       detailType: null,
       detailData: [],
       __isNew: true,
@@ -1670,6 +1742,136 @@ export class InandoutStComponent implements OnInit {
       ocList: row.ocList || '',
       countrow: row.countrow || 0
     };
+  }
+
+  async generateEvidenceReport(): Promise<void> {
+    const entriesWithEvidence = this.rowData.filter((row: any) => Number(row.evidenceCount) > 0);
+    if (!entriesWithEvidence.length) {
+      alerts.basicAlert(
+        this.translate.instant('modules.warehouses.ui.movements.evidenceReport'),
+        this.translate.instant('modules.warehouses.ui.movements.noEvidence'),
+        'warning'
+      );
+      return;
+    }
+
+    alerts.showLoadingWithProgress(
+      this.translate.instant('modules.warehouses.ui.movements.generatingReport'),
+      this.translate.instant('modules.warehouses.ui.movements.processingPhotos'),
+      0
+    );
+
+    try {
+      const photosPerPage = 4;
+      const photos: { base64: string; caption: string }[] = [];
+      const step = 80 / entriesWithEvidence.length;
+      let progress = 10;
+
+      for (const entry of entriesWithEvidence) {
+        try {
+          const evidenceRows: any[] = await lastValueFrom(this.inandoutEvidenceService.getByInandout(entry.id));
+          const dateText = entry.date ? new Date(entry.date).toLocaleDateString() : '';
+          const typeLabel = this.translate.instant(entry.type === 'IN' ? 'modules.warehouses.ui.movements.receipt' : 'modules.warehouses.ui.movements.issue');
+          const caption = `${entry.folio || ''} · ${typeLabel} · ${dateText}${entry.deliverName ? ' · ' + entry.deliverName : ''}`;
+          for (const evidence of (Array.isArray(evidenceRows) ? evidenceRows : [])) {
+            try {
+              const base64 = await this.base64EncodeService.convertImageToBase64(evidence.image);
+              photos.push({ base64, caption });
+            } catch (error) {
+              console.error('Error convirtiendo imagen de evidencia:', evidence.id, error);
+            }
+          }
+        } catch (error) {
+          console.error('Error cargando evidencia del movimiento:', entry.id, error);
+        }
+        progress += step;
+        alerts.updateLoadingProgress(
+          this.translate.instant('modules.warehouses.ui.movements.generatingReport'),
+          this.translate.instant('modules.warehouses.ui.movements.processingPhotos'),
+          progress
+        );
+      }
+
+      if (!photos.length) {
+        alerts.closeLoading();
+        alerts.basicAlert(
+          this.translate.instant('modules.warehouses.ui.movements.evidenceReport'),
+          this.translate.instant('modules.warehouses.ui.movements.noEvidence'),
+          'warning'
+        );
+        return;
+      }
+
+      const content: any[] = [];
+      for (let i = 0; i < photos.length; i += photosPerPage) {
+        const pageGroup = photos.slice(i, i + photosPerPage);
+        const rows: any[] = [];
+        for (let r = 0; r < pageGroup.length; r += 2) {
+          const pair = pageGroup.slice(r, r + 2);
+          rows.push({
+            columns: pair.map(photo => ({
+              width: '*',
+              stack: [
+                { image: photo.base64, width: 220, height: 220, fit: [220, 220], alignment: 'center' },
+                { text: photo.caption, fontSize: 8, alignment: 'center', margin: [0, 4, 0, 10] }
+              ]
+            })),
+            columnGap: 20
+          });
+        }
+        content.push({
+          stack: rows,
+          pageBreak: i > 0 ? 'before' : undefined
+        });
+      }
+
+      const warehouseName = this.selectedWarehouse?.nombreAlmacen || this.selectedWarehouse?.name || '';
+      const typeTitle = this.translate.instant(this.movementType === 'IN' ? 'modules.warehouses.ui.movements.receipt' : 'modules.warehouses.ui.movements.issue');
+
+      pdfMake.fonts = {
+        Montserrat: {
+          normal: `${evidencePdfFontsBaseUrl}/assets/fonts/Montserrat-Regular.ttf`,
+          bold: `${evidencePdfFontsBaseUrl}/assets/fonts/Montserrat-Bold.ttf`,
+          italics: `${evidencePdfFontsBaseUrl}/assets/fonts/Montserrat-Italic.ttf`,
+          bolditalics: `${evidencePdfFontsBaseUrl}/assets/fonts/Montserrat-BoldItalic.ttf`,
+        }
+      };
+
+      const docDefinition: any = {
+        pageSize: 'LETTER',
+        pageOrientation: 'portrait',
+        pageMargins: [40, 60, 40, 60],
+        defaultStyle: { fontSize: 8, font: 'Montserrat' },
+        content: [
+          {
+            text: `${this.translate.instant('modules.warehouses.ui.movements.evidenceReportTitle')} - ${typeTitle}${warehouseName ? ' - ' + warehouseName : ''}`,
+            fontSize: 14,
+            bold: true,
+            alignment: 'center',
+            margin: [0, 0, 0, 20]
+          },
+          ...content
+        ],
+        footer: (currentPage: number, pageCount: number) => ({
+          text: `${currentPage} / ${pageCount}`,
+          fontSize: 8,
+          alignment: 'center'
+        })
+      };
+
+      alerts.closeLoading();
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó reporte fotográfico de evidencias', 'ModWareHousesTD', this.trackingService.getEmail());
+      const fileName = `Reporte_Evidencias_${this.movementType}_${new Date().getTime()}.pdf`;
+      void this.pdfPreview.show(pdfMake.createPdf(docDefinition), this.translate.instant('modules.warehouses.ui.movements.evidenceReportTitle'), fileName);
+    } catch (error) {
+      alerts.closeLoading();
+      console.error('Error generando reporte de evidencias:', error);
+      alerts.basicAlert(
+        this.translate.instant('modules.warehouses.ui.movements.messages.error'),
+        this.translate.instant('modules.warehouses.ui.movements.evidenceReport'),
+        'error'
+      );
+    }
   }
 
   refreshData(): void {
@@ -1973,6 +2175,64 @@ export class InandoutStComponent implements OnInit {
         }
       });
     }
+  }
+
+  // ==================== EVIDENCIA FOTOGRÁFICA (detalle) ====================
+
+  loadEntryEvidence(entryId: number, callback: (data: any[]) => void) {
+    this.inandoutEvidenceService.getByInandout(entryId).subscribe({
+      next: (data: any) => callback(Array.isArray(data) ? data : []),
+      error: (error) => {
+        console.error('Error loading evidence:', error);
+        callback([]);
+      }
+    });
+  }
+
+  addEntryEvidence(entryId: number, imageUrl: string, callback: (saved: any) => void) {
+    this.inandoutEvidenceService.add({ idInandout: entryId, image: imageUrl }).subscribe({
+      next: (saved: any) => callback(saved),
+      error: (error) => {
+        console.error('Error saving evidence:', error);
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.error'), this.translate.instant('modules.warehouses.ui.movements.messages.evidenceSaveFailed'), 'error');
+        callback(null);
+      }
+    });
+  }
+
+  deleteEntryEvidence(id: number, callback: () => void) {
+    this.inandoutEvidenceService.delete(id).subscribe({
+      next: () => callback(),
+      error: (error) => {
+        console.error('Error deleting evidence:', error);
+        alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.error'), this.translate.instant('modules.warehouses.ui.movements.messages.evidenceDeleteFailed'), 'error');
+      }
+    });
+  }
+
+  updateEvidenceCount(entryId: number, count: number) {
+    if (this.gridApi) {
+      this.gridApi.forEachNode((node) => {
+        if (node.data && node.data.id === entryId) {
+          node.data.evidenceCount = count;
+          this.gridApi.refreshCells({ rowNodes: [node], columns: ['evidenceCount'], force: true });
+        }
+      });
+    }
+  }
+
+  private loadEvidenceCounts(): void {
+    const ids = this.rowData.map((row: any) => Number(row.id)).filter((id: number) => Number.isFinite(id) && id > 0);
+    if (!ids.length) return;
+    this.inandoutEvidenceService.getCounts(ids).subscribe({
+      next: (counts: Record<string, number>) => {
+        this.rowData.forEach((row: any) => {
+          row.evidenceCount = counts?.[row.id] || 0;
+        });
+        if (this.gridApi) this.gridApi.refreshCells({ columns: ['evidenceCount'], force: true });
+      },
+      error: (error) => console.error('Error loading evidence counts:', error)
+    });
   }
 
   /**

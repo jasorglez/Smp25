@@ -1021,6 +1021,7 @@
     },
     "warehouses": {
       "menu": {
+        "warehouses": "Warehouses",
         "setup-st": "Warehouse Setup",
         "materials-st": "Materials",
         "material-traceability": "Material Traceability",
@@ -1081,6 +1082,13 @@
       "ui": {
         "movements": {
           "items": "Items",
+          "support": "Support photos",
+          "evidenceDetail": "View/add support photos",
+          "evidenceReport": "Photo evidence report",
+          "noEvidence": "No support photos to include in the report.",
+          "generatingReport": "Generating report...",
+          "processingPhotos": "Processing photos...",
+          "evidenceReportTitle": "Photo evidence report",
           "pdf": "PDF",
           "generatePdf": "Generate PDF report",
           "project": "Project",
@@ -1116,6 +1124,7 @@
           "issue": "Issue",
           "messages": {
             "loadWarehousesFailed": "Could not load authorized warehouses.", "movementTypeCreated": "Movement type created", "createFailed": "Could not create the movement type.",
+            "evidenceSaveFailed": "Could not save the support photo.", "evidenceDeleteFailed": "Could not delete the support photo.",
             "loadFailed": "Could not load movements.", "authorizationAssigned": "Authorization assigned", "authorizationRemoved": "Authorization removed",
             "authorizerAssigned": "The authorizer was assigned.", "authorizerSelected": "Select an authorizing user.", "processing": "Processing…", "reportFailed": "Could not generate the report.",
             "selectMovementToDelete": "Select a movement to delete.", "selectionRequired": "Selection required", "removeAuthorizationToDelete": "Remove the authorization before deleting the movement.",
@@ -1136,6 +1145,11 @@
           }
         },
         "entryDetail": {
+          "evidenceTitle": "Support photos",
+          "addEvidence": "Add photo",
+          "noEvidenceYet": "No support photos yet.",
+          "deleteEvidence": "Delete photo",
+          "confirmDeleteEvidence": "Do you want to delete this support photo?",
           "poLoadedMessage": "PO line items load when you open the details. Enter the received quantity and save.",
           "sourceBalanceMessage": "Do not save linked line items until you refresh and verify the remaining quantity.",
           "initialInventoryMessage": "Add each material by code or description and enter its opening stock.",
@@ -1416,6 +1430,8 @@
           "place": "Place",
           "phone": "Phone",
           "manager": "Manager",
+          "logo": "Logo",
+          "close": "Close",
           "primary": "Primary",
           "add": "Add",
           "save": "Save",

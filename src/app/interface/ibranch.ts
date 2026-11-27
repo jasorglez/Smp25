@@ -5,6 +5,7 @@ export interface Ibranch {
   name?: string;
   description?: string;
   address?: string;
+  image?: string;
   orden?: number;
   active?: boolean;
 }

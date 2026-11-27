@@ -4,6 +4,7 @@ export interface Iwarehouses {
   idProject? : string;
   name?      : string;
   address?   : string;
+  image?     : string;
   city?      : string;
   cp?        : string;
   place?     : string;

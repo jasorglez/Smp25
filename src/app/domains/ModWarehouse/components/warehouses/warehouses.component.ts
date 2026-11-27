@@ -23,6 +23,8 @@ import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { AttachHandlerService } from 'app/services/attach-handler.service';
+import { ImageCellRendererComponent } from 'app/domains/Almacenes/components/materiales-maestro/renderers/image-cell-renderer.component';
 
 interface Branch {
   id: number;
@@ -91,6 +93,21 @@ export class WarehousesComponent implements CanComponentDeactivate {
   private branchesService = inject(BranchsService);
   private modalServiceTable = inject(ModalService);
   private signalsService = inject(SignalsService);
+  private attachHandler = inject(AttachHandlerService);
+
+  // Modal de logo
+  showImageModal = false;
+  selectedImageUrl = '';
+
+  openImageModal(imageUrl: string) {
+    this.selectedImageUrl = imageUrl;
+    this.showImageModal = true;
+  }
+
+  closeImageModal() {
+    this.showImageModal = false;
+    this.selectedImageUrl = '';
+  }
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
@@ -134,6 +151,15 @@ export class WarehousesComponent implements CanComponentDeactivate {
         filter: true,
         width: 180,
         hide: !this.isAllBranches,
+      },
+      {
+        field: 'image',
+        headerName: this.translate.instant('modules.warehouses.ui.warehouseSetup.logo'),
+        editable: false,
+        filter: false,
+        sortable: false,
+        width: 90,
+        cellRenderer: ImageCellRendererComponent,
       },
       {
         field: 'name',
@@ -342,6 +368,7 @@ export class WarehousesComponent implements CanComponentDeactivate {
       phone: '',
       active: true,
       leader: '',
+      image: '',
       principal: false,
       __isNew: true,
     };
