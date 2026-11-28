@@ -914,19 +914,14 @@ error: (error) => {
 
     // Limpiar presupuesto vigente
     this.presupuestoVigenteNombre = '';
-    
-    // Limpiar los selects en el DOM
-    setTimeout(() => {
-      const contractSelect = document.getElementById('contracts') as HTMLSelectElement;
-      if (contractSelect) {
-        contractSelect.value = '';
-      }
-      
-      const projectSelect = document.getElementById('project') as HTMLSelectElement;
-      if (projectSelect) {
-        projectSelect.value = '';
-      }
-    }, 50);
+
+    // NO borrar los selects con setTimeout: los <select> de contracts/project
+    // ya estan ligados con [value]="selectedContractId"/[value]="selectedProjectId".
+    // Dejar en '' el estado + markForCheck() los limpia via Angular. El viejo
+    // setTimeout(50) de limpieza imperativa competia con la autoseleccion del
+    // primer contrato/proyecto y la borraba en el DOM, dejando los combos en
+    // blanco e impidiendo elegir contratos o proyectos al cambiar de sucursal.
+    this.cdr.markForCheck();
   }
 
   private loadVigenteConvention(idContract: number) {
