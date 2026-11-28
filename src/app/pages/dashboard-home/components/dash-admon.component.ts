@@ -94,9 +94,14 @@ import { SignalrService } from 'app/services/signalr.service';
         <!-- Col 3: Pie Clientes -->
         <div class="col-12 col-xl-3">
           <div class="chart-card h-100">
-            <div class="chart-header">
-              <i class="bi bi-pie-chart-fill me-2 text-primary"></i>
-              <span>Distribución Clientes (MXN)</span>
+            <div class="chart-header d-flex justify-content-between align-items-center gap-2">
+              <span><i class="bi bi-pie-chart-fill me-2 text-primary"></i>Distribución Clientes</span>
+              <div class="currency-switch" role="group" aria-label="Moneda de Distribución Clientes">
+                <button type="button" [class.active]="ingPieCurrency === 'MXN'"
+                        (click)="setIngPieCurrency('MXN')">MN</button>
+                <button type="button" [class.active]="ingPieCurrency === 'USD'"
+                        (click)="setIngPieCurrency('USD')">USD</button>
+              </div>
             </div>
             <div class="chart-body">
               <apx-chart *ngIf="ingPieSeries?.length"
@@ -223,9 +228,14 @@ import { SignalrService } from 'app/services/signalr.service';
         <!-- Col 3: Pie Proveedores/Empleados -->
         <div class="col-12 col-xl-3">
           <div class="chart-card h-100">
-            <div class="chart-header">
-              <i class="bi bi-pie-chart-fill me-2 text-danger"></i>
-              <span>Distribución Egresos (MXN)</span>
+            <div class="chart-header d-flex justify-content-between align-items-center gap-2">
+              <span><i class="bi bi-pie-chart-fill me-2 text-danger"></i>Distribución Egresos</span>
+              <div class="currency-switch" role="group" aria-label="Moneda de Distribución Egresos">
+                <button type="button" [class.active]="egrPieCurrency === 'MXN'"
+                        (click)="setEgrPieCurrency('MXN')">MN</button>
+                <button type="button" [class.active]="egrPieCurrency === 'USD'"
+                        (click)="setEgrPieCurrency('USD')">USD</button>
+              </div>
             </div>
             <div class="chart-body">
               <apx-chart *ngIf="egrPieSeries?.length"
@@ -569,22 +579,24 @@ export class DashAdmonComponent implements OnInit {
   // ── Pie Ingresos ──
   ingPieSeries:      number[] = [];
   ingPieLabels:      string[] = [];
+  ingPieCurrency:    'MXN' | 'USD' = 'MXN';
   ingPieColors:      string[] = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#f97316','#14b8a6'];
   ingPieChart:       any = { type: 'pie', height: 240, dropShadow: { enabled: true, top: 4, left: 4, blur: 6, opacity: 0.25 }, toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif' };
   ingPiePlotOptions: any = { pie: { customScale: 0.9, expandOnClick: true, dataLabels: { offset: -5, minAngleToShowLabel: 8 } } };
   ingPieDataLabels:  any = { enabled: true, formatter: (val: number) => val.toFixed(1) + '%', style: { fontSize: '10px', fontWeight: '700' }, dropShadow: { enabled: false } };
   ingPieLegend:      any = { show: true, position: 'bottom', fontSize: '10px', itemMargin: { horizontal: 4, vertical: 2 } };
-  ingPieTooltip:     any = { y: { formatter: (v: number) => '$' + v.toLocaleString('es-MX', { minimumFractionDigits: 0 }) } };
+  ingPieTooltip:     any = { y: { formatter: (v: number) => (this.ingPieCurrency === 'USD' ? 'US$' : '$') + v.toLocaleString('es-MX', { minimumFractionDigits: 0 }) } };
 
   // ── Pie Egresos ──
   egrPieSeries:      number[] = [];
   egrPieLabels:      string[] = [];
+  egrPieCurrency:    'MXN' | 'USD' = 'MXN';
   egrPieColors:      string[] = ['#e74c3c','#e67e22','#9b59b6','#1abc9c','#3498db','#e91e63','#ff5722','#607d8b'];
   egrPieChart:       any = { type: 'pie', height: 240, dropShadow: { enabled: true, top: 4, left: 4, blur: 6, opacity: 0.25 }, toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif' };
   egrPiePlotOptions: any = { pie: { customScale: 0.9, expandOnClick: true, dataLabels: { offset: -5, minAngleToShowLabel: 8 } } };
   egrPieDataLabels:  any = { enabled: true, formatter: (val: number) => val.toFixed(1) + '%', style: { fontSize: '10px', fontWeight: '700' }, dropShadow: { enabled: false } };
   egrPieLegend:      any = { show: true, position: 'bottom', fontSize: '10px', itemMargin: { horizontal: 4, vertical: 2 } };
-  egrPieTooltip:     any = { y: { formatter: (v: number) => '$' + v.toLocaleString('es-MX', { minimumFractionDigits: 0 }) } };
+  egrPieTooltip:     any = { y: { formatter: (v: number) => (this.egrPieCurrency === 'USD' ? 'US$' : '$') + v.toLocaleString('es-MX', { minimumFractionDigits: 0 }) } };
 
   // ── Ingresos ──
   ingresosSeries:      any[]   = [];
@@ -778,6 +790,20 @@ export class DashAdmonComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
+  setIngPieCurrency(currency: 'MXN' | 'USD'): void {
+    if (this.ingPieCurrency === currency) return;
+    this.ingPieCurrency = currency;
+    this.buildClientList(this.allIngresosData);
+    this.cdr.markForCheck();
+  }
+
+  setEgrPieCurrency(currency: 'MXN' | 'USD'): void {
+    if (this.egrPieCurrency === currency) return;
+    this.egrPieCurrency = currency;
+    this.buildTopEntityList(this.allEgresosData);
+    this.cdr.markForCheck();
+  }
+
   onProvDateChange(): void {
     if (this.provStartDate && this.provEndDate)
       this.buildTopEntityList(this.allEgresosData);
@@ -848,11 +874,11 @@ export class DashAdmonComponent implements OnInit {
       .sort((a, b) => b.total - a.total);
     this.clientListTotal = this.clientList.reduce((s, c) => s + c.total, 0);
 
-    // Las gráficas siempre usan MXN, independientemente del selector de la lista.
+    // La gráfica de pastel tiene su propio selector de moneda, independiente de la lista.
     const pieTotals = new Map<string, number>();
     filtered.forEach(income => {
       const name = (income.company || 'Sin cliente').trim().replace(/\s+/g, ' ').toUpperCase();
-      pieTotals.set(name, (pieTotals.get(name) || 0) + this.getIncomeAmount(income, 'MXN'));
+      pieTotals.set(name, (pieTotals.get(name) || 0) + this.getIncomeAmount(income, this.ingPieCurrency));
     });
     const pieClients = [...pieTotals].map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
     const topN = pieClients.slice(0, 8);
@@ -902,11 +928,11 @@ export class DashAdmonComponent implements OnInit {
       .sort((a, b) => b.total - a.total);
     this.topEntityTotal = this.topEntityList.reduce((s, e) => s + e.total, 0);
 
-    // La gráfica de pastel siempre usa MXN, independientemente del selector de la lista.
+    // La gráfica de pastel tiene su propio selector de moneda, independiente de la lista.
     const pieTotals = new Map<string, number>();
     filtered.forEach(e => {
       const name = e.entityName || 'Sin nombre';
-      pieTotals.set(name, (pieTotals.get(name) || 0) + this.getExpenseAmount(e, 'MXN'));
+      pieTotals.set(name, (pieTotals.get(name) || 0) + this.getExpenseAmount(e, this.egrPieCurrency));
     });
     const pieEntities = [...pieTotals].map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
     const topNe = pieEntities.slice(0, 8);
