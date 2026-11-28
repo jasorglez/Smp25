@@ -8264,3 +8264,18 @@ WHERE module=N'Almacenes TD / Entradas' AND title=N'Cantidad de materiales traí
 COMMIT TRANSACTION;
 -- END WAREHOUSE_ENTRY_OC_IMPORT_MESSAGE_688
 GO
+
+-- BEGIN WAREHOUSE_ENTRY_OC_IMPORT_MESSAGE_DEPLOY_688
+-- Fecha: 2026-11-27 | Módulo: Almacenes TD / Entradas | Repositorio: Smp25
+-- Origen: despliegue GitHub Actions 46106124103, commit f7134c296, resultado success.
+-- Ejecutar únicamente este bloque después de verificar el despliegue.
+UPDATE administration.dbo.product_updates
+SET releaseStatus='PRODUCTION'
+WHERE module=N'Almacenes TD / Entradas' AND title=N'Cantidad de materiales traídos de la OC'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1 AND version=N'5.00.688';
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates
+WHERE module=N'Almacenes TD / Entradas' AND title=N'Cantidad de materiales traídos de la OC'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+-- END WAREHOUSE_ENTRY_OC_IMPORT_MESSAGE_DEPLOY_688
+GO
