@@ -450,30 +450,37 @@ export class InandoutStComponent implements OnInit {
       this.refreshColumns();
       return;
     }
-    // El proyecto seleccionado determina la OC disponible; la sucursal solo
-    // aplica cuando el usuario trabaja sin un proyecto seleccionado.
-    const typeReference = this.projectId ? 'project' : (this.idBranch ? 'branch' : null);
-    const idReference = this.projectId || this.idBranch;
-    if (!typeReference || !idReference) {
+    const projectId = Number(this.projectId || 0);
+    const branchId = Number(this.idBranch || 0);
+    if (!projectId && !branchId) {
       this.ocList = [];
       this.ocRemainingItemsById.clear();
       this.refreshColumns();
       return;
     }
-    const requestId = Number(idReference);
     const requestedWarehouseId = Number(this.selectedWarehouse?.idAlmacen || 0);
 
-    this.ocService.getOcAndReqs(typeReference, requestId, 'OC').pipe(catchError(() => {
+    // Una OC puede haberse creado con el toggle de Órdenes de compra en modo
+    // "proyecto" o en modo "sucursal" (independiente de si aquí, en Entradas,
+    // hay un proyecto seleccionado); se consultan ambos alcances y se combinan
+    // para no perder OCs autorizadas creadas bajo el otro modo.
+    const ocError = () => {
       this.sourceBalanceWarning = 'No se pudieron cargar las órdenes de compra; no se puede comprobar cuánto queda por recibir.';
       return of([]);
-    })).subscribe({
-      next: async (response: any) => {
-        if (typeReference === 'project' && Number(this.projectId) !== requestId) return;
-        if (typeReference === 'branch' && (this.projectId || Number(this.idBranch) !== requestId)) return;
+    };
+    forkJoin([
+      projectId ? this.ocService.getOcAndReqs('project', projectId, 'OC').pipe(catchError(ocError)) : of([]),
+      branchId ? this.ocService.getOcAndReqs('branch', branchId, 'OC').pipe(catchError(ocError)) : of([]),
+    ]).subscribe({
+      next: async ([projectResponse, branchResponse]: any) => {
+        if (projectId !== Number(this.projectId || 0) || branchId !== Number(this.idBranch || 0)) return;
         if (requestedWarehouseId !== Number(this.selectedWarehouse?.idAlmacen || 0)) return;
-        const scopedOrders: any[] = Array.isArray(response) ? response : (response?.data ?? response?.result ?? []);
+        const combinedOrders: any[] = [
+          ...(Array.isArray(projectResponse) ? projectResponse : (projectResponse?.data ?? projectResponse?.result ?? [])),
+          ...(Array.isArray(branchResponse) ? branchResponse : (branchResponse?.data ?? branchResponse?.result ?? [])),
+        ];
         const seen = new Set<number>();
-        const uniqueOrders = scopedOrders.filter((oc: any) => {
+        const uniqueOrders = combinedOrders.filter((oc: any) => {
           if (!oc?.id || seen.has(oc.id)) return false;
           seen.add(oc.id);
           return true;
