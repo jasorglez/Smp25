@@ -82,7 +82,7 @@
         <span class="btn-login-inner">
           <span *ngIf="isLoading" class="btn-spinner"></span>
           <i *ngIf="!isLoading" class="bi bi-box-arrow-in-right"></i>
-          {{ isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión' }}
+          {{ isLoading ? 'Verificando...' : 'Iniciar Sesión' }}
         </span>
         <div class="btn-shimmer"></div>
       </button>
@@ -113,7 +113,7 @@
     <div class="loading-ring">
       <div></div><div></div><div></div><div></div>
     </div>
-    <p class="loading-title">Iniciando sesión</p>
+    <p class="loading-title">Cargando tu espacio de trabajo</p>
     <p class="loading-sub">Por favor espere...</p>
   </div>
 </div>

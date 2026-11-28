@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.702 (28 Noviembre 2026) Switch MN/USD en Tendencia de Ingresos por Año y Egresos por Día del dashboard',
+  version: '5.00.703 (28 Noviembre 2026) Login: overlay de carrusel más oscuro y textos de carga diferenciados',
 };
