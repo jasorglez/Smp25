@@ -120,3 +120,28 @@
 ::ng-deep .ag-theme-quartz .ag-row.material-content-mixed .ag-cell { background-color: #eef1f5 !important; }
 ::ng-deep .ag-theme-quartz .ag-row[class*="material-content-"] .ag-cell:first-child { box-shadow: inset 5px 0 0 #64748b; }
 ::ng-deep .ag-theme-quartz .ag-row.material-content-complete .ag-cell:first-child { box-shadow: inset 5px 0 0 #4d8b5a; }
+.material-action-toolbar {
+  align-self: flex-start;
+  width: 3rem;
+  padding: .35rem;
+  border: 1px solid #dce6ef;
+  border-radius: .65rem;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(30, 64, 110, .08);
+}
+
+.material-action-toolbar .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  padding: 0;
+  font-size: .95rem;
+}
+
+.material-action-toolbar__divider {
+  width: 1.8rem;
+  margin: .12rem 0;
+  border-top: 1px solid #dce6ef;
+}

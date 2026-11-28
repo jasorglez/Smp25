@@ -8314,3 +8314,51 @@ WHERE p.name = N'Microservicio'
 ORDER BY dp.permission_name;
 -- END COMPANY_PUBLICITY_IMAGE_WRITE_PERMISSIONS_689
 GO
+
+-- BEGIN MATERIALS_COMPACT_TOOLBAR_689
+-- Fecha: 2026-11-27 | Módulo: Compras y Almacenes TD / Materiales | Repositorio: Smp25
+-- Origen: src/app/domains/ModProjects/components/materials/materials.component.html
+-- Ejecutar únicamente este bloque para publicar la novedad.
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Compras y Almacenes TD / Materiales' AND title=N'Botonera compacta de materiales'
+   AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES(NULL,NULL,N'5.00.689',N'Compras y Almacenes TD / Materiales','IMPROVEMENT',N'Botonera compacta de materiales',
+ N'Importar materiales se integra en la botonera izquierda y se reduce el espacio superior de la pantalla.',
+ N'Deja más espacio visible para el grid sin perder las acciones de materiales.',
+ N'Consulta más materiales en pantalla con una botonera compacta.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+WHERE module=N'Compras y Almacenes TD / Materiales' AND title=N'Botonera compacta de materiales'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+-- END MATERIALS_COMPACT_TOOLBAR_689
+GO
+
+-- BEGIN REQUISITION_AUTOMATIC_PREFIX_SETUP_689
+-- Fecha: 2026-11-27 | Módulo: Compras / Requisiciones | Repositorio: Smp25
+-- Origen: src/app/domains/ModWarehouse/components/requisitions/requisitions.component.ts
+-- Ejecutar únicamente este bloque para publicar la novedad.
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Compras / Requisiciones' AND title=N'Consecutivos automáticos por proyecto o sucursal'
+   AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES(NULL,NULL,N'5.00.689',N'Compras / Requisiciones','FIX',N'Consecutivos automáticos por proyecto o sucursal',
+ N'Cuando faltan consecutivos al crear una requisición, el sistema pregunta si deben manejarse por proyecto o sucursal, crea los prefijos predeterminados y genera el folio.',
+ N'Permite crear la requisición sin configurar manualmente los números antes de comenzar.',
+ N'Crea requisiciones con consecutivos listos para tu proyecto o sucursal.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+WHERE module=N'Compras / Requisiciones' AND title=N'Consecutivos automáticos por proyecto o sucursal'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+-- END REQUISITION_AUTOMATIC_PREFIX_SETUP_689
+GO

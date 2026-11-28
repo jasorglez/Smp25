@@ -8,7 +8,8 @@ import {
 } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
-import { catchError, concat, EMPTY, forkJoin, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, firstValueFrom, forkJoin, lastValueFrom, toArray } from 'rxjs';
+import Swal from 'sweetalert2';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -900,10 +901,29 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     const tempId = `temp_${this.tempIdCounter++}`;
     let folio: string;
     try {
-      const type: 'project' | 'branch' = this.projectOrBranch ? 'project' : 'branch';
-      folio = await this.prefixSetupService.getNextFolio(type, this.idReference, 'req');
+      let type: 'project' | 'branch' = this.projectOrBranch ? 'project' : 'branch';
+      folio = this.idReference
+        ? await this.prefixSetupService.getNextFolio(type, this.idReference, 'req')
+        : null;
       if (!folio) {
-        alerts.basicAlert('No se pudo generar el número', 'Revisa la configuración de prefijos e inténtalo nuevamente.', 'error');
+        let setupMissing = !this.idReference;
+        if (!setupMissing) {
+          try {
+            await firstValueFrom(this.prefixSetupService.getPrefixSetup(type, this.idReference));
+          } catch (error: any) {
+            if (error?.status !== 404) throw error;
+            setupMissing = true;
+          }
+        }
+        if (setupMissing) {
+          const selectedScope = await this.configureMissingRequisitionPrefix();
+          if (!selectedScope) return;
+          type = selectedScope.type;
+          folio = await this.prefixSetupService.getNextFolio(type, selectedScope.id, 'req');
+        }
+      }
+      if (!folio) {
+        alerts.basicAlert('No se pudo generar el número', 'No fue posible guardar el consecutivo. Inténtalo nuevamente.', 'error');
         return;
       }
     } catch (error) {
@@ -957,6 +977,82 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         this.masterSelectedRowData = newItem;
       }
     });
+  }
+
+  private async configureMissingRequisitionPrefix(): Promise<{ type: 'project' | 'branch'; id: number } | null> {
+    const choice = await Swal.fire({
+      title: 'Configurar consecutivos',
+      text: 'No hay consecutivos para esta requisición. ¿Quieres manejarlos por proyecto o por sucursal? La elección se aplicará a los documentos de almacén de esta empresa.',
+      icon: 'question',
+      showDenyButton: true,
+      showCancelButton: true,
+      confirmButtonText: 'Por proyecto',
+      denyButtonText: 'Por sucursal',
+      cancelButtonText: 'Cancelar'
+    });
+    if (!choice.isConfirmed && !choice.isDenied) return null;
+
+    const type: 'project' | 'branch' = choice.isConfirmed ? 'project' : 'branch';
+    const id = Number(type === 'project' ? this.idProject : this.idBranch);
+    if (!id) {
+      alerts.basicAlert('Falta seleccionar ' + (type === 'project' ? 'proyecto' : 'sucursal'),
+        `Selecciona ${type === 'project' ? 'un proyecto' : 'una sucursal'} en la barra lateral para crear sus consecutivos.`, 'warning');
+      return null;
+    }
+
+    const scopeChanged = this.typeReference !== type || Number(this.idReference) !== id;
+    if (scopeChanged && (this.masterNotSavedChanges || this.detailsNotSavedChanges)) {
+      alerts.basicAlert('Cambios pendientes', 'Guarda o deshaz los cambios antes de cambiar el alcance de los consecutivos.', 'warning');
+      return null;
+    }
+
+    const scopedRows: any[] | null = scopeChanged
+      ? await firstValueFrom(this.requisitionsService.getOcAndReqs(type, id, 'REQUIS')).catch((error: any) => {
+          if (error?.status === 404) return [];
+          throw error;
+        }) as any[]
+      : null;
+    await firstValueFrom(this.prefixSetupService.ensureDefaultPrefixSetup(type, id));
+
+    if (scopeChanged) {
+      let warehouseSetup: any;
+      try {
+        const setups = await firstValueFrom(this.setupService.getWarehouseSetup(this.idRoot));
+        warehouseSetup = setups?.[0];
+      } catch (error: any) {
+        if (error?.status !== 404) throw error;
+      }
+      if (warehouseSetup) {
+        await firstValueFrom(this.setupService.updateWarehouseSetup(this.idRoot, {
+          ...warehouseSetup,
+          projectOrBranch: type === 'project'
+        }));
+      } else {
+        await firstValueFrom(this.setupService.addWarehouseSetup({
+          idCompany: this.idRoot,
+          projectOrBranch: type === 'project',
+          activateOc: true,
+          active: true
+        }));
+      }
+
+      this.projectOrBranch = type === 'project';
+      this.typeReference = type;
+      this.idReference = id;
+      this.masterSelectedRowData = null;
+      this.detailsRowData = [];
+      this.detailsSelectedRowData = null;
+      this.idRequisition = null;
+      this.signalsService.deleteRequisitionData();
+      this.masterRowData = (scopedRows || []).map((item: any) => ({
+        ...item,
+        detailType: null,
+        detailData: []
+      }));
+      this.masterGridApi?.setGridOption('rowData', this.masterRowData);
+      this.updateDetailContext();
+    }
+    return { type, id };
   }
 
   async saveMasterChanges() {

@@ -1,50 +1,51 @@
-<div class="row p-3">
-  <div class="col-12 py-3">
+<div class="row p-2">
+  <div class="col-12 py-2">
     <!-- Botones y grid principal -->
-    <div class="row mb-3">
-      <div class="col-12 mb-2">
-        <button type="button" class="btn btn-outline-success" (click)="showImportMaterials = true" [disabled]="saving || notSavedChanges || !idcompany">
-          <i class="bi bi-file-earmark-arrow-up me-1"></i>Importar materiales
-        </button>
-        <small *ngIf="notSavedChanges" class="text-muted ms-2">Guarda o deshaz los cambios antes de importar.</small>
-      </div>
-      <nav class="col-auto d-flex flex-column align-items-start">
-        <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="onAdd()" title="Agregar material">
+    <div class="row g-2 mb-2">
+      <nav class="col-auto material-action-toolbar d-flex flex-column align-items-center gap-1" aria-label="Acciones de materiales">
+        <button type="button" class="btn btn-primary btn-sm" (click)="onAdd()" title="Agregar material" aria-label="Agregar material">
           <i class="bi bi-plus"></i>
         </button>
-        <button type="button" class="btn btn-outline-primary ms-1 me-1 mb-2" (click)="openMaterialEdit()" title="Editar material seleccionado">
+        <button type="button" class="btn btn-outline-primary btn-sm" (click)="openMaterialEdit()" title="Editar material seleccionado" aria-label="Editar material seleccionado">
           <i class="bi bi-pencil-square"></i>
         </button>
-        <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="onEdit()" [disabled]="saving">
+        <button type="button" class="btn btn-success btn-sm position-relative" (click)="onEdit()" [disabled]="saving" title="Guardar cambios" aria-label="Guardar cambios">
           <i class="bi bi-floppy"></i>
           <span
-            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
               *ngIf="notSavedChanges">
             <span class="visually-hidden">Hay cambios sin guardar</span>
           </span>
         </button>
-        <button type="button" class="btn btn-warning ms-1 me-1 mb-2"  (click)="revertMasterData()">
+        <button type="button" class="btn btn-warning btn-sm"  (click)="revertMasterData()" title="Deshacer cambios" aria-label="Deshacer cambios">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
-        <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="onDelete()"><i class="bi bi-trash"></i>
+        <button type="button" class="btn btn-danger btn-sm" (click)="onDelete()" title="Borrar material" aria-label="Borrar material"><i class="bi bi-trash"></i>
         </button>
-        <button type="button" class="btn btn-info ms-1 me-1 mb-2" (click)="openComponentsModal()"
+        <button type="button" class="btn btn-info btn-sm" (click)="openComponentsModal()"
                 [disabled]="!selectedRowData || selectedRowData.__isNew || loadingComponents || saving"
-                title="Definir componentes del material seleccionado">
+                title="Definir componentes del material seleccionado" aria-label="Definir componentes del material seleccionado">
           <i class="bi bi-diagram-3"></i>
         </button>
-        <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="openConversionsModal()"
+        <button type="button" class="btn btn-primary btn-sm" (click)="openConversionsModal()"
                 [disabled]="!selectedRowData || selectedRowData.__isNew || loadingConversions || saving"
-                title="Configurar conversiones de unidades del material">
+                title="Configurar conversiones de unidades del material" aria-label="Configurar conversiones de unidades del material">
           <i class="bi bi-arrow-left-right"></i>
         </button>
-        <button type="button" class="btn btn-secondary ms-1 me-1 mb-2" (click)="togglePdfReport()"
-                title="Reporte PDF de Distribución (Cantidades)">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="togglePdfReport()"
+                title="Reporte PDF de Distribución (Cantidades)" aria-label="Reporte PDF de Distribución (Cantidades)">
           <i class="bi bi-file-earmark-pdf"></i>
         </button>
-        <button type="button" class="btn btn-success ms-1 me-1 mb-2" (click)="showPdfMoneyReport = true"
-                title="Reporte PDF Erogaciones ($)">
+        <button type="button" class="btn btn-success btn-sm" (click)="showPdfMoneyReport = true"
+                title="Reporte PDF Erogaciones ($)" aria-label="Reporte PDF Erogaciones ($)">
           <i class="bi bi-currency-dollar"></i>
+        </button>
+        <span class="material-action-toolbar__divider" aria-hidden="true"></span>
+        <button type="button" class="btn btn-outline-success btn-sm" (click)="showImportMaterials = true"
+                [disabled]="saving || notSavedChanges || !idcompany"
+                [title]="notSavedChanges ? 'Guarda o deshaz los cambios antes de importar.' : 'Importar materiales'"
+                aria-label="Importar materiales">
+          <i class="bi bi-file-earmark-arrow-up"></i>
         </button>
       </nav>
 

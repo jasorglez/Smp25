@@ -69,17 +69,19 @@ export class PrefixSetupService {
     );
   }
 
-  /** Creates the standard folio configuration once for each newly created project. */
-  ensureDefaultProjectPrefixSetup(projectId: number): Observable<PrefixSetup> {
-    return this.getPrefixSetup('project', projectId).pipe(
+  /** Creates standard folios only when the selected project or branch has no setup. */
+  ensureDefaultPrefixSetup(type: 'project' | 'branch', referenceId: number): Observable<PrefixSetup> {
+    return this.getPrefixSetup(type, referenceId).pipe(
       catchError((error) => {
         if (error?.status !== 404) return throwError(() => error);
 
         return this.createPrefixSetup({
-          idProjectOrBranch: projectId,
-          type: 'project',
+          idProjectOrBranch: referenceId,
+          type,
           prefixReq: 'RQ-',
           consecutiveReq: 0,
+          prefixCotiz: 'COT-',
+          consecutiveCotiz: 0,
           prefixOc: 'OC-',
           consecutiveOc: 0,
           prefixEntry: 'EN-',
@@ -90,6 +92,10 @@ export class PrefixSetupService {
         });
       })
     );
+  }
+
+  ensureDefaultProjectPrefixSetup(projectId: number): Observable<PrefixSetup> {
+    return this.ensureDefaultPrefixSetup('project', projectId);
   }
 
   /**
