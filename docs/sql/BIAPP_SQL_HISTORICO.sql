@@ -8362,3 +8362,30 @@ WHERE module=N'Compras / Requisiciones' AND title=N'Consecutivos automáticos po
 COMMIT TRANSACTION;
 -- END REQUISITION_AUTOMATIC_PREFIX_SETUP_689
 GO
+
+-- BEGIN MATERIALS_COMPACT_TOOLBAR_DEPLOY_689
+-- Fecha: 2026-11-27 | Módulo: Compras y Almacenes TD / Materiales | Repositorio: Smp25
+-- Origen: GitHub Actions 46109463202 y Vercel status success para commit 550a25179;
+-- smp-beta.vercel.app sirve el nuevo paquete main-R65FET3S.js.
+-- Ejecutar únicamente este bloque después de verificar el despliegue.
+UPDATE administration.dbo.product_updates SET releaseStatus='PRODUCTION'
+WHERE module=N'Compras y Almacenes TD / Materiales' AND title=N'Botonera compacta de materiales'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1 AND version=N'5.00.689';
+SELECT id,version,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+WHERE module=N'Compras y Almacenes TD / Materiales' AND title=N'Botonera compacta de materiales'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+-- END MATERIALS_COMPACT_TOOLBAR_DEPLOY_689
+GO
+
+-- BEGIN REQUISITION_AUTOMATIC_PREFIX_SETUP_DEPLOY_689
+-- Fecha: 2026-11-27 | Módulo: Compras / Requisiciones | Repositorio: Smp25
+-- Origen: GitHub Actions 46109463202 y Vercel status success para commit 550a25179.
+-- Ejecutar únicamente este bloque después de verificar el despliegue.
+UPDATE administration.dbo.product_updates SET releaseStatus='PRODUCTION'
+WHERE module=N'Compras / Requisiciones' AND title=N'Consecutivos automáticos por proyecto o sucursal'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1 AND version=N'5.00.689';
+SELECT id,version,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+WHERE module=N'Compras / Requisiciones' AND title=N'Consecutivos automáticos por proyecto o sucursal'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+-- END REQUISITION_AUTOMATIC_PREFIX_SETUP_DEPLOY_689
+GO
