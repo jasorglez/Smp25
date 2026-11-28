@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.694 (28 Noviembre 2026) Aviso de sucursal sin contratos se oculta solo a los 10s',
+  version: '5.00.696 (28 Noviembre 2026) Aviso de sucursal sin contratos se oculta solo a los 10s; vista previa compacta de fotos de soporte',
 };

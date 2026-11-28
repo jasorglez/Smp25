@@ -246,6 +246,8 @@ import { BITACORA_STYLES } from 'app/domains/ModProjects/components/sistema/bita
       overflow-y: auto;
     }
     .photo-detail { padding: 10px; height: 100%; overflow-y: auto; }
+    .photo-preview { height: 132px; }
+    .photo-preview img { width: 100%; height: 100%; object-fit: contain; }
   `]
 })
 export class DetailCellRendererEntryItemsComponent {
