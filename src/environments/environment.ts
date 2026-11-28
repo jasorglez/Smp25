@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.708 (28 Nov 26) Login: azul del logo menos brilloso, tono original de marca',
+  version: '5.00.713 (28 Nov 26) Login: cada letra del logo se mueve distinto (arriba/abajo/izq/der/diagonal)',
 };

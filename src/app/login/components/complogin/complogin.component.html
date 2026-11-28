@@ -16,9 +16,20 @@
 <div class="login-wrapper" [ngClass]="loginCardPositionClass">
   <div class="login-card">
 
-    <!-- Logo -->
-    <div class="login-logo">
-      <img src="/assets/img/template/bi2-logo.webp" alt="bi2 ERP" />
+    <!-- Logo: texto real letra por letra (animación tipo stagger), ícono como imagen -->
+    <div class="login-logo" role="img" aria-label="bi2 ERP">
+      <div class="logo-brand">
+        <div class="logo-row">
+          <span class="logo-letter dir-1" style="--i:0">b</span>
+          <span class="logo-letter dir-2" style="--i:1">i</span>
+          <img src="/assets/img/template/bi2-icon.webp" class="logo-icon dir-3" alt="" style="--i:2" />
+        </div>
+        <div class="logo-row">
+          <span class="logo-letter dir-4" style="--i:3">E</span>
+          <span class="logo-letter dir-5" style="--i:4">R</span>
+          <span class="logo-letter dir-6" style="--i:5">P</span>
+        </div>
+      </div>
     </div>
 
     <!-- Headings -->
