@@ -874,7 +874,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     this.requisitionsService
       .getOcAndReqs(this.typeReference, this.idReference, 'OC')
       .subscribe(
-        (data: any) => {
+        async (data: any) => {
           this.masterRowData = data.map((item: any) => ({
             ...item,
             countrow: item.countrow || 0,
@@ -882,7 +882,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
             detailData: []
           }));
           this.isPurchaseOrdersLoaded = true;
-          void this.refreshRequisitionBalances();
+          await this.refreshRequisitionBalances();
+          await this.maybeAutoSyncPendingRequisitionItems();
         },
         (error) => console.error('Error fetching data:', error)
       );
@@ -1042,10 +1043,11 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     this.requisitionsService
       .getOcAndReqs(this.typeReference, this.idReference, 'REQUIS')
       .subscribe(
-        (data: any) => {
+        async (data: any) => {
           this.requisiciones = Array.isArray(data) ? data : [];
           this.requisitionBalanceError = '';
-          void this.refreshRequisitionBalances();
+          await this.refreshRequisitionBalances();
+          await this.maybeAutoSyncPendingRequisitionItems();
         },
         (error) => {
           console.error('Error fetching requisitions:', error);
@@ -2208,44 +2210,124 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
    * Solo se invoca desde la marca temporal creada al cambiar el campo idReq,
    * por lo que guardar nuevamente la misma OC no duplica sus partidas.
    */
+  private buildPurchaseOrderItemFromRequisitionItem(purchaseOrderId: number, requisitionItem: any): any | null {
+    const quantity = Number(requisitionItem.remainingQuantity) || 0;
+    if (quantity <= 0) return null;
+    const price = Number(requisitionItem.price) || 0;
+    const requestedQuantity = Number(requisitionItem.quantity) || 0;
+    const balanceRatio = requestedQuantity > 0 ? quantity / requestedQuantity : 0;
+    const iva = (Number(requisitionItem.iva) || 0) * balanceRatio;
+    const retention = (Number(requisitionItem.retention) || 0) * balanceRatio;
+    const total = (quantity * price) + iva - retention;
+    return {
+      idMovement: purchaseOrderId,
+      idSupplie: Number(requisitionItem.idSupplie) || 0,
+      idBrand: requisitionItem.idBrand || null,
+      brandName: requisitionItem.brandName || null,
+      idProvider: Number(requisitionItem.idProvider) || 0,
+      quantity,
+      price,
+      costoMN: Number(requisitionItem.costoMN) || 0,
+      ventaMN: Number(requisitionItem.ventaMN) || 0,
+      iva,
+      retention,
+      total,
+      type: 'OC',
+      comment: requisitionItem.comment || 'NINGUNO.',
+      dateuse: requisitionItem.dateuse || new Date().toISOString(),
+      active: true,
+    };
+  }
+
+  /**
+   * Copia las partidas de una requisición recién vinculada a la OC guardada.
+   * Solo se invoca desde la marca temporal creada al cambiar el campo idReq,
+   * por lo que guardar nuevamente la misma OC no duplica sus partidas.
+   */
   private async importRequisitionItemsToPurchaseOrder(purchaseOrderId: number, requisitionId: number): Promise<number> {
     const requisition = (this.requisiciones || []).find((item: any) => Number(item.id) === Number(requisitionId));
     const activeItems = Array.isArray(requisition?.remainingItems) ? requisition.remainingItems : [];
 
     for (const requisitionItem of activeItems) {
-      const quantity = Number(requisitionItem.remainingQuantity) || 0;
-      if (quantity <= 0) continue;
-      const price = Number(requisitionItem.price) || 0;
-      const requestedQuantity = Number(requisitionItem.quantity) || 0;
-      const balanceRatio = requestedQuantity > 0 ? quantity / requestedQuantity : 0;
-      const iva = (Number(requisitionItem.iva) || 0) * balanceRatio;
-      const retention = (Number(requisitionItem.retention) || 0) * balanceRatio;
-      const total = (quantity * price) + iva - retention;
-      const purchaseOrderItem = {
-        idMovement: purchaseOrderId,
-        idSupplie: Number(requisitionItem.idSupplie) || 0,
-        idBrand: requisitionItem.idBrand || null,
-        brandName: requisitionItem.brandName || null,
-        idProvider: Number(requisitionItem.idProvider) || 0,
-        quantity,
-        price,
-        costoMN: Number(requisitionItem.costoMN) || 0,
-        ventaMN: Number(requisitionItem.ventaMN) || 0,
-        iva,
-        retention,
-        total,
-        type: 'OC',
-        comment: requisitionItem.comment || 'NINGUNO.',
-        dateuse: requisitionItem.dateuse || new Date().toISOString(),
-        active: true,
-      };
-
+      const purchaseOrderItem = this.buildPurchaseOrderItemFromRequisitionItem(purchaseOrderId, requisitionItem);
+      if (!purchaseOrderItem) continue;
       await lastValueFrom(this.requisitionsService.addReqItem(purchaseOrderItem));
     }
 
     this.updatePurchaseOrderItemsCount(purchaseOrderId, activeItems.length);
     await this.refreshRequisitionBalances();
     return activeItems.length;
+  }
+
+  private pendingItemsSyncInFlight = false;
+  private pendingItemsSyncDone = false;
+
+  /** obtenerDatos() y obtenerRequisiciones() cargan en paralelo (sin orden
+   *  garantizado); ambas llaman aquí al terminar, pero solo se sincroniza una
+   *  vez que AMBAS listas están disponibles, y solo una vez por carga de
+   *  página (para no reimportar en cada refresco de saldos). */
+  private async maybeAutoSyncPendingRequisitionItems(): Promise<void> {
+    if (this.pendingItemsSyncDone || this.pendingItemsSyncInFlight) return;
+    if (!this.masterRowData?.length || !this.requisiciones?.length) return;
+    this.pendingItemsSyncInFlight = true;
+    try {
+      // obtenerDatos() y obtenerRequisiciones() llegan en paralelo; cuando el primero
+      // en resolver dispara este chequeo, el otro arreglo puede seguir vacío y
+      // refreshRequisitionBalances() calcula remainingItems con datos incompletos
+      // (p.ej. sin las partidas ya existentes en la OC). Se vuelve a calcular aquí,
+      // ya con ambos arreglos poblados, para no sincronizar con saldos obsoletos.
+      await this.refreshRequisitionBalances();
+      await this.autoSyncPendingRequisitionItems();
+      this.pendingItemsSyncDone = true;
+    } finally {
+      this.pendingItemsSyncInFlight = false;
+    }
+  }
+
+  /**
+   * Si al editar una requisición ya convertida en OC se agregan partidas
+   * nuevas, esas partidas quedan "remaining" (no están en ninguna OC todavía).
+   * Mientras la OC siga sin autorizar, las importamos automáticamente al
+   * abrir Órdenes de compra, en vez de requerir recrear la OC a mano.
+   */
+  private async autoSyncPendingRequisitionItems(): Promise<void> {
+    const candidates = (this.masterRowData || []).filter((order: any) =>
+      !order.__isNew && order.active !== false && Number(order.active) !== 0 &&
+      Number(order.idReq) > 0 && !Number(order.idAuthorize)
+    );
+    if (!candidates.length) return;
+
+    for (const order of candidates) {
+      const requisition = (this.requisiciones || []).find((item: any) => Number(item.id) === Number(order.idReq));
+      const pendingItems = Array.isArray(requisition?.remainingItems) ? requisition.remainingItems : [];
+      if (!pendingItems.length) continue;
+
+      const purchaseOrderId = Number(order.id);
+      try {
+        let importedCount = 0;
+        for (const requisitionItem of pendingItems) {
+          const purchaseOrderItem = this.buildPurchaseOrderItemFromRequisitionItem(purchaseOrderId, requisitionItem);
+          if (!purchaseOrderItem) continue;
+          await lastValueFrom(this.requisitionsService.addReqItem(purchaseOrderItem));
+          importedCount++;
+        }
+        if (!importedCount) continue;
+
+        const currentItems: any = await lastValueFrom(this.requisitionsService.getReqItems(purchaseOrderId));
+        const activeCount = (Array.isArray(currentItems) ? currentItems : [])
+          .filter((item: any) => item.active !== false && Number(item.active) !== 0).length;
+        this.updatePurchaseOrderItemsCount(purchaseOrderId, activeCount);
+
+        alerts.toastAlert(
+          `Se importaron ${importedCount} partida(s) nueva(s) de la requisición ${requisition?.folio || requisition?.number || order.idReq} a la orden ${order.folio || order.number || purchaseOrderId}.`,
+          'info'
+        );
+      } catch (error) {
+        console.error('No se pudieron sincronizar partidas pendientes de la requisición a la OC', purchaseOrderId, error);
+      }
+    }
+
+    await this.refreshRequisitionBalances();
   }
 
   private cleanDataForServer(data: any): any {
