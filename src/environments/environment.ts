@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.697 (28 Noviembre 2026) Modal azul mejorado para fotos de soporte en entradas',
+  version: '5.00.700 (28 Noviembre 2026) Alta de empresa en Root crea en automático catálogo de Monedas (USD, MXN, EURO)',
 };
