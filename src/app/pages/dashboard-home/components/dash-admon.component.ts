@@ -66,9 +66,14 @@ import { SignalrService } from 'app/services/signalr.service';
         <!-- Col 2: Tendencia Ingresos -->
         <div class="col-12 col-xl-6">
           <div class="chart-card h-100">
-            <div class="chart-header">
-              <i class="bi bi-graph-up-arrow me-2 text-success"></i>
-              <span>Tendencia de Ingresos por Año (MXN)</span>
+            <div class="chart-header d-flex justify-content-between align-items-center gap-2">
+              <span><i class="bi bi-graph-up-arrow me-2 text-success"></i>Tendencia de Ingresos por Año</span>
+              <div class="currency-switch" role="group" aria-label="Moneda de Tendencia de Ingresos">
+                <button type="button" [class.active]="ingresosCurrency === 'MXN'"
+                        (click)="setIngresosCurrency('MXN')">MN</button>
+                <button type="button" [class.active]="ingresosCurrency === 'USD'"
+                        (click)="setIngresosCurrency('USD')">USD</button>
+              </div>
             </div>
             <div class="chart-body">
               <apx-chart *ngIf="ingresosSeries?.length"
@@ -198,12 +203,20 @@ import { SignalrService } from 'app/services/signalr.service';
               <span>
                 <i class="bi bi-graph-down-arrow me-2 text-danger"></i>
                 Egresos por Día — {{ egresosRangeLabel }}
-                <span class="ms-2 fw-bold text-danger" style="font-size:13px">\${{ egresosTotal | number:'1.2-2' }}</span>
+                <span class="ms-2 fw-bold text-danger" style="font-size:13px">{{ egresosCurrency === 'USD' ? 'US$' : '$' }}{{ egresosTotal | number:'1.2-2' }}</span>
               </span>
-              <div class="btn-group btn-group-sm" role="group">
-                <button type="button" class="btn" [class.btn-danger]="egresosRange===1" [class.btn-outline-danger]="egresosRange!==1" (click)="setEgresosRange(1)">1 Mes</button>
-                <button type="button" class="btn" [class.btn-danger]="egresosRange===3" [class.btn-outline-danger]="egresosRange!==3" (click)="setEgresosRange(3)">3 Meses</button>
-                <button type="button" class="btn" [class.btn-danger]="egresosRange===6" [class.btn-outline-danger]="egresosRange!==6" (click)="setEgresosRange(6)">6 Meses</button>
+              <div class="d-flex align-items-center gap-2">
+                <div class="currency-switch" role="group" aria-label="Moneda de Egresos por Día">
+                  <button type="button" [class.active]="egresosCurrency === 'MXN'"
+                          (click)="setEgresosCurrency('MXN')">MN</button>
+                  <button type="button" [class.active]="egresosCurrency === 'USD'"
+                          (click)="setEgresosCurrency('USD')">USD</button>
+                </div>
+                <div class="btn-group btn-group-sm" role="group">
+                  <button type="button" class="btn" [class.btn-danger]="egresosRange===1" [class.btn-outline-danger]="egresosRange!==1" (click)="setEgresosRange(1)">1 Mes</button>
+                  <button type="button" class="btn" [class.btn-danger]="egresosRange===3" [class.btn-outline-danger]="egresosRange!==3" (click)="setEgresosRange(3)">3 Meses</button>
+                  <button type="button" class="btn" [class.btn-danger]="egresosRange===6" [class.btn-outline-danger]="egresosRange!==6" (click)="setEgresosRange(6)">6 Meses</button>
+                </div>
               </div>
             </div>
             <div class="chart-body">
@@ -600,25 +613,27 @@ export class DashAdmonComponent implements OnInit {
 
   // ── Ingresos ──
   ingresosSeries:      any[]   = [];
+  ingresosCurrency:    'MXN' | 'USD' = 'MXN';
   ingresosChart:       any     = { type: 'line', height: 280, width: '100%', stacked: true, toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif' };
   ingresosXaxis:       any     = { categories: [], labels: { rotate: -45, rotateAlways: true, style: { fontSize: '10px', colors: '#64748b' } } };
-  ingresosYaxis:       any     = { labels: { formatter: (v: number) => v >= 1_000_000 ? '$' + (v/1_000_000).toFixed(1)+'M' : '$'+(v/1000).toFixed(0)+'K', style: { colors: '#64748b', fontSize: '11px' } } };
+  ingresosYaxis:       any     = { labels: { formatter: (v: number) => { const s = this.ingresosCurrency === 'USD' ? 'US$' : '$'; return v >= 1_000_000 ? s + (v/1_000_000).toFixed(1)+'M' : s+(v/1000).toFixed(0)+'K'; }, style: { colors: '#64748b', fontSize: '11px' } } };
   ingresosStroke:      any     = { width: [], curve: 'straight' };
   ingresosColors:      string[]= [];
   ingresosFill:        any     = { opacity: 1 };
   ingresosPlotOptions: any     = { bar: { horizontal: false, columnWidth: '70%', borderRadius: 3 } };
   ingresosDataLabels:  any     = { enabled: false };
-  ingresosTooltip:     any     = { shared: true, intersect: false, y: { formatter: (v: number) => v ? '$'+v.toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '' } };
+  ingresosTooltip:     any     = { shared: true, intersect: false, y: { formatter: (v: number) => v ? (this.ingresosCurrency === 'USD' ? 'US$' : '$')+v.toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '' } };
   ingresosLegend:      any     = { show: true, position: 'top', horizontalAlign: 'right', fontSize: '12px' };
 
   // ── Egresos por día ──
   egresosSeries:      any[]   = [];
+  egresosCurrency:    'MXN' | 'USD' = 'MXN';
   egresosChart:       any     = { type: 'bar', height: 250, width: '100%', toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif', legend: { show: false } };
   egresosXaxis:       any     = { categories: [] };
-  egresosYaxis:       any     = { labels: { formatter: (v: number) => '$'+(v/1000).toFixed(0)+'K', style: { colors: '#64748b', fontSize: '11px' } } };
+  egresosYaxis:       any     = { labels: { formatter: (v: number) => (this.egresosCurrency === 'USD' ? 'US$' : '$')+(v/1000).toFixed(0)+'K', style: { colors: '#64748b', fontSize: '11px' } } };
   egresosPlotOptions: any     = { bar: { horizontal: false, columnWidth: '60%', borderRadius: 3, distributed: true } };
-  egresosDataLabels:  any     = { enabled: true, formatter: (v: number) => v > 0 ? '$'+(v/1000).toFixed(1)+'K' : '', offsetY: -18, style: { fontSize: '10px', colors: ['#555'] } };
-  egresosTooltip:     any     = { y: { formatter: (v: number) => '$'+v.toLocaleString('es-MX', { minimumFractionDigits: 2 }) } };
+  egresosDataLabels:  any     = { enabled: true, formatter: (v: number) => v > 0 ? (this.egresosCurrency === 'USD' ? 'US$' : '$')+(v/1000).toFixed(1)+'K' : '', offsetY: -18, style: { fontSize: '10px', colors: ['#555'] } };
+  egresosTooltip:     any     = { y: { formatter: (v: number) => (this.egresosCurrency === 'USD' ? 'US$' : '$')+v.toLocaleString('es-MX', { minimumFractionDigits: 2 }) } };
   egresosColors:      string[]= ['#e74c3c'];
   egresosLegend:      any     = { show: false };
 
@@ -801,6 +816,20 @@ export class DashAdmonComponent implements OnInit {
     if (this.egrPieCurrency === currency) return;
     this.egrPieCurrency = currency;
     this.buildTopEntityList(this.allEgresosData);
+    this.cdr.markForCheck();
+  }
+
+  setIngresosCurrency(currency: 'MXN' | 'USD'): void {
+    if (this.ingresosCurrency === currency) return;
+    this.ingresosCurrency = currency;
+    this.buildIngresosChart(this.allIngresosData);
+    this.cdr.markForCheck();
+  }
+
+  setEgresosCurrency(currency: 'MXN' | 'USD'): void {
+    if (this.egresosCurrency === currency) return;
+    this.egresosCurrency = currency;
+    this.buildEgresosChart(this.allEgresosData);
     this.cdr.markForCheck();
   }
 
@@ -1013,7 +1042,7 @@ export class DashAdmonComponent implements OnInit {
       const d = new Date(s.fechaingreso);
       const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}`;
       if (!byYearMonth[key]) byYearMonth[key] = { year: d.getFullYear(), month: d.getMonth(), total: 0 };
-      byYearMonth[key].total += this.getIncomeAmount(s, 'MXN');
+      byYearMonth[key].total += this.getIncomeAmount(s, this.ingresosCurrency);
     });
 
     const sortedKeys   = Object.keys(byYearMonth).sort();
@@ -1081,7 +1110,7 @@ export class DashAdmonComponent implements OnInit {
         ? String(d.getDate())
         : `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
       const entity = (e.entityName || 'Sin nombre').toString().trim();
-      const amount = this.getExpenseAmount(e);
+      const amount = this.getExpenseAmount(e, this.egresosCurrency);
 
       if (!dayEntityMap.has(dayKey)) dayEntityMap.set(dayKey, new Map());
       const em = dayEntityMap.get(dayKey)!;
@@ -1090,7 +1119,7 @@ export class DashAdmonComponent implements OnInit {
     });
 
     // ── Total del período ────────────────────────────────────────────────────
-    this.egresosTotal = filtered.reduce((sum, e) => sum + this.getExpenseAmount(e), 0);
+    this.egresosTotal = filtered.reduce((sum, e) => sum + this.getExpenseAmount(e, this.egresosCurrency), 0);
 
     // ── Ordenar días ────────────────────────────────────────────────────────
     let sortedDays: string[];
@@ -1135,7 +1164,7 @@ export class DashAdmonComponent implements OnInit {
       intersect: false,
       y: {
         formatter: (v: number) => v > 0
-          ? '$' + v.toLocaleString('es-MX', { minimumFractionDigits: 2 })
+          ? (this.egresosCurrency === 'USD' ? 'US$' : '$') + v.toLocaleString('es-MX', { minimumFractionDigits: 2 })
           : (null as any)
       }
     };
