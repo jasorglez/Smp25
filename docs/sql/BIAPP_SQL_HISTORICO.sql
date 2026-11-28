@@ -8200,3 +8200,25 @@ WHERE module=N'Permisos / Contratos, proyectos, sucursales y almacenes'
   AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 -- END CREATOR_ENTITY_PERMISSIONS_DEPLOY_686
 GO
+
+-- BEGIN CREATOR_PERMISSION_MESSAGE_687
+-- Fecha: 2026-11-27 | Módulo: Permisos | Repositorio: Smp25
+-- Origen: src/app/services/creator-permission.service.ts
+-- Ajusta el anuncio existente; no crea una publicación duplicada. Ejecutar solo este bloque.
+UPDATE administration.dbo.product_updates
+SET version=N'5.00.687',
+    description=N'Al crear un contrato, proyecto, sucursal o almacén, el usuario de la sesión recibe automáticamente el permiso de acceso al nuevo registro y ve un aviso con el tipo de registro y su nombre.',
+    userBenefit=N'El creador puede continuar trabajando con lo que acaba de registrar y confirma a quién se asignó el acceso.',
+    promoText=N'Crea tus registros con acceso automático y ve la confirmación en pantalla.',
+    validationStatus='PENDING',
+    releaseStatus='LOCAL'
+WHERE module=N'Permisos / Contratos, proyectos, sucursales y almacenes'
+  AND title=N'Permiso automático al creador de registros'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates
+WHERE module=N'Permisos / Contratos, proyectos, sucursales y almacenes'
+  AND title=N'Permiso automático al creador de registros'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+-- END CREATOR_PERMISSION_MESSAGE_687
+GO

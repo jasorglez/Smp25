@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.686 (27 Noviembre 2026 22:12) Permisos automáticos al creador',
+  version: '5.00.687 (27 Noviembre 2026 22:54) Aviso de permiso asignado',
 };

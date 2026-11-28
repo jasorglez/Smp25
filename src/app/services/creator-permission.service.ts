@@ -1,4 +1,5 @@
 import { inject, Injectable } from '@angular/core';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Observable, map, of, switchMap, catchError } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
 import { SignalsService } from './signals.service';
@@ -12,6 +13,7 @@ export class CreatorPermissionService {
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private permissionsService = inject(UsersxpermissionsService);
+  private snackBar = inject(MatSnackBar);
 
   ensurePermission(userId: number, entityId: number, type: string): Observable<any> {
     if (!userId || !entityId) {
@@ -45,7 +47,23 @@ export class CreatorPermissionService {
     }
 
     return this.ensurePermission(userId, entityId, type).pipe(
-      map(() => created),
+      map(() => {
+        const entityName: Record<CreatorPermissionType, string> = {
+          branch: 'Sucursal',
+          warehouse: 'Almacén',
+          contract: 'Contrato',
+          project: 'Proyecto'
+        };
+        const userName = this.signalsService.getDisplayName()()?.trim()
+          || this.trackingService.getnameUser()?.trim()
+          || String(userId);
+        this.snackBar.open(`${entityName[type]} asignado al usuario: ${userName}`, 'Cerrar', {
+          duration: 5000,
+          horizontalPosition: 'center',
+          verticalPosition: 'top'
+        });
+        return created;
+      }),
       catchError(error => {
         console.error(`El ${type} se creó, pero no se pudo asignar el permiso al creador.`, error);
         alerts.basicAlert('Permiso pendiente', 'El registro se creó, pero no se pudo asignar el permiso al usuario creador. Revise los permisos del registro.', 'warning');
