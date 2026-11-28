@@ -6,7 +6,8 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 import { AppModule } from './app.module';
 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
-import { provideHttpClient, HttpClient } from '@angular/common/http';
+import { provideHttpClient, HttpClient, withInterceptors } from '@angular/common/http';
+import { authInterceptor } from './interceptors/auth.interceptor';
 import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { getAuth, provideAuth } from '@angular/fire/auth';
 import { getDatabase, provideDatabase } from '@angular/fire/database';
@@ -31,7 +32,7 @@ export const appConfig: ApplicationConfig = {
     { provide: RouteReuseStrategy, useClass: WorkspaceRouteReuseStrategy },
     provideAnimations(),
     importProvidersFrom(AppModule),
-    provideHttpClient(),
+    provideHttpClient(withInterceptors([authInterceptor])),
     importProvidersFrom(
       TranslateModule.forRoot({
         loader: {

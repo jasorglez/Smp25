@@ -36,6 +36,11 @@ export class SignalrService {
   private admonUpdateSubject = new BehaviorSubject<any>(null);
   public admonUpdate$ = this.admonUpdateSubject.asObservable();
 
+  // SessionHub (Security) — avisa en tiempo real cuando un nuevo login desplaza la sesión actual
+  private sessionHubConnection: signalR.HubConnection | null = null;
+  private sessionReplacedSubject = new Subject<any>();
+  public sessionReplaced$ = this.sessionReplacedSubject.asObservable();
+
   // Exponer observables públicos - MANTENIDOS EXACTAMENTE IGUAL
   public connectionState$ = this.connectionState.asObservable();
   public photoUpdate$ = this.photoUpdateSubject.asObservable();
@@ -439,6 +444,51 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
     if (this.admonHubConnection) {
       this.admonHubConnection.stop();
       this.admonHubConnection = null;
+    }
+  }
+
+  // Conexión al SessionHub del microservicio Security — control de sesión única por usuario.
+  public startSessionConnection(token: string, sessionId: string): void {
+    if (!sessionId) return;
+    if (this.sessionHubConnection?.state === signalR.HubConnectionState.Connected ||
+        this.sessionHubConnection?.state === signalR.HubConnectionState.Connecting) {
+      return;
+    }
+
+    const hubUrl = 'https://endpoints.biapp.com.mx/sessionHub';
+
+    this.sessionHubConnection = new signalR.HubConnectionBuilder()
+      .withUrl(hubUrl, {
+        accessTokenFactory: () => token || '',
+        skipNegotiation: false,
+        transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling,
+        withCredentials: false
+      })
+      .withAutomaticReconnect({
+        nextRetryDelayInMilliseconds: retryContext =>
+          Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 30000)
+      })
+      .configureLogging(signalR.LogLevel.Warning)
+      .build();
+
+    this.sessionHubConnection.on('SessionReplaced', (data: any) => {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      this.sessionReplacedSubject.next(parsed);
+    });
+
+    this.sessionHubConnection.onreconnected(() => {
+      void this.sessionHubConnection?.invoke('JoinSession', sessionId);
+    });
+
+    this.sessionHubConnection.start()
+      .then(() => this.sessionHubConnection?.invoke('JoinSession', sessionId))
+      .catch(err => console.error('❌ SessionHub error:', err));
+  }
+
+  public stopSessionConnection(): void {
+    if (this.sessionHubConnection) {
+      this.sessionHubConnection.stop();
+      this.sessionHubConnection = null;
     }
   }
 

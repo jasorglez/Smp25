@@ -15,6 +15,7 @@ import { BehaviorSubject, catchError, firstValueFrom, map, Observable, throwErro
 import { environment } from '../../environments/environment';
 import { Ilogin } from 'app/interface/ilogin';
 import { SignalsService } from './signals.service';
+import { SignalrService } from './signalr.service';
 import { WorkspaceTabsService } from './workspace-tabs.service';
 import { CobranzaOfflineService } from './cobranza-offline.service';
 import { SafeUserData, ApiResponse, sanitizeUserData } from 'app/interface/safe-user.interface';
@@ -46,6 +47,7 @@ export class AuthService {
   private auth = inject(Auth);
   private http = inject(HttpClient);
   private signalsService = inject(SignalsService);
+  private signalrService = inject(SignalrService);
   private workspaceTabs = inject(WorkspaceTabsService);
   private cobranzaOffline = inject(CobranzaOfflineService);
   private ngZone = inject(NgZone);
@@ -71,6 +73,17 @@ export class AuthService {
           && !this.cobranzaOffline.hasValidOfflineSession()) void this.logout();
       }, 15_000);
     }
+    // Control de sesión única: si otro login desplaza esta sesión, se avisa en tiempo real por SignalR.
+    this.signalrService.sessionReplaced$.subscribe(() => {
+      this.ngZone.run(() => {
+        Swal.fire({
+          title: 'Sesión cerrada',
+          text: 'Tu sesión se cerró porque iniciaste sesión en otro dispositivo.',
+          icon: 'info',
+          confirmButtonText: 'Entendido'
+        }).then(() => this.logout());
+      });
+    });
   }
 
   login(data: Ilogin) {
@@ -83,6 +96,9 @@ export class AuthService {
 
     const token = localStorage.getItem('token');
     if (!token) return;
+
+    const sid = this.getSidFromToken(token);
+    if (sid) this.signalrService.startSessionConnection(token, sid);
 
     const expiry = this.getTokenExpiry(token);
     if (!expiry) return;
@@ -191,6 +207,14 @@ export class AuthService {
     }
   }
 
+  // ─── Extrae el sid (identificador de sesión activa) del JWT ───
+  private getSidFromToken(token: string): string | null {
+    try {
+      const decoded = JSON.parse(atob(token.split('.')[1]));
+      return decoded['sid'] ?? null;
+    } catch { return null; }
+  }
+
   // ─── Extrae el userId del JWT (claim nameid) ───
   private getUserIdFromToken(): number | null {
     try {
@@ -269,6 +293,7 @@ export class AuthService {
 
   async logout() {
     this.clearSessionTimers();
+    this.signalrService.stopSessionConnection();
     this.workspaceTabs.preserveForLogout();
     try {
       if (navigator.onLine) {

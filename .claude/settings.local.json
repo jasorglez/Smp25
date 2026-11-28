@@ -183,13 +183,17 @@
       "WebFetch(domain:api.ipquery.io)",
       "Skill(claude-in-chrome)",
       "mcp__sqlserver__mssql_query",
-      "Skill(run)"
+      "Skill(run)",
+      "Skill(artifact-design)",
+      "Artifact",
+      "Skill(fewer-permission-prompts)"
     ],
     "deny": [],
     "ask": [],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
-      "C:\\Developer\\Visual Studio 22\\c#\\MicroServicios"
+      "C:\\Developer\\Visual Studio 22\\c#\\MicroServicios",
+      "/Users/test/c#"
     ]
   },
   "enableAllProjectMcpServers": true,
