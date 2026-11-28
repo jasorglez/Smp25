@@ -972,7 +972,7 @@ public gridOptions: any = {
     let subfamiliaId = 0;
     const cuentaBase: any = { idCompany: rootId, active: true };
 
-    this.startPeripheralProgress(18);
+    this.startPeripheralProgress(19);
     this.logPeriferico('INICIO crear empresa nueva', rootName);
 
     // ── 1. Sucursal principal ────────────────────────────────────────────────
@@ -1116,6 +1116,17 @@ public gridOptions: any = {
       ));
       this.logPeriferico('11-Unidades MEASURE creadas (6)', rootName);
     } catch (e) { console.error('paso 11 (MEASURE):', e); }
+
+    // ── 11b. Monedas Currency (USD, MXN, EURO) ────────────────────────────────
+    try {
+      await Promise.all(['USD', 'MXN', 'EURO'].map(desc =>
+        lastValueFrom(this.catalogsService.addCatalog({
+          idCompany: rootId, description: desc, type: 'Currency',
+          valueAddition: 'NA', valueAdditionBit2: false, valueAdditionBit3: false, vigente: true, active: 1
+        }))
+      ));
+      this.logPeriferico('11b-Monedas USD/MXN/EURO creadas (3)', rootName);
+    } catch (e) { console.error('paso 11b (Currency):', e); }
 
     // ── 12. Cuentas contables ─────────────────────────────────────────────────
     try {
@@ -1281,7 +1292,7 @@ public gridOptions: any = {
   // Verifica y crea entidades por defecto que faltan en una empresa existente.
   // Cada paso es independiente: un fallo no detiene los demás.
   private async ensureDefaultEntitiesForRoot(rootId: number, rootName: string): Promise<void> {
-    this.startPeripheralProgress(20);
+    this.startPeripheralProgress(21);
     const today = new Date().toISOString().substring(0, 10);
     const nextYear = new Date();
     nextYear.setFullYear(nextYear.getFullYear() + 1);
@@ -1466,6 +1477,22 @@ public gridOptions: any = {
         this.logPeriferico('10-Unidades MEASURE creadas (6)', rootName);
       }
     } catch (e) { console.error('ensure paso 10 (MEASURE):', e); }
+
+    // ── 10b. Monedas Currency (USD, MXN, EURO) ────────────────────────────────
+    try {
+      const currencies: any[] = await lastValueFrom(this.catalogsService.getCatalogs(rootId, 'Currency')).catch(() => []);
+      const existentes = (currencies || []).map((c: any) => String(c.description || '').trim().toUpperCase());
+      const faltantes = ['USD', 'MXN', 'EURO'].filter(desc => !existentes.includes(desc));
+      if (faltantes.length) {
+        await Promise.all(faltantes.map(desc =>
+          lastValueFrom(this.catalogsService.addCatalog({
+            idCompany: rootId, description: desc, type: 'Currency',
+            valueAddition: 'NA', valueAdditionBit2: false, valueAdditionBit3: false, vigente: true, active: 1
+          }))
+        ));
+        this.logPeriferico(`10b-Monedas creadas (${faltantes.join(', ')})`, rootName);
+      }
+    } catch (e) { console.error('ensure paso 10b (Currency):', e); }
 
     // ── 11. Cuentas contables ────────────────────────────────────────────────
     try {
