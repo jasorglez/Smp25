@@ -21,6 +21,11 @@ export class FooterComponent implements OnInit {
   private cdr             = inject(ChangeDetectorRef);
   environment             = environment;
 
+  /** Solo "X.Y.Z (fecha)" para la UI — environment.version trae además la bitácora del cambio, que no cabe en el footer. */
+  get shortVersion(): string {
+    return environment.version.match(/^\d+\.\d+\.\d+\s*(\([^)]*\))?/)?.[0] ?? environment.version;
+  }
+
   showPanel = false;
 
   companyName = computed(() => this.signalsService.getCompanyName()());

@@ -144,9 +144,9 @@ The application supports hot reloading in development mode and includes comprehe
 
 **ALWAYS update version in `src/environments/environment.ts` (line 68) when making changes:**
 ```typescript
-version: '2.50.4 (24 Octubre 2025 17:45)'
+version: '2.50.4 (24 Oct 25)'
 ```
-Format: `MAJOR.MINOR.PATCH (DD Month YYYY HH:MM)`
+Format: `MAJOR.MINOR.PATCH (DD Mon YY)` — mes abreviado a 3 letras, año a 2 dígitos (este string se muestra completo en el footer y en el login, así que debe quedar corto).
 
 ### Color System (Bootstrap 5)
 
