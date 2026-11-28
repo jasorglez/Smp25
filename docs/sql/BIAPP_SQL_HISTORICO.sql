@@ -8222,3 +8222,20 @@ WHERE module=N'Permisos / Contratos, proyectos, sucursales y almacenes'
   AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 -- END CREATOR_PERMISSION_MESSAGE_687
 GO
+
+-- BEGIN CREATOR_PERMISSION_MESSAGE_DEPLOY_687
+-- Fecha: 2026-11-27 | Módulo: Permisos | Repositorio: Smp25
+-- Origen: despliegue GitHub Actions 46105288390, commit 683ea559f, resultado success.
+-- Ejecutar únicamente este bloque después de verificar el despliegue.
+UPDATE administration.dbo.product_updates
+SET releaseStatus='PRODUCTION'
+WHERE module=N'Permisos / Contratos, proyectos, sucursales y almacenes'
+  AND title=N'Permiso automático al creador de registros'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1 AND version=N'5.00.687';
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates
+WHERE module=N'Permisos / Contratos, proyectos, sucursales y almacenes'
+  AND title=N'Permiso automático al creador de registros'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+-- END CREATOR_PERMISSION_MESSAGE_DEPLOY_687
+GO
