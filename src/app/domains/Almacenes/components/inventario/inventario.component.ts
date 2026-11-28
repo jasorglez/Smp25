@@ -184,7 +184,17 @@ export class InventarioComponent {
     const company: any = await firstValueFrom(this.rootService.getRootbyId(this.idCompany));
     const name = company?.name || this.trackingService.getnameComp() || '';
     if (!company?.picture) return { name, logo: '' };
-    const logo = await new Promise<string>((resolve, reject) => {
+    const logo = await new Promise<string>((resolve) => {
+      let settled = false;
+      const finish = (value: string) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        resolve(value);
+      };
+      // Si el logo no carga en 6s (CORS, red lenta, URL caída) seguimos sin logo
+      // en vez de dejar el export colgado para siempre.
+      const timeout = setTimeout(() => finish(''), 6000);
       const image = new Image();
       image.crossOrigin = 'anonymous';
       image.onload = () => {
@@ -193,10 +203,10 @@ export class InventarioComponent {
           canvas.width = image.naturalWidth;
           canvas.height = image.naturalHeight;
           canvas.getContext('2d')?.drawImage(image, 0, 0);
-          resolve(canvas.toDataURL('image/png'));
-        } catch (error) { reject(error); }
+          finish(canvas.toDataURL('image/png'));
+        } catch { finish(''); }
       };
-      image.onerror = () => reject(new Error('No se pudo cargar el logo de la empresa.'));
+      image.onerror = () => finish('');
       image.src = company.picture;
     });
     return { name, logo };
@@ -217,8 +227,10 @@ export class InventarioComponent {
     const rows = this.getExportRows();
     if (!rows.length || this.exporting) return;
     this.exporting = true;
+    alerts.showLoading('Procesando', 'Procesando logo de la empresa...');
     try {
       const company = await this.getExportCompany();
+      alerts.showLoading('Procesando', 'Generando archivo Excel...');
       const headers = this.getExportHeaders();
       const workbook = new Workbook();
       const sheet = workbook.addWorksheet('Inventario');
@@ -265,6 +277,7 @@ export class InventarioComponent {
       console.error('Error exporting inventory to Excel:', error);
       alerts.basicAlert(this.translate.instant('modules.warehouses.ui.inventory.error'), this.translate.instant('modules.warehouses.ui.inventory.exportFailed'), 'error');
     } finally {
+      alerts.closeLoading();
       this.exporting = false;
     }
   }
@@ -273,8 +286,10 @@ export class InventarioComponent {
     const rows = this.getExportRows();
     if (!rows.length || this.exporting) return;
     this.exporting = true;
+    alerts.showLoading('Procesando', 'Procesando logo de la empresa...');
     try {
       const company = await this.getExportCompany();
+      alerts.showLoading('Procesando', 'Procesando información del inventario...');
       const numericFields = new Set(['entrada', 'salida', 'existencia', 'stockMin', 'stockMax']);
       const currencyFields = new Set(['costoMN', 'total', 'ventaMN', 'ventaTotal']);
       const body: any[] = [this.getExportHeaders().map(text => ({ text, bold: true, color: '#ffffff', fillColor: '#17365d' }))];
@@ -304,6 +319,7 @@ export class InventarioComponent {
         styles: { title: { fontSize: 16, bold: true, margin: [0, 0, 0, 6] } },
         defaultStyle: { fontSize: 7 },
       };
+      alerts.closeLoading();
       await this.pdfPreview.show(pdfMake.createPdf(doc),
         `${this.translate.instant('modules.warehouses.ui.inventory.title')} - ${this.getExportWarehouse()}`,
         this.getExportFileName('pdf'));
@@ -311,6 +327,7 @@ export class InventarioComponent {
       console.error('Error exporting inventory to PDF:', error);
       alerts.basicAlert(this.translate.instant('modules.warehouses.ui.inventory.error'), this.translate.instant('modules.warehouses.ui.inventory.exportFailed'), 'error');
     } finally {
+      alerts.closeLoading();
       this.exporting = false;
     }
   }
