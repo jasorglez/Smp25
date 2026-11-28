@@ -144,7 +144,7 @@ $transition: 0.25s $ease;
   display: inline-block;
   font-family: 'Roboto', sans-serif;
   font-weight: 800;
-  font-size: 2.6rem;
+  font-size: 3.6rem;
   color: $text;
   text-shadow: 0 2px 16px rgba(108, 99, 255, 0.45);
   opacity: 0;
@@ -154,7 +154,7 @@ $transition: 0.25s $ease;
 }
 
 .logo-icon {
-  height: 2.5rem;
+  height: 3.4rem;
   width: auto;
   margin-left: 0.15rem;
   opacity: 0;
@@ -558,8 +558,8 @@ $transition: 0.25s $ease;
   }
 
   .login-title { font-size: 1.15rem; }
-  .logo-letter { font-size: 2.1rem; }
-  .logo-icon   { height: 2rem; }
+  .logo-letter { font-size: 2.8rem; }
+  .logo-icon   { height: 2.6rem; }
 }
 
 @media (max-width: 360px) {
