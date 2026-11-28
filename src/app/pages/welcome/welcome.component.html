@@ -24,7 +24,7 @@
     </header>
   </div>
 
-  <section class="welcome__showcase" aria-label="Publicidad">
+  <section class="welcome__showcase" [class.welcome__showcase--manage]="canManageImages && images.length > 0" aria-label="Publicidad">
     <div class="company-publicity-tools" *ngIf="isRootUser">
       <label class="btn btn-primary btn-sm" [class.disabled]="uploadBusy || !canManageImages">
         <i class="bi bi-upload me-1"></i>{{ uploadBusy ? 'Subiendo…' : 'Subir imagen' }}

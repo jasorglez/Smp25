@@ -5,7 +5,7 @@
   background: linear-gradient(165deg, #f5f7fb 0%, #eef2f9 38%, #f8fafc 100%);
 }
 
-.company-publicity-tools { display: flex; align-items: center; gap: 12px; margin: 0 auto 14px; width: min(1280px, 100%); font-size: 12px; color: #64748b; }
+.company-publicity-tools { position: relative; z-index: 5; display: flex; align-items: center; gap: 12px; margin: 0 auto 14px; width: min(1280px, 100%); font-size: 12px; color: #64748b; transform: translateY(-10%); }
 .company-publicity-tools label { cursor: pointer; margin: 0; }
 .company-publicity-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; width: min(1280px, 100%); margin: 16px auto; }
 .company-publicity-item { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 7px; border: 1px solid #dbe4ee; border-radius: 8px; background: #fff; }
@@ -372,12 +372,7 @@
   bottom: 0;
   z-index: 3;
   padding: 20px 16px 18px;
-  background: linear-gradient(
-    to top,
-    rgba(15, 23, 42, 0.35) 0%,
-    rgba(15, 23, 42, 0.08) 55%,
-    transparent 100%
-  );
+  background: linear-gradient(to top, rgba(15, 23, 42, .35), rgba(15, 23, 42, .08) 55%, transparent);
   pointer-events: none;
 }
 
@@ -466,4 +461,64 @@
   font-weight: 600;
   color: rgba(14, 68, 145, 0.45);
   letter-spacing: 0.04em;
+}
+
+/* Compacta bienvenida, anuncios y publicidad en una franja superior. */
+.welcome {
+  display: grid;
+  grid-template-columns: minmax(180px, auto) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+}
+.welcome__intro { grid-column: 1; grid-row: 1; min-width: 0; padding: 6px 0 6px 12px; }
+.welcome__header { max-width: none; margin: 0; text-align: left; }
+.welcome__title { margin: 0; font-size: clamp(17px, 2vw, 22px); white-space: nowrap; }
+.welcome__subtitle { margin: 0; font-size: 11px; line-height: 1.2; white-space: nowrap; }
+.welcome__announcements { grid-column: 2; grid-row: 1; width: 100%; gap: 6px; margin: 0; }
+.announcement-card { min-height: 0; gap: 6px; padding: 6px 8px; border-radius: 7px; }
+.announcement-card__icon { flex-basis: 24px; width: 24px; height: 24px; border-radius: 6px; font-size: 12px; }
+.announcement-card__category { font-size: 8px; }
+.announcement-card h2 { overflow: hidden; margin: 1px 0 2px; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.announcement-card p { display: none; }
+.announcement-card__link { margin-top: 2px; font-size: 9px; }
+.welcome__showcase { grid-column: 1 / -1; grid-row: 2; }
+.company-publicity-tools { position: relative; z-index: 5; gap: 8px; margin-bottom: 5px; font-size: 11px; transform: none; }
+.carousel__img { transform: translateY(5%); }
+.carousel--hero { min-height: min(76vh, 880px); max-height: min(84vh, 960px); }
+.welcome__showcase--manage { display: grid; grid-template-columns: 112px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); column-gap: 10px; }
+.welcome__showcase--manage > .company-publicity-tools,
+.welcome__showcase--manage > .alert { grid-column: 1 / -1; }
+.welcome__showcase--manage > .carousel,
+.welcome__showcase--manage > .welcome__empty { grid-column: 2; grid-row: 2; min-width: 0; }
+.welcome__showcase--manage > .company-publicity-list { grid-column: 1; grid-row: 2; align-content: start; grid-template-columns: 1fr; gap: 6px; max-height: min(76vh, 880px); overflow-y: auto; margin: 0; padding: 3px; }
+.welcome__showcase--manage .company-publicity-item { justify-content: space-between; gap: 4px; padding: 3px; }
+.welcome__showcase--manage .company-publicity-item img { flex: 0 0 72px; width: 72px; height: 48px; }
+.welcome__showcase--manage .company-publicity-item span { display: none; }
+.welcome__showcase--manage .company-publicity-item .btn { position: static; flex: 0 0 24px; width: 24px; height: 24px; padding: 0; font-size: 11px; }
+
+@media (max-width: 900px) {
+  .welcome { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); }
+  .welcome__intro { grid-column: 1; grid-row: 1; padding: 6px 10px 3px; }
+  .welcome__header { text-align: center; }
+  .welcome__announcements { grid-column: 1; grid-row: 2; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .welcome__showcase { grid-column: 1; grid-row: 3; }
+  .welcome__showcase--manage { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+  .welcome__showcase--manage > .company-publicity-tools,
+  .welcome__showcase--manage > .alert,
+  .welcome__showcase--manage > .carousel,
+  .welcome__showcase--manage > .welcome__empty,
+  .welcome__showcase--manage > .company-publicity-list { grid-column: 1; }
+  .welcome__showcase--manage > .carousel,
+  .welcome__showcase--manage > .welcome__empty { grid-row: 2; }
+  .welcome__showcase--manage > .company-publicity-list { grid-row: 3; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); max-height: 120px; }
+}
+
+@media (max-width: 520px) {
+  .welcome__announcements { grid-template-columns: 1fr; gap: 4px; }
+  .announcement-card { padding: 4px 7px; }
+  .announcement-card:nth-child(n + 3) { display: none; }
+  .welcome__title { font-size: 18px; }
+  .welcome__subtitle { font-size: 10px; }
+  .company-publicity-tools { margin-bottom: 4px; }
 }

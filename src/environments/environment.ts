@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.689 (27 Noviembre 2026 23:48) Materiales compactos y consecutivos de requisición',
+  version: '5.00.690 (28 Noviembre 2026 00:44) Miniaturas de publicidad ordenadas',
 };

@@ -8389,3 +8389,23 @@ WHERE module=N'Compras / Requisiciones' AND title=N'Consecutivos automáticos po
  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 -- END REQUISITION_AUTOMATIC_PREFIX_SETUP_DEPLOY_689
 GO
+
+-- BEGIN COMPANY_PUBLICITY_THUMBNAILS_LAYOUT_690
+-- Fecha: 2026-11-28 | Módulo: Publicidad / Administración de imágenes | Repositorio: Smp25
+-- Origen: src/app/pages/welcome/welcome.component.scss
+-- Actualiza el aviso vigente de Publicidad para documentar la lista ordenada de miniaturas.
+UPDATE administration.dbo.product_updates
+SET version=N'5.00.690',
+    description=N'Las miniaturas quedan ordenadas en una columna izquierda con el botón de borrar alineado a cada imagen; se quitan los nombres de archivo del panel.',
+    userBenefit=N'Permite revisar y borrar imágenes con una lista compacta y sin iconos montados sobre las miniaturas.',
+    promoText=N'Administra tus imágenes de publicidad desde una lista clara y compacta.',
+    validationStatus='PENDING',
+    releaseStatus='LOCAL'
+WHERE module=N'Publicidad' AND title=N'Imágenes propias por empresa'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates
+WHERE module=N'Publicidad' AND title=N'Imágenes propias por empresa'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+-- END COMPANY_PUBLICITY_THUMBNAILS_LAYOUT_690
+GO
