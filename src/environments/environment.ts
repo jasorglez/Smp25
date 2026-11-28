@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.673 (27 Noviembre 2026 18:49) Exportación de inventario a Excel y PDF',
+  version: '5.00.674 (27 Noviembre 2026 19:03) Logo de empresa en Excel y PDF de inventario',
 };

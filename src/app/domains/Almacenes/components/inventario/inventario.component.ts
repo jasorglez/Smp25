@@ -11,12 +11,13 @@ import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
 import { MaterialsService } from 'app/services/materials.service';
-import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
+import { catchError, firstValueFrom, forkJoin, map, of, switchMap } from 'rxjs';
 import { InventoryMovementsDetailComponent } from './inventory-movements-detail.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import * as XLSX from 'xlsx';
+import { Workbook } from 'exceljs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+import { RootService } from 'app/services/root.service';
 
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
@@ -54,11 +55,11 @@ import * as pdfFonts from 'pdfmake/build/vfs_fonts';
         <i class="bi bi-arrow-clockwise"></i>
       </button>
 
-      <button class="btn btn-sm btn-outline-success" (click)="exportExcel()" [disabled]="loading || !rowData.length"
+      <button class="btn btn-sm btn-outline-success" (click)="exportExcel()" [disabled]="loading || exporting || !rowData.length"
         [title]="'modules.warehouses.ui.inventory.exportExcel' | translate">
         <i class="bi bi-file-earmark-excel me-1"></i>{{ 'modules.warehouses.ui.inventory.excel' | translate }}
       </button>
-      <button class="btn btn-sm btn-outline-danger" (click)="exportPdf()" [disabled]="loading || !rowData.length"
+      <button class="btn btn-sm btn-outline-danger" (click)="exportPdf()" [disabled]="loading || exporting || !rowData.length"
         [title]="'modules.warehouses.ui.inventory.exportPdf' | translate">
         <i class="bi bi-file-earmark-pdf me-1"></i>{{ 'modules.warehouses.ui.inventory.pdf' | translate }}
       </button>
@@ -129,6 +130,7 @@ export class InventarioComponent {
   private permitionsService  = inject(PermitionsService);
   private trackingService    = inject(TrackingService);
   private materialsService   = inject(MaterialsService);
+  private rootService        = inject(RootService);
 
   rowData:           any[]   = [];
   private allInventoryRows: any[] = [];
@@ -137,6 +139,7 @@ export class InventarioComponent {
   warehouses:        any[]   = [];
   selectedWarehouse: number  = 0;
   loading:           boolean = false;
+  exporting = false;
   dataWarnings: string[] = [];
   idCompany:         number  = 0;
   projectId:         number  = 0;
@@ -175,35 +178,101 @@ export class InventarioComponent {
     return `Inventario_${warehouse}_${date}.${extension}`;
   }
 
-  exportExcel(): void {
+  private async getExportCompany(): Promise<{ name: string; logo: string }> {
+    const company: any = await firstValueFrom(this.rootService.getRootbyId(this.idCompany));
+    const name = company?.name || this.trackingService.getnameComp() || '';
+    if (!company?.picture) return { name, logo: '' };
+    const logo = await new Promise<string>((resolve, reject) => {
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      image.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = image.naturalWidth;
+          canvas.height = image.naturalHeight;
+          canvas.getContext('2d')?.drawImage(image, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        } catch (error) { reject(error); }
+      };
+      image.onerror = () => reject(new Error('No se pudo cargar el logo de la empresa.'));
+      image.src = company.picture;
+    });
+    return { name, logo };
+  }
+
+  private downloadExport(blob: Blob, fileName: string): void {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async exportExcel(): Promise<void> {
     const rows = this.getExportRows();
-    if (!rows.length) return;
+    if (!rows.length || this.exporting) return;
+    this.exporting = true;
     try {
+      const company = await this.getExportCompany();
       const headers = this.getExportHeaders();
-      const sheet = XLSX.utils.aoa_to_sheet([
-        [this.translate.instant('modules.warehouses.ui.inventory.title'), this.getExportWarehouse()],
-        [this.translate.instant('modules.warehouses.ui.inventory.generatedAt'), new Date().toLocaleString(this.translate.currentLang === 'en' ? 'en-US' : 'es-MX')],
-        [],
-        headers,
-        ...rows.map(row => this.exportFields.map(field => row[field] ?? '')),
-        [],
-        [this.translate.instant('modules.warehouses.ui.inventory.totalValue'), ...Array(9).fill(''),
-          rows.reduce((sum, row) => sum + this.toNumber(row.total), 0)],
-      ]);
-      sheet['!cols'] = [14, 42, 12, 22, ...Array(10).fill(16)].map(width => ({ wch: width }));
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, sheet, 'Inventario');
-      XLSX.writeFile(workbook, this.getExportFileName('xlsx'));
+      const workbook = new Workbook();
+      const sheet = workbook.addWorksheet('Inventario');
+      sheet.views = [{ showGridLines: false, state: 'frozen', ySplit: 7 }];
+      sheet.columns = [14, 42, 12, 22, ...Array(10).fill(16)].map(width => ({ width }));
+      sheet.getRow(1).height = 22;
+      sheet.getRow(2).height = 25;
+      sheet.getRow(3).height = 22;
+      sheet.getRow(4).height = 22;
+      if (company.logo) {
+        const imageId = workbook.addImage({ base64: company.logo, extension: 'png' });
+        sheet.addImage(imageId, { tl: { col: 0, row: 0 }, ext: { width: 120, height: 65 } });
+      }
+      sheet.mergeCells('D2:N2');
+      sheet.getCell('D2').value = company.name;
+      sheet.getCell('D2').font = { bold: true, size: 16, color: { argb: '17365D' } };
+      sheet.mergeCells('D3:N3');
+      sheet.getCell('D3').value = this.translate.instant('modules.warehouses.ui.inventory.title');
+      sheet.getCell('D3').font = { bold: true, size: 13 };
+      sheet.mergeCells('D4:N4');
+      sheet.getCell('D4').value = `${this.translate.instant('modules.warehouses.ui.inventory.warehouse')}: ${this.getExportWarehouse()}  ·  ${this.translate.instant('modules.warehouses.ui.inventory.generatedAt')}: ${new Date().toLocaleString(this.translate.currentLang === 'en' ? 'en-US' : 'es-MX')}`;
+      const header = sheet.getRow(7);
+      header.values = headers;
+      header.height = 26;
+      header.eachCell(cell => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '17365D' } };
+        cell.font = { bold: true, color: { argb: 'FFFFFF' } };
+        cell.alignment = { vertical: 'middle', wrapText: true };
+      });
+      rows.forEach(row => {
+        const excelRow = sheet.addRow(this.exportFields.map(field => row[field] ?? ''));
+        for (const column of [5, 6, 7, 8, 9]) excelRow.getCell(column).numFmt = '#,##0.###';
+        for (const column of [10, 11, 12, 13]) excelRow.getCell(column).numFmt = '"$"#,##0.00';
+      });
+      const totalRow = sheet.addRow([]);
+      totalRow.getCell(1).value = this.translate.instant('modules.warehouses.ui.inventory.totalValue');
+      totalRow.getCell(11).value = rows.reduce((sum, row) => sum + this.toNumber(row.total), 0);
+      totalRow.getCell(11).numFmt = '"$"#,##0.00';
+      totalRow.font = { bold: true };
+      sheet.autoFilter = { from: 'A7', to: `N${7 + rows.length}` };
+      const buffer = await workbook.xlsx.writeBuffer();
+      this.downloadExport(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), this.getExportFileName('xlsx'));
     } catch (error) {
       console.error('Error exporting inventory to Excel:', error);
       alerts.basicAlert(this.translate.instant('modules.warehouses.ui.inventory.error'), this.translate.instant('modules.warehouses.ui.inventory.exportFailed'), 'error');
+    } finally {
+      this.exporting = false;
     }
   }
 
-  exportPdf(): void {
+  async exportPdf(): Promise<void> {
     const rows = this.getExportRows();
-    if (!rows.length) return;
+    if (!rows.length || this.exporting) return;
+    this.exporting = true;
     try {
+      const company = await this.getExportCompany();
       const numericFields = new Set(['entrada', 'salida', 'existencia', 'stockMin', 'stockMax']);
       const currencyFields = new Set(['costoMN', 'total', 'ventaMN', 'ventaTotal']);
       const body: any[] = [this.getExportHeaders().map(text => ({ text, bold: true, color: '#ffffff', fillColor: '#17365d' }))];
@@ -215,7 +284,15 @@ export class InventarioComponent {
         ...Array(9).fill(''), { text: this.formatCurrency(rows.reduce((sum, row) => sum + this.toNumber(row.total), 0)), bold: true },
         '', '', '']);
       const doc: any = {
-        pageSize: 'A3', pageOrientation: 'landscape', pageMargins: [24, 32, 24, 32],
+        pageSize: 'A3', pageOrientation: 'landscape', pageMargins: [24, 105, 24, 32],
+        header: () => ({
+          margin: [24, 15, 24, 0],
+          columns: [
+            company.logo ? { image: company.logo, fit: [110, 65], width: 110 } : { text: '', width: 110 },
+            { text: company.name, alignment: 'center', bold: true, color: '#17365d', fontSize: 16, margin: [0, 14, 0, 0] },
+            { text: '', width: 110 },
+          ],
+        }),
         content: [
           { text: this.translate.instant('modules.warehouses.ui.inventory.title'), style: 'title' },
           { text: `${this.translate.instant('modules.warehouses.ui.inventory.warehouse')}: ${this.getExportWarehouse()}  ·  ${this.translate.instant('modules.warehouses.ui.inventory.generatedAt')}: ${new Date().toLocaleString(this.translate.currentLang === 'en' ? 'en-US' : 'es-MX')}`, margin: [0, 0, 0, 10] },
@@ -229,6 +306,8 @@ export class InventarioComponent {
     } catch (error) {
       console.error('Error exporting inventory to PDF:', error);
       alerts.basicAlert(this.translate.instant('modules.warehouses.ui.inventory.error'), this.translate.instant('modules.warehouses.ui.inventory.exportFailed'), 'error');
+    } finally {
+      this.exporting = false;
     }
   }
 

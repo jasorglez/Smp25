@@ -8006,3 +8006,22 @@ WHERE module=N'Almacenes TD / Inventario' AND title=N'Exportación a Excel y PDF
 COMMIT TRANSACTION;
 -- END WAREHOUSE_INVENTORY_EXPORT_673
 GO
+
+-- BEGIN WAREHOUSE_INVENTORY_EXPORT_LOGO_674
+-- Fecha: 2026-11-27 | Módulo: Almacenes TD / Inventario | Repositorio: Smp25
+-- Origen: src/app/domains/Almacenes/components/inventario/inventario.component.ts
+-- Actualiza el anuncio de la misma entrega, sin duplicarlo.
+UPDATE administration.dbo.product_updates
+SET version=N'5.00.674',
+    description=N'El inventario permite descargar Excel y PDF con las filas visibles, el almacén, el valor total y el logo de la empresa seleccionada.',
+    userBenefit=N'Facilita compartir existencias en reportes identificados con la empresa.',
+    promoText=N'Comparte el inventario con la identidad de tu empresa en Excel y PDF.',
+    validationStatus='PENDING', releaseStatus='LOCAL'
+WHERE module=N'Almacenes TD / Inventario' AND title=N'Exportación a Excel y PDF'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates
+WHERE module=N'Almacenes TD / Inventario' AND title=N'Exportación a Excel y PDF'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+-- END WAREHOUSE_INVENTORY_EXPORT_LOGO_674
+GO
