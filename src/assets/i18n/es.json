@@ -1253,7 +1253,7 @@
           "comment": "Comentario", "selectWarehouse": "Selecciona un almacén", "noAuthorizedWarehouses": "No tienes almacenes autorizados.",
           "saveChangesF10": "Guardar cambios (F10)", "unsavedChanges": "Cambios sin guardar", "receipt": "Entrada", "issue": "Salida",
           "messages": {
-            "loadWarehousesFailed": "No se pudieron cargar los almacenes autorizados.", "movementTypeCreated": "Tipo de movimiento creado",
+            "loadWarehousesFailed": "No se pudieron cargar los almacenes autorizados.", "noWarehousesForBranch": "Esta sucursal no tiene almacenes asignados.", "movementTypeCreated": "Tipo de movimiento creado",
             "evidenceSaveFailed": "No se pudo guardar la foto de soporte.", "evidenceDeleteFailed": "No se pudo eliminar la foto de soporte.",
             "createFailed": "No se pudo crear el tipo de movimiento.", "loadFailed": "No se pudieron cargar los movimientos.",
             "authorizationAssigned": "Autorización asignada", "authorizationRemoved": "Autorización eliminada",

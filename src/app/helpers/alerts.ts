@@ -202,6 +202,19 @@ export class alerts{
 		}).fire({ title, icon });
 	}
 
+	// Igual que toastAlert pero arriba a la derecha (top-end), para avisos que el
+	// usuario debe alcanzar a leer aunque haya mirado la parte superior.
+	static toastTopAlert(title: string, icon: SweetAlertIcon, timer: number = 4000) {
+		return Swal.mixin({
+			toast: true,
+			position: 'top-end',
+			showConfirmButton: false,
+			showCloseButton: true,
+			timer,
+			timerProgressBar: true,
+		}).fire({ title, icon });
+	}
+
 	/*=============================================
 	Función para mostrar loading (no se puede cerrar)
 	=============================================*/

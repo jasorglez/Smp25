@@ -103,6 +103,9 @@ export class SideBarComponent {
   selectedProjectId: string = '';
   selectedBranchId: string = '';
   private autoLoadAssignedBranchContext = false;
+  // true solo cuando una sucursal real ya consulto sus contratos y vino vacia,
+  // para avisar en el sidebar sin parpadear mientras aun esta cargando.
+  selectedBranchHasNoContracts: boolean = false;
   selectedCProcessId: number = 0;
   selectedPlatformId: number = 0;
   userRoot: number = 0;
@@ -605,6 +608,8 @@ error: (error) => {
         this.selectedContractId = '';
         this.projectData = [];
         this.selectedProjectId = '';
+        // Sucursal real sin contratos: avisamos en el sidebar.
+        this.selectedBranchHasNoContracts = this.contractData.length === 0;
         this.cdr.markForCheck();
         if (this.autoLoadAssignedBranchContext && this.contractData.length > 0) {
           const firstContract = this.contractData[0];
@@ -899,6 +904,7 @@ error: (error) => {
     // Limpiar datos de contracts
     this.contractData = [];
     this.selectedContractId = '';
+    this.selectedBranchHasNoContracts = false;
     this.signalsService.setContractSelectedBySidebar(null);
     
     // Limpiar datos de projects

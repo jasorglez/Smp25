@@ -306,6 +306,11 @@ export class InandoutStComponent implements OnInit {
           this.onWarehouseChange(this.warehouses[0].idAlmacen);
         } else {
           this.selectedWarehouse = null;
+          // Sucursal sin almacenes asignados: avisar arriba a la derecha.
+          alerts.toastTopAlert(
+            this.translate.instant('modules.warehouses.ui.movements.messages.noWarehousesForBranch'),
+            'warning'
+          );
         }
       },
       error: (error) => {

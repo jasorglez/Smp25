@@ -82,6 +82,11 @@
         </option>
       </select>
 
+      <div *ngIf="selectedBranchHasNoContracts" class="sidebar-branch-hint" role="status">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        Esta sucursal no tiene contratos ni proyectos asignados.
+      </div>
+
       <!-- Convenio vigente — solo lectura, informativo -->
       <div *ngIf="conventionVigenteNombre" class="mb-2 mt-1 px-1"
            matTooltip="Convenio Vigente: {{ conventionVigenteNombre }}"

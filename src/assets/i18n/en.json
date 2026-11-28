@@ -1126,7 +1126,7 @@
           "receipt": "Receipt",
           "issue": "Issue",
           "messages": {
-            "loadWarehousesFailed": "Could not load authorized warehouses.", "movementTypeCreated": "Movement type created", "createFailed": "Could not create the movement type.",
+            "loadWarehousesFailed": "Could not load authorized warehouses.", "noWarehousesForBranch": "This branch has no warehouses assigned.", "movementTypeCreated": "Movement type created", "createFailed": "Could not create the movement type.",
             "evidenceSaveFailed": "Could not save the support photo.", "evidenceDeleteFailed": "Could not delete the support photo.",
             "loadFailed": "Could not load movements.", "authorizationAssigned": "Authorization assigned", "authorizationRemoved": "Authorization removed",
             "authorizerAssigned": "The authorizer was assigned.", "authorizerSelected": "Select an authorizing user.", "processing": "Processing…", "reportFailed": "Could not generate the report.",

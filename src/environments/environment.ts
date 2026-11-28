@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.692 (28 Noviembre 2026) Sidebar: elegir sucursal ya no bloquea contratos/proyectos',
+  version: '5.00.693 (28 Noviembre 2026) Avisos de sucursal sin contratos/almacenes + sidebar mas compacto',
 };
