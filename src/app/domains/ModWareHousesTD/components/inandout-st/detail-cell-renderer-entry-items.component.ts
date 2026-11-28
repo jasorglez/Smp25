@@ -189,7 +189,7 @@ import { BITACORA_STYLES } from 'app/domains/ModProjects/components/sistema/bita
             <div class="photo-modal-heading">
               <span class="photo-modal-icon"><i class="bi bi-camera-fill"></i></span>
               <div><h5>{{ editingEvidence ? 'Actualizar foto' : 'Agregar foto' }}</h5>
-                <p>{{ entryData?.folio }}</p></div>
+                <p><i class="bi bi-box-arrow-in-down me-1"></i>Entrada {{ entryData?.folio }}</p></div>
             </div>
             <button type="button" class="photo-close" (click)="modal.dismiss()" aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
           </header>
@@ -222,14 +222,14 @@ import { BITACORA_STYLES } from 'app/domains/ModProjects/components/sistema/bita
               <i class="bi bi-exclamation-triangle-fill"></i><span>{{ evidenceUploadError }}</span>
             </div>
 
-            <label class="photo-description-label" for="evidence-description">Descripción <span>Opcional</span></label>
+            <label class="photo-description-label" for="evidence-description"><span><i class="bi bi-card-text me-2"></i>Descripción</span><span>OPCIONAL</span></label>
             <textarea id="evidence-description" class="form-control" rows="3" maxlength="500"
                       [(ngModel)]="evidenceModalComment" placeholder="¿Qué muestra esta foto? Agrega un detalle…"></textarea>
             <div class="photo-description-count">{{ evidenceModalComment.length || 0 }}/500</div>
           </div>
 
           <footer class="photo-modal-footer">
-            <span><i class="bi bi-info-circle me-1"></i>La foto se guarda de inmediato.</span>
+            <span><i class="bi bi-info-circle me-1"></i>La imagen se sube al seleccionarla; guarda para adjuntarla.</span>
             <div><button type="button" class="btn btn-light" (click)="modal.dismiss()">Cancelar</button>
               <button type="button" class="btn btn-primary" (click)="saveEvidenceModal(modal)" [disabled]="evidenceUploading || !evidenceModalImageUrl">
                 <i class="bi bi-check-lg me-1"></i>Guardar</button></div>
@@ -246,8 +246,46 @@ import { BITACORA_STYLES } from 'app/domains/ModProjects/components/sistema/bita
       overflow-y: auto;
     }
     .photo-detail { padding: 10px; height: 100%; overflow-y: auto; }
-    .photo-preview { height: 132px; }
+    .photo-modal { width: min(760px, calc(100vw - 28px)); max-height: calc(100vh - 32px); overflow-y: auto; color: #18324f; background: #fff; border: 1px solid #cfe1f4; border-radius: 18px; box-shadow: 0 24px 70px rgba(11, 48, 88, .28); }
+    .photo-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; color: #fff; background: linear-gradient(120deg, #0c4a82, #1677c8); }
+    .photo-modal-heading { display: flex; align-items: center; gap: 14px; }
+    .photo-modal-icon { display: grid; place-items: center; width: 48px; height: 48px; color: #d9edff; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.25); border-radius: 14px; font-size: 21px; }
+    .photo-modal-heading h5 { margin: 0; font-size: 20px; font-weight: 700; }
+    .photo-modal-heading p { margin: 5px 0 0; color: #d3eaff; font-size: 13px; }
+    .photo-close { display: grid; place-items: center; width: 36px; height: 36px; color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); border-radius: 10px; }
+    .photo-close:hover { background: rgba(255,255,255,.24); }
+    .photo-modal-body { padding: 20px 24px 12px; }
+    .photo-preview { display: flex; justify-content: center; align-items: center; height: 300px; overflow: hidden; margin-bottom: 16px; background: linear-gradient(145deg, #f4f9ff, #e8f2fc); border: 1px solid #c9def2; border-radius: 15px; }
+    .photo-preview-filled { background: #eaf3fb; }
     .photo-preview img { width: 100%; height: 100%; object-fit: contain; }
+    .photo-preview-empty { display: flex; flex-direction: column; align-items: center; gap: 7px; color: #647d96; text-align: center; }
+    .photo-preview-empty span { display: grid; place-items: center; width: 58px; height: 58px; color: #1677c8; background: #fff; border: 1px solid #d5e7f7; border-radius: 18px; font-size: 25px; box-shadow: 0 5px 16px rgba(29,101,164,.1); }
+    .photo-preview-empty strong { color: #315575; font-size: 14px; }
+    .photo-preview-empty small { font-size: 12px; }
+    .photo-dropzone { position: relative; display: flex; align-items: center; gap: 12px; min-height: 82px; margin-bottom: 20px; padding: 13px 16px; background: #f8fbff; border: 1px dashed #8db8df; border-radius: 13px; transition: .15s ease; }
+    .photo-dropzone-active { background: #e9f4ff; border-color: #1677c8; box-shadow: 0 0 0 3px rgba(22,119,200,.1); }
+    .photo-dropzone-disabled { opacity: .65; }
+    .photo-dropzone input[type=file] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; clip-path: inset(50%); }
+    .photo-upload-icon { display: grid; flex: 0 0 44px; place-items: center; width: 44px; height: 44px; color: #1677c8; background: #e6f2ff; border-radius: 12px; font-size: 21px; }
+    .photo-dropzone > strong { min-width: 0; overflow: hidden; color: #315575; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+    .photo-dropzone > small { color: #71869a; font-size: 12px; }
+    .photo-dropzone > button { flex: 0 0 auto; margin-left: auto; border-color: #8db8df; }
+    .photo-uploading { position: absolute; right: 14px; bottom: -25px; left: 14px; color: #42617d; }
+    .photo-progress { height: 4px; overflow: hidden; background: #dceaf7; border-radius: 4px; }
+    .photo-progress span { display: block; width: 40%; height: 100%; background: #1677c8; animation: photoProgress 1s ease-in-out infinite alternate; }
+    @keyframes photoProgress { to { transform: translateX(140%); } }
+    .photo-upload-error { display: flex; gap: 8px; margin: -8px 0 14px; padding: 10px 12px; color: #9c3030; background: #fff3f3; border: 1px solid #f0cdcd; border-radius: 9px; font-size: 13px; }
+    .photo-description-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; color: #294d6e; font-size: 13px; font-weight: 700; }
+    .photo-description-label > span:last-child { color: #71869a; font-size: 10px; letter-spacing: .08em; }
+    .photo-modal-body textarea { min-height: 84px; border-color: #ccdeef; border-radius: 10px; font-size: 13px; }
+    .photo-modal-body textarea:focus { border-color: #3989cb; box-shadow: 0 0 0 .2rem rgba(22,119,200,.14); }
+    .photo-description-count { margin-top: 4px; color: #8294a5; text-align: right; font-size: 11px; }
+    .photo-modal-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 24px 18px; border-top: 1px solid #e4edf6; }
+    .photo-modal-footer > span { color: #627d96; font-size: 12px; }
+    .photo-modal-footer > span i { color: #1677c8; }
+    .photo-modal-footer > div { display: flex; gap: 9px; }
+    .photo-modal-footer .btn-primary { min-width: 112px; background: #126eb6; border-color: #126eb6; }
+    @media (max-width: 560px) { .photo-modal { width: calc(100vw - 16px); max-height: calc(100vh - 16px); border-radius: 14px; } .photo-modal-header { padding: 15px 16px; } .photo-modal-body { padding: 15px 16px 10px; } .photo-preview { height: min(58vw, 280px); } .photo-dropzone { flex-wrap: wrap; } .photo-dropzone > small { display: none; } .photo-dropzone > button { margin-left: auto; } .photo-modal-footer { align-items: flex-start; flex-direction: column; padding: 12px 16px 15px; } .photo-modal-footer > div { width: 100%; justify-content: flex-end; } }
   `]
 })
 export class DetailCellRendererEntryItemsComponent {
