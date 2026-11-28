@@ -18,6 +18,7 @@ import { Workbook } from 'exceljs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { RootService } from 'app/services/root.service';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
@@ -131,6 +132,7 @@ export class InventarioComponent {
   private trackingService    = inject(TrackingService);
   private materialsService   = inject(MaterialsService);
   private rootService        = inject(RootService);
+  private pdfPreview         = inject(PdfPreviewService);
 
   rowData:           any[]   = [];
   private allInventoryRows: any[] = [];
@@ -302,7 +304,9 @@ export class InventarioComponent {
         styles: { title: { fontSize: 16, bold: true, margin: [0, 0, 0, 6] } },
         defaultStyle: { fontSize: 7 },
       };
-      pdfMake.createPdf(doc).download(this.getExportFileName('pdf'));
+      await this.pdfPreview.show(pdfMake.createPdf(doc),
+        `${this.translate.instant('modules.warehouses.ui.inventory.title')} - ${this.getExportWarehouse()}`,
+        this.getExportFileName('pdf'));
     } catch (error) {
       console.error('Error exporting inventory to PDF:', error);
       alerts.basicAlert(this.translate.instant('modules.warehouses.ui.inventory.error'), this.translate.instant('modules.warehouses.ui.inventory.exportFailed'), 'error');

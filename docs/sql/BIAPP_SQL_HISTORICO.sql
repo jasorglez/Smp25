@@ -8040,3 +8040,22 @@ WHERE module=N'Almacenes TD / Inventario' AND title=N'Exportación a Excel y PDF
   AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 -- END WAREHOUSE_INVENTORY_EXPORT_DEPLOY_674
 GO
+
+-- BEGIN WAREHOUSE_INVENTORY_PDF_PREVIEW_675
+-- Fecha: 2026-11-27 | Módulo: Almacenes TD / Inventario | Repositorio: Smp25
+-- Origen: src/app/domains/Almacenes/components/inventario/inventario.component.ts
+-- Actualiza el anuncio de la misma entrega, sin duplicarlo.
+UPDATE administration.dbo.product_updates
+SET version=N'5.00.675',
+    description=N'El inventario permite descargar Excel y previsualizar PDF con logo, filtros y opciones para compartir por correo, WhatsApp y Telegram.',
+    userBenefit=N'Permite revisar y compartir el inventario desde el visor de PDF.',
+    promoText=N'Revisa y comparte el PDF de tu inventario por correo, WhatsApp o Telegram.',
+    validationStatus='PENDING', releaseStatus='LOCAL'
+WHERE module=N'Almacenes TD / Inventario' AND title=N'Exportación a Excel y PDF'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates
+WHERE module=N'Almacenes TD / Inventario' AND title=N'Exportación a Excel y PDF'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+-- END WAREHOUSE_INVENTORY_PDF_PREVIEW_675
+GO
