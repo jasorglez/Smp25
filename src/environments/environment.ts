@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.681 (27 Noviembre 2026) OC sin autorizar sincroniza automatico partidas nuevas de su requisicion',
+  version: '5.00.682 (27 Noviembre 2026) Aviso de OC pendiente al editar requisicion + sidebar autoselecciona contrato y proyecto',
 };

@@ -538,7 +538,10 @@ error: (error) => {
     const target = event.target as HTMLSelectElement;
     this.selectedBranchId = target.value;
     if (this.selectedBranchId) {
-      this.autoLoadAssignedBranchContext = false;
+      // true para que getpermissionxContracts()/getpermissionxProjects() encadenen
+      // la seleccion automatica del primer contrato y primer proyecto, igual que
+      // en la carga inicial de la sucursal.
+      this.autoLoadAssignedBranchContext = true;
       // Limpiar selects de contracts y projects cuando cambia branch
       this.clearContractsAndProjects();
 

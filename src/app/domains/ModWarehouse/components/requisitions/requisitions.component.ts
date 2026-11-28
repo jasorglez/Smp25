@@ -1572,6 +1572,10 @@ export class RequisitionsComponent implements CanComponentDeactivate {
           'success'
         );
 
+        if (newItems.length > 0) {
+          this.notifyLinkedPurchaseOrderIfPending(requisitionId, newItems.length);
+        }
+
         // Actualizar el contador en el master grid localmente
         let masterRowNode: any = null;
         this.masterGridApi?.forEachNode((node) => {
@@ -1604,6 +1608,34 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       );
       return false;
     }
+  }
+
+  /**
+   * Si la requisición ya fue convertida a una OC que sigue sin autorizar,
+   * avisa que los materiales nuevos se copiarán a esa orden en automático
+   * la próxima vez que se abra Órdenes de compra (ver autoSyncPendingRequisitionItems
+   * en purchaseorder.component.ts).
+   */
+  private notifyLinkedPurchaseOrderIfPending(requisitionId: any, addedCount: number): void {
+    if (!this.typeReference || !this.idReference) return;
+    this.requisitionsService.getOcAndReqs(this.typeReference, this.idReference, 'OC').subscribe({
+      next: (data: any) => {
+        const orders = Array.isArray(data) ? data : [];
+        const linkedOrder = orders.find((order: any) =>
+          Number(order.idReq) === Number(requisitionId) &&
+          order.active !== false && Number(order.active) !== 0 &&
+          !Number(order.idAuthorize)
+        );
+        if (!linkedOrder) return;
+        const requisitionFolio = this.masterRowData.find((row: any) => String(row.id) === String(requisitionId))?.folio || requisitionId;
+        alerts.toastAlert(
+          `La requisición ${requisitionFolio} cambió: se agregaron ${addedCount} material(es). Esto actualizará la orden de compra ${linkedOrder.folio || linkedOrder.id} la próxima vez que se abra.`,
+          'info',
+          4000
+        );
+      },
+      error: () => {},
+    });
   }
 
   async deleteDetailRow(params: any, successCallback: () => void) {
