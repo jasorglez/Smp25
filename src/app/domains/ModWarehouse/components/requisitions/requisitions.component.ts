@@ -312,7 +312,11 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       next: (data: any) => {
         this.permittedWarehouseIds = new Set((Array.isArray(data) ? data : []).map((warehouse: any) => Number(warehouse.idAlmacen ?? warehouse.idWarehouse ?? warehouse.id)));
         this.almacenes = (Array.isArray(data) ? data : []).map((warehouse: any) => ({ id: warehouse.idAlmacen ?? warehouse.idWarehouse ?? warehouse.id, name: warehouse.nombreAlmacen ?? warehouse.nameWarehouse ?? warehouse.name ?? warehouse.description })).filter((warehouse: any) => warehouse.id != null);
-        if (this.selectedExecutionBranchId) this.loadExecutionBranchWarehouses();
+        if (this.selectedExecutionBranchId) {
+          this.loadExecutionBranchWarehouses();
+        } else {
+          this.selectFirstWarehouseIfNeeded();
+        }
         this.masterGridApi?.refreshCells({ force: true });
       },
       error: () => { this.almacenes = []; }
@@ -328,9 +332,23 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   private loadExecutionBranchWarehouses(): void {
     this.setupService.getWarehousesByBranch(this.selectedExecutionBranchId).subscribe({
-      next: (data: any[]) => this.almacenes = (data || []).map((w: any) => ({ id: w.id ?? w.idWarehouse, name: w.name ?? w.nameWarehouse ?? w.description })).filter((w: any) => w.id != null && this.permittedWarehouseIds.has(Number(w.id))),
-      error: () => this.almacenes = []
+      next: (data: any[]) => {
+        this.almacenes = (data || []).map((w: any) => ({ id: w.id ?? w.idWarehouse, name: w.name ?? w.nameWarehouse ?? w.description })).filter((w: any) => w.id != null && this.permittedWarehouseIds.has(Number(w.id)));
+        this.selectFirstWarehouseIfNeeded();
+      },
+      error: () => { this.almacenes = []; }
     });
+  }
+
+  // Igual que en Entradas/Salidas: si no hay almacén seleccionado (o el que
+  // estaba ya no está en la lista), selecciona el primero automáticamente
+  // para que la pantalla muestre información de inmediato.
+  private selectFirstWarehouseIfNeeded(): void {
+    const stillValid = this.almacenes.some(w => Number(w.id) === Number(this.selectedWarehouseId));
+    if (!stillValid) {
+      this.selectedWarehouseId = this.almacenes.length ? this.almacenes[0].id : null;
+    }
+    this.onWarehouseChange();
   }
 
   warehouseName(id: number | null): string {
