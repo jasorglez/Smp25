@@ -67,6 +67,7 @@
         <div class="sales-mod-card p-2" *ngIf="!loading">
           <div class="d-flex justify-content-end gap-2 mb-2">
             <button type="button" class="btn btn-sm btn-outline-secondary" (click)="mostrarColumna('numCotizacion')">← Inicio</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" (click)="mostrarColumna('idCurrency')">Moneda →</button>
             <button type="button" class="btn btn-sm btn-outline-primary" (click)="mostrarColumna('tipoCambio')">Tipo de cambio →</button>
           </div>
           <ag-grid-angular

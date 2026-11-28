@@ -35,6 +35,8 @@ export interface Cotizacion {
   hasManualUsd?: boolean;
   /** Tipo de cambio USD/MXN fijado para esta cotización */
   tipoCambio?: number;
+  /** Catálogo de moneda (Almacén > Órdenes de Compra, type=Currency) */
+  idCurrency?: number | null;
   countItems: number;
   activo: boolean;
   __isNew?: boolean;
@@ -155,6 +157,7 @@ export class CotizacionesService {
       totalDolares:     0,
       hasManualUsd:     false,
       tipoCambio:       Number(c.tipoCambio) || 0,
+      idCurrency:       c.idCurrency        ?? null,
       countItems:       0,
       activo:           true,
     });

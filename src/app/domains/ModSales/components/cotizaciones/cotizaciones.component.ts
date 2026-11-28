@@ -10,6 +10,8 @@ import { SignalsService } from 'app/services/signals.service';
 import { CustomersService } from 'app/services/customers.service';
 import { ICustomer } from 'app/interface/icustomer';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { CurrencyService } from 'app/services/currency.service';
+import { AdministrationService } from 'app/services/administration.service';
 import { ButtonCellRendererIncomeComponent } from 'app/domains/ModAdmon/components/income/button-cell-renderer-income.component';
 import { DetalleItemsCotizacionComponent } from './detalle-items-cotizacion.component';
 import { ConfigCotizacionesComponent } from './config-cotizaciones.component';
@@ -29,6 +31,8 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   private prospectosSvc   = inject(ProspectosService);
   private signalsSvc      = inject(SignalsService);
   private catalogsSvc     = inject(CatalogsService);
+  private currencyService = inject(CurrencyService);
+  private administrationService = inject(AdministrationService);
   private customersSvc    = inject(CustomersService);
   private trackingService = inject(TrackingService);
 
@@ -60,6 +64,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   guardandoFamilias = false;
   estados = ESTADOS_COTIZACION;
   config: CotizacionConfig = { ...CONFIG_DEFAULT };
+  monedas: any[] = [];
 
   root: number = null;
   private sub?: Subscription;
@@ -103,7 +108,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   }
 
   // ── Enter-key navigation ─────────────────────────────────────────────────
-  private editableColumnOrder = ['numCotizacion', 'destinatario', 'lugar', 'tipoCambio', 'notas'];
+  private editableColumnOrder = ['numCotizacion', 'destinatario', 'lugar', 'idCurrency', 'tipoCambio', 'notas'];
   private enterPressed = false;
 
   defaultColDef: ColDef = {
@@ -125,6 +130,9 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     }
     if (event.column.getColId() === 'tipoCambio' && event.data?.id && Number(event.data.tipoCambio) > 0) {
       void this.persistirTipoCambio(event.data);
+    }
+    if (event.column.getColId() === 'idCurrency') {
+      void this.manejarCambioMoneda(event.data);
     }
     if (!this.enterPressed) return;
     this.enterPressed = false;
@@ -225,6 +233,13 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     },
     { field: 'lugar', headerName: 'Lugar', width: 160, editable: true },
     {
+      field: 'idCurrency', headerName: 'Tipo de Moneda', width: 150, editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: () => ({ values: this.monedas.map(m => m.id) }),
+      valueFormatter: p => this.monedas.find(m => String(m.id) === String(p.value))?.description ?? '',
+      headerTooltip: 'Moneda de la cotización (catálogo de Órdenes de Compra). Al elegir dólares se inserta el tipo de cambio del día.',
+    },
+    {
       field: 'tipoCambio', headerName: 'Tipo de cambio', width: 145, editable: true, type: 'numericColumn',
       cellEditor: 'agNumberCellEditor', cellEditorParams: { min: 0.0001, precision: 4 },
       valueSetter: p => {
@@ -285,7 +300,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   }
 
   mostrarColumna(field: string): void {
-    this.gridApi?.ensureColumnVisible(field, field === 'tipoCambio' ? 'end' : 'start');
+    this.gridApi?.ensureColumnVisible(field, field === 'tipoCambio' || field === 'idCurrency' ? 'end' : 'start');
   }
 
   private detalleActivo: DetalleItemsCotizacionComponent | null = null;
@@ -358,11 +373,53 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       await this.svc.actualizarCotizacion(cotizacion.id, {
         tipoCambio: rate,
         totalDolares: cotizacion.totalDolares,
+        idCurrency: cotizacion.idCurrency ?? null,
       });
       this.gridApi?.refreshCells({ columns: ['totalDolares'], force: true });
     } catch (error) {
       console.error('[Cotizaciones] Error guardando tipo de cambio:', error);
       Swal.fire('Error', 'No se pudo guardar el tipo de cambio.', 'error');
+    }
+  }
+
+  private cargarMonedas(): void {
+    if (!this.root) { this.monedas = []; return; }
+    this.currencyService.getCurrencies(this.root).subscribe({
+      next: (data: any) => {
+        this.monedas = Array.isArray(data) ? data : [];
+        this.gridApi?.refreshCells({ columns: ['idCurrency'], force: true });
+      },
+      error: () => { this.monedas = []; },
+    });
+  }
+
+  private esMonedaDolar(idCurrency: any): boolean {
+    const moneda = this.monedas.find(m => String(m.id) === String(idCurrency));
+    const desc = String(moneda?.description || '').trim().toUpperCase();
+    return ['USD', 'US', 'DLS', 'DOLARES', 'DÓLARES'].includes(desc);
+  }
+
+  private async manejarCambioMoneda(cotizacion: any): Promise<void> {
+    if (this.esMonedaDolar(cotizacion.idCurrency) && !Number(cotizacion.tipoCambio)) {
+      try {
+        const result: any = await firstValueFrom(this.administrationService.getTodayExchangeRate());
+        if (result?.rate) {
+          cotizacion.tipoCambio = Number(result.rate);
+          this.gridApi?.refreshCells({ columns: ['tipoCambio', 'totalDolares'], force: true });
+        }
+      } catch {
+        // Sin conexión con Banxico: se deja el tipo de cambio para captura manual
+      }
+    }
+    if (!cotizacion.id) return; // fila nueva sin guardar; se persiste al hacer "Guardar"
+    if (Number(cotizacion.tipoCambio) > 0) {
+      await this.persistirTipoCambio(cotizacion);
+    } else {
+      try {
+        await this.svc.actualizarCotizacion(cotizacion.id, { idCurrency: cotizacion.idCurrency ?? null });
+      } catch (error) {
+        console.error('[Cotizaciones] Error guardando moneda:', error);
+      }
     }
   }
 
@@ -437,6 +494,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.loadError = '';
     this.selectedItem = null;
+    this.cargarMonedas();
     this.svc.getConfig(this.root).then(cfg => {
       this.config = cfg;
       this.actualizarContextoDetalle();
@@ -525,6 +583,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       total:           0,
       totalDolares:    0,
       tipoCambio:      0,
+      idCurrency:      null,
       countItems:      0,
       activo:          true,
       __isNew:         true,
@@ -571,6 +630,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
             familia:       c.familia        ?? '',
             familias:      familiasDeCotizacion(c),
             tipoCambio:    Number(c.tipoCambio) || 0,
+            idCurrency:    c.idCurrency     ?? null,
             notas:         c.notas         ?? '',
           });
         }
