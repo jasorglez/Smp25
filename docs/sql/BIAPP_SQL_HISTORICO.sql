@@ -8141,3 +8141,18 @@ WHERE module=N'Almacenes TD / Entradas' AND title=N'Nombre del contrato en Entra
 COMMIT TRANSACTION;
 -- END WAREHOUSE_ENTRY_CONTRACT_NAME_685
 GO
+
+-- BEGIN WAREHOUSE_ENTRY_CONTRACT_NAME_DEPLOY_685
+-- Fecha: 2026-11-27 | Módulo: Almacenes TD / Entradas | Repositorio: Smp25
+-- Origen: despliegue GitHub Actions 46101394636, commit 70eab5be0, resultado success.
+-- Ejecutar únicamente este bloque tras comprobar el despliegue.
+UPDATE administration.dbo.product_updates
+SET releaseStatus='PRODUCTION'
+WHERE module=N'Almacenes TD / Entradas' AND title=N'Nombre del contrato en Entradas'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1 AND version=N'5.00.685';
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates
+WHERE module=N'Almacenes TD / Entradas' AND title=N'Nombre del contrato en Entradas'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+-- END WAREHOUSE_ENTRY_CONTRACT_NAME_DEPLOY_685
+GO
