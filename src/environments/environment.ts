@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.675 (27 Noviembre 2026 19:16) Vista previa y compartir PDF de inventario',
+  version: '5.00.676 (27 Noviembre 2026 19:33) PDF con logos de sucursal y empresa',
 };

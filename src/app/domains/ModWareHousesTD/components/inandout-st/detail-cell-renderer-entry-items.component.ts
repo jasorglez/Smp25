@@ -122,14 +122,14 @@ import { BITACORA_STYLES } from 'app/domains/ModProjects/components/sistema/bita
     <!-- PDF Report View -->
     <div class="report-detail-container" *ngIf="detailType === 'report'">
       <div class="report-header d-flex justify-content-between align-items-center mb-3">
-        <h5 class="mb-0">{{ 'modules.warehouses.ui.entryDetail.reportPreview' | translate }} - {{ 'modules.warehouses.ui.entryDetail.folio' | translate }}: {{ entryData?.folio || ('modules.warehouses.ui.entryDetail.noFolio' | translate) }}</h5>
+        <h5 class="mb-0">{{ entryData?.branchLogoReport ? ('modules.warehouses.ui.movements.branchPdf' | translate) : ('modules.warehouses.ui.entryDetail.reportPreview' | translate) }} - {{ 'modules.warehouses.ui.entryDetail.folio' | translate }}: {{ entryData?.folio || ('modules.warehouses.ui.entryDetail.noFolio' | translate) }}</h5>
         <div class="d-flex align-items-center gap-2">
 
           <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()"><i class="bi bi-x-lg"></i> {{ 'modules.warehouses.ui.entryDetail.closeReport' | translate }}</button>
         </div>
       </div>
       <div class="report-content" style="width:100%; min-width:0; height:920px; margin-top:64px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
-        <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" [title]="'modules.warehouses.ui.entryDetail.receiptReport' | translate" fileName="Receipt_Report.pdf"></app-pdf-report-viewer>
+        <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" [title]="'modules.warehouses.ui.entryDetail.receiptReport' | translate" [fileName]="entryData?.branchLogoReport ? 'Reporte_Sucursal.pdf' : 'Receipt_Report.pdf'"></app-pdf-report-viewer>
         <div *ngIf="!pdfUrl" class="d-flex justify-content-center align-items-center h-100">
           <div class="text-center">
             <div class="spinner-border text-primary" role="status">
@@ -1780,7 +1780,11 @@ export class DetailCellRendererEntryItemsComponent {
       };
 
       // Generate PDF using the service
-      const pdfUrl = await this.pdfReportsService.generateEntryReport(reportEntryData, itemsData, idRoot);
+      const branchId = Number(sourceWarehouse?.idBranch || this.context?.componentParent?.idBranch || 0);
+      const pdfUrl = await this.pdfReportsService.generateEntryReport(
+        reportEntryData, itemsData, idRoot, undefined,
+        this.entryData?.branchLogoReport ? { idBranch: branchId, idWarehouse: sourceWarehouseId } : undefined
+      );
 
       // Clean up previous URL
       if (this.originalPdfUrl) {

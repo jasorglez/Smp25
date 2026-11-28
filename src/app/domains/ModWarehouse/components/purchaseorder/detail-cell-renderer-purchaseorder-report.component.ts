@@ -14,6 +14,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { WarehouseBranchReportLogoService } from 'app/services/warehouse-branch-report-logo.service';
 import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -29,7 +30,7 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
       <div class="report-header d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h5 class="mb-0">
           <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
-          Orden de Compra: {{ purchaseOrderData?.folio || 'Sin Número' }}
+          {{ branchLogoReport ? 'Orden de Compra Sucursal' : 'Orden de Compra' }}: {{ purchaseOrderData?.folio || 'Sin Número' }}
         </h5>
         <div class="d-flex flex-wrap align-items-center gap-2">
           <div class="d-flex align-items-center gap-1 me-2" aria-label="Zoom del PDF">
@@ -42,12 +43,12 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
             <i class="bi bi-box-arrow-up-right"></i> Abrir PDF
           </a>
           <a *ngIf="pdfObjectUrl && !isLoading" class="btn btn-outline-primary btn-sm"
-             [href]="pdfObjectUrl" [attr.download]="'OC_' + (purchaseOrderData?.folio || purchaseOrderData?.id) + '.pdf'">
+             [href]="pdfObjectUrl" [attr.download]="reportFileName">
             <i class="bi bi-download"></i> Descargar
           </a>
           <app-pdf-share-buttons
             [getPdfBlob]="getPdfBlobFn"
-            [fileName]="'OC_' + (purchaseOrderData?.folio || purchaseOrderData?.id) + '.pdf'"
+            [fileName]="reportFileName"
             [subject]="'Orden de Compra ' + (purchaseOrderData?.folio || purchaseOrderData?.id)">
           </app-pdf-share-buttons>
           <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()">
@@ -63,7 +64,7 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
           </div>
           <span class="ms-2">Generando reporte...</span>
         </div>
-        <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" title="Orden de compra" fileName="Orden_Compra.pdf" [showShare]="false"></app-pdf-report-viewer>
+        <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" title="Orden de compra" [fileName]="reportFileName" [showShare]="false"></app-pdf-report-viewer>
         <div *ngIf="pdfObjectUrl && !isLoading && isTouchDevice" class="p-3 text-center">
           <p>El PDF está listo. Usa <strong>Abrir PDF</strong> para verlo en el visor de tu tableta.</p>
           <a class="btn btn-primary" [href]="pdfViewerHref" target="_blank" rel="noopener noreferrer">
@@ -106,6 +107,7 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
   private projectsService = inject(ProjectsService);
   private base64EncodeService = inject(Base64EncodeService);
   private trackingService = inject(TrackingService);
+  private branchLogoService = inject(WarehouseBranchReportLogoService);
 
   private params!: ICellRendererParams;
   purchaseOrderData: any;
@@ -119,6 +121,8 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
   isLoading: boolean = true;
   private destroyed = false;
   private _pdfBlob: Blob | null = null;
+  get branchLogoReport(): boolean { return !!this.purchaseOrderData?.branchLogoReport; }
+  get reportFileName(): string { return `OC_${this.branchLogoReport ? 'Sucursal_' : ''}${this.purchaseOrderData?.folio || this.purchaseOrderData?.id || 'reporte'}.pdf`; }
 
   getPdfBlobFn = (): Promise<Blob> =>
     this._pdfBlob ? Promise.resolve(this._pdfBlob) : Promise.reject('PDF no generado aún');
@@ -258,9 +262,16 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
       });
 
       // Generar el PDF
+      const warehouseId = Number(this.purchaseOrderData?.idWarehouse || 0);
+      const recordedBranchId = Number(this.purchaseOrderData?.idBranch ||
+        (String(this.purchaseOrderData?.typeReference || '').toLowerCase() === 'branch' ? this.purchaseOrderData?.idReference : 0) || 0);
+      const branchId = recordedBranchId > 0 ? recordedBranchId
+        : (warehouseId > 0 ? 0 : Number(this.signalsService.getBranchSelectedBySidebar()() || 0));
+      const branchLogo = this.branchLogoReport
+        ? await this.branchLogoService.getLogo(idRoot, branchId, warehouseId) : '';
       const docDefinition = this.buildDocDefinition(
         companyData, logoBase64, logo2Base64, watermarkBase64, providerData, articulos,
-        authorizer, authorizerSignature, projectName, requisitionFolio
+        authorizer, authorizerSignature, projectName, requisitionFolio, branchLogo, this.branchLogoReport
       );
 
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF orden de compra', 'Almacén / Órdenes de Compra', this.trackingService.getEmail());
@@ -329,7 +340,8 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
     authorizer: any,
     authorizerSignature: string | null,
     projectName: string,
-    requisitionFolio: string
+    requisitionFolio: string,
+    branchLogo = '', branchReport = false
   ): any {
     const fechaOC = this.purchaseOrderData.dateCreate ? this.formatDate(this.purchaseOrderData.dateCreate) : '';
     const fechaEntrega = this.purchaseOrderData.dateSupply ? this.formatDate(this.purchaseOrderData.dateSupply) : '';
@@ -387,11 +399,9 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
         // Header con logos
         {
           columns: [
-            {
-              image: 'logo',
-              width: 80,
-              alignment: 'left'
-            },
+            branchReport
+              ? (branchLogo ? { image: branchLogo, fit: [80, 55], width: 80, alignment: 'left' } : { text: '', width: 80 })
+              : { image: 'logo', width: 80, alignment: 'left' },
             {
               stack: [
                 {
@@ -414,6 +424,7 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
             },
             {
               stack: [
+                ...(branchReport && logoBase64 ? [{ image: logoBase64, fit: [70, 42], alignment: 'right', margin: [0, 0, 0, 4] }] : []),
                 {
                   text: 'ORDEN DE COMPRA',
                   style: 'documentTitle',

@@ -378,6 +378,19 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
       {
+        field: 'pdfBranch',
+        headerName: 'PDF Sucursal',
+        width: 115, pinned: 'right', lockPinned: true, suppressMovable: true,
+        cellRenderer: PdfButtonCellRendererRequisitionsComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleReportCascade(node, true),
+          icon: 'bi-file-earmark-pdf', iconColor: '#0d6efd',
+          title: 'Generar requisición con logo de sucursal',
+        },
+        editable: false,
+        cellStyle: { backgroundColor: '#eef5ff', textAlign: 'center' },
+      },
+      {
         field: 'branchName',
         headerName: this.translate.instant('modules.shopping.ui.columns.branch'),
         editable: false,
@@ -1330,12 +1343,12 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     this.onCellClickedCascade(event);
   }
 
-  toggleReportCascade(node: any) {
+  toggleReportCascade(node: any, branchLogo = false) {
     node.setSelected(true);
 
     // Verificar si ya está expandido con reporte
     const isCurrentlyExpanded = node.expanded &&
-      node.data.detailType === 'report' &&
+      node.data.detailType === 'report' && !!node.data.branchLogoReport === branchLogo &&
       this.expandedRowId === node.id;
 
     if (isCurrentlyExpanded) {
@@ -1372,6 +1385,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
       // Establecer el tipo de detalle como reporte
       node.data.detailType = 'report';
+      node.data.branchLogoReport = branchLogo;
 
       // Guardar el ID de la fila expandida
       this.expandedRowId = node.id;
@@ -1640,6 +1654,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.branchLogoReport;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }

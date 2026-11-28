@@ -5,6 +5,7 @@ import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { RootService } from './root.service';
 import { TrackingService } from './tracking.service';
 import { lastValueFrom } from 'rxjs';
+import { WarehouseBranchReportLogoService } from './warehouse-branch-report-logo.service';
 
 // pdfMake solo descarga fuentes vía URL absoluta (ver pdf-reports.service);
 // se resuelve en runtime (no durante SSR) contra el propio origen.
@@ -16,6 +17,7 @@ const pdfFontsBaseUrl = typeof window !== 'undefined' ? window.location.origin :
 export class PdfReportsService {
   private rootService      = inject(RootService);
   private trackingService  = inject(TrackingService);
+  private branchLogoService = inject(WarehouseBranchReportLogoService);
 
   constructor() {
     pdfMake.fonts = {
@@ -54,7 +56,8 @@ export class PdfReportsService {
     });
   }
 
-  async generateEntryReport(entryData: any, itemsData: any[], idRoot: number, projectName?: string): Promise<string> {
+  async generateEntryReport(entryData: any, itemsData: any[], idRoot: number, projectName?: string,
+    branchReport?: { idBranch: number; idWarehouse: number }): Promise<string> {
     try {
       const isClosed = entryData?.locked === true || entryData?.closed === true || entryData?.isClosed === true;
       const showUnauthorizedNotice = !Number(entryData?.idAutoriza) && !isClosed;
@@ -70,11 +73,14 @@ export class PdfReportsService {
           console.warn('Failed to convert company logo to base64:', error);
         }
       }
+      const branchLogo = branchReport
+        ? await this.branchLogoService.getLogo(idRoot, branchReport.idBranch, branchReport.idWarehouse)
+        : '';
 
       const docDefinition = {
         pageSize: 'LETTER',
         pageOrientation: 'landscape',
-        pageMargins: [30, 100, 30, 60],
+        pageMargins: [30, branchReport ? 140 : 100, 30, 60],
         defaultStyle: {
           fontSize: 8,
           font: 'Montserrat'
@@ -128,8 +134,8 @@ export class PdfReportsService {
               {
                 width: '20%',
                 stack: [
-                  companyLogo ? {
-                    image: companyLogo,
+                  (branchReport ? branchLogo : companyLogo) ? {
+                    image: branchReport ? branchLogo : companyLogo,
                     width: 80,
                     height: 60,
                     alignment: 'left',
@@ -163,6 +169,7 @@ export class PdfReportsService {
               {
                 width: '30%',
                 stack: [
+                  ...(branchReport && companyLogo ? [{ image: companyLogo, fit: [80, 48], alignment: 'right', margin: [0, 0, 0, 4] }] : []),
                   {
                     text: entryData.type === 'IN' ? 'VALE DE ENTRADA' : 'VALE DE SALIDA',
                     style: 'header',

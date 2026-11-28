@@ -796,7 +796,7 @@ export class InandoutStComponent implements OnInit {
       return '';
     },
     onRowClicked: (event: any) => {
-      if (!event.node.group && event.node.data && event.column && !['pdfReport', 'authorizationAction'].includes(event.column.getColId())) {
+      if (!event.node.group && event.node.data && event.column && !['pdfReport', 'pdfBranchReport', 'authorizationAction'].includes(event.column.getColId())) {
         event.node.setSelected(true);
       }
     },
@@ -868,6 +868,19 @@ export class InandoutStComponent implements OnInit {
         },
         editable: false,
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
+      },
+      {
+        field: 'pdfBranchReport',
+        headerName: this.translate.instant('modules.warehouses.ui.movements.branchPdf'),
+        width: 115, pinned: 'right', lockPinned: true, suppressMovable: true,
+        cellRenderer: PdfButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleReportDetail(node, true),
+          icon: 'bi-file-earmark-pdf', iconColor: '#0d6efd',
+          title: this.translate.instant('modules.warehouses.ui.movements.branchPdf'),
+        },
+        editable: false,
+        cellStyle: { backgroundColor: '#eef5ff', textAlign: 'center' },
       },
       {
         field: 'evidenceCount',
@@ -1250,9 +1263,9 @@ export class InandoutStComponent implements OnInit {
     this.gridApi.onRowHeightChanged();
   }
 
-  async toggleReportDetail(node: any) {
+  async toggleReportDetail(node: any, branchLogo = false) {
     const api = this.gridApi;
-    const isCurrentlyExpanded = node.expanded && node.data.detailType === 'report';
+    const isCurrentlyExpanded = node.expanded && node.data.detailType === 'report' && !!node.data.branchLogoReport === branchLogo;
 
     if (isCurrentlyExpanded) {
       node.setExpanded(false);
@@ -1281,8 +1294,9 @@ export class InandoutStComponent implements OnInit {
       api.forEachNode((otherNode: any) => {
         if (otherNode.id !== node.id) otherNode.setRowHeight(0);
       });
-      if (node.expanded && node.data.detailType !== 'report') node.setExpanded(false);
+      if (node.expanded) node.setExpanded(false);
       node.data.detailType = 'report';
+      node.data.branchLogoReport = branchLogo;
       api.onRowHeightChanged();
       await new Promise(resolve => setTimeout(resolve, 1000));
       node.setExpanded(true);

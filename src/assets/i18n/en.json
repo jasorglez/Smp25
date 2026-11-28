@@ -1090,6 +1090,7 @@
           "processingPhotos": "Processing photos...",
           "evidenceReportTitle": "Photo evidence report",
           "pdf": "PDF",
+          "branchPdf": "Branch PDF",
           "generatePdf": "Generate PDF report",
           "project": "Project",
           "contract": "Contract",

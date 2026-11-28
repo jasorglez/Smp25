@@ -12,6 +12,7 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { WarehouseBranchReportLogoService } from 'app/services/warehouse-branch-report-logo.service';
 import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -27,7 +28,7 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
       <div class="report-header d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h5 class="mb-0">
           <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
-          Reporte: {{ requisitionData?.folio || 'Sin Número' }}
+          {{ branchLogoReport ? 'Reporte Sucursal' : 'Reporte' }}: {{ requisitionData?.folio || 'Sin Número' }}
         </h5>
         <div class="d-flex flex-wrap align-items-center gap-2">
           <div class="d-flex align-items-center gap-1 me-2" aria-label="Zoom del PDF">
@@ -40,12 +41,12 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
             <i class="bi bi-box-arrow-up-right"></i> Abrir PDF
           </a>
           <a *ngIf="pdfObjectUrl && !isLoading" class="btn btn-outline-primary btn-sm"
-             [href]="pdfObjectUrl" [attr.download]="'Requisicion_' + (requisitionData?.folio || requisitionData?.id) + '.pdf'">
+             [href]="pdfObjectUrl" [attr.download]="reportFileName">
             <i class="bi bi-download"></i> Descargar
           </a>
           <app-pdf-share-buttons
             [getPdfBlob]="getPdfBlobFn"
-            [fileName]="'Requisicion_' + (requisitionData?.folio || requisitionData?.id) + '.pdf'"
+            [fileName]="reportFileName"
             [subject]="'Requisición ' + (requisitionData?.folio || requisitionData?.id)">
           </app-pdf-share-buttons>
           <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()">
@@ -61,7 +62,7 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
           </div>
           <span class="ms-2">Generando reporte...</span>
         </div>
-        <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" title="Requisición" fileName="Requisicion.pdf" [showShare]="false"></app-pdf-report-viewer>
+        <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" title="Requisición" [fileName]="reportFileName" [showShare]="false"></app-pdf-report-viewer>
         <div *ngIf="pdfObjectUrl && !isLoading && isTouchDevice" class="p-3 text-center">
           <p>El PDF está listo. Usa <strong>Abrir PDF</strong> para verlo en el visor de tu tableta.</p>
           <a class="btn btn-primary" [href]="pdfViewerHref" target="_blank" rel="noopener noreferrer">
@@ -102,6 +103,7 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
   private materialsService = inject(MaterialsService);
   private base64EncodeService = inject(Base64EncodeService);
   private trackingService = inject(TrackingService);
+  private branchLogoService = inject(WarehouseBranchReportLogoService);
 
   private params!: ICellRendererParams;
   requisitionData: any;
@@ -115,6 +117,8 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
   isLoading: boolean = true;
   private productos: any[] = [];
   private _pdfBlob: Blob | null = null;
+  get branchLogoReport(): boolean { return !!this.requisitionData?.branchLogoReport; }
+  get reportFileName(): string { return `Requisicion_${this.branchLogoReport ? 'Sucursal_' : ''}${this.requisitionData?.folio || this.requisitionData?.id || 'reporte'}.pdf`; }
 
   getPdfBlobFn = (): Promise<Blob> =>
     this._pdfBlob ? Promise.resolve(this._pdfBlob) : Promise.reject('PDF no generado aún');
@@ -202,7 +206,14 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
       }
 
       // Generar el PDF
-      const docDefinition = this.buildDocDefinition(companyData, logoBase64, logo2Base64, watermarkBase64, departmentName, articulos);
+      const warehouseId = Number(this.requisitionData?.idWarehouse || 0);
+      const recordedBranchId = Number(this.requisitionData?.idBranchExecution || this.requisitionData?.idBranch ||
+        (String(this.requisitionData?.typeReference || '').toLowerCase() === 'branch' ? this.requisitionData?.idReference : 0) || 0);
+      const branchId = recordedBranchId > 0 ? recordedBranchId
+        : (warehouseId > 0 ? 0 : Number(this.signalsService.getBranchSelectedBySidebar()() || 0));
+      const branchLogo = this.branchLogoReport
+        ? await this.branchLogoService.getLogo(idRoot, branchId, warehouseId) : '';
+      const docDefinition = this.buildDocDefinition(companyData, logoBase64, logo2Base64, watermarkBase64, departmentName, articulos, branchLogo, this.branchLogoReport);
 
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF requisición', 'Almacén / Requisiciones', this.trackingService.getEmail());
       const pdfDocGenerator = pdfMake.createPdf(docDefinition as any);
@@ -256,7 +267,8 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
     return /^NINGUNO\.?$/i.test(comment) ? '' : comment;
   }
 
-  private buildDocDefinition(companyData: any, logoBase64: string, logo2Base64: string, watermarkBase64: string | null, departmentName: string, articulos: any[]): any {
+  private buildDocDefinition(companyData: any, logoBase64: string, logo2Base64: string, watermarkBase64: string | null,
+    departmentName: string, articulos: any[], branchLogo = '', branchReport = false): any {
     const fechaRequisicion = this.requisitionData.dateCreate ? this.formatDate(this.requisitionData.dateCreate) : '';
     const requisicionNumero = this.requisitionData.folio || 'N/A';
     const solicitante = this.requisitionData.solicit || 'N/A';
@@ -292,11 +304,9 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
         // Header con logos - estándar egresos-palacio
         {
           columns: [
-            {
-              image: 'logo',
-              width: 80,
-              alignment: 'left'
-            },
+            branchReport
+              ? (branchLogo ? { image: branchLogo, fit: [80, 55], width: 80, alignment: 'left' } : { text: '', width: 80 })
+              : { image: 'logo', width: 80, alignment: 'left' },
             {
               stack: [
                 {
@@ -319,6 +329,7 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
             },
             {
               stack: [
+                ...(branchReport && logoBase64 ? [{ image: logoBase64, fit: [70, 42], alignment: 'right', margin: [0, 0, 0, 4] }] : []),
                 {
                   text: 'REQUISICIÓN DE MATERIALES',
                   style: 'documentTitle',

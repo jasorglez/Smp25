@@ -381,6 +381,19 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
       {
+        field: 'pdfBranch',
+        headerName: 'PDF Sucursal',
+        width: 115, pinned: 'right', lockPinned: true, suppressMovable: true,
+        cellRenderer: PdfButtonCellRendererPurchaseOrderComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleReportCascade(node, true),
+          icon: 'bi-file-earmark-pdf', iconColor: '#0d6efd',
+          title: 'Generar orden de compra con logo de sucursal',
+        },
+        editable: false,
+        cellStyle: { backgroundColor: '#eef5ff', textAlign: 'center' },
+      },
+      {
         field: 'folio',
         headerName: this.translate.instant('modules.shopping.ui.columns.purchaseOrder'),
         editable: (params) => this.canEditAuthorizedRow(params.data),
@@ -2242,6 +2255,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     }
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.branchLogoReport;
     delete cleanedData.__pendingRequisitionItemImport;
     delete cleanedData.appliesIva;
     delete cleanedData.subtotal;
@@ -2328,12 +2342,12 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     }
   }
 
-  toggleReportCascade(node: any) {
+  toggleReportCascade(node: any, branchLogo = false) {
     node.setSelected(true);
 
     // Verificar si ya está expandido con reporte
     const isCurrentlyExpanded = node.expanded &&
-      node.data.detailType === 'report' &&
+      node.data.detailType === 'report' && !!node.data.branchLogoReport === branchLogo &&
       this.expandedRowId === node.id;
 
     if (isCurrentlyExpanded) {
@@ -2370,6 +2384,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
       // Establecer el tipo de detalle como reporte
       node.data.detailType = 'report';
+      node.data.branchLogoReport = branchLogo;
 
       // Guardar el ID de la fila expandida
       this.expandedRowId = node.id;

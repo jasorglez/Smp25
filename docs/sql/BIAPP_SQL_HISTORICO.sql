@@ -8074,3 +8074,29 @@ WHERE module=N'Almacenes TD / Inventario' AND title=N'Exportación a Excel y PDF
   AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 -- END WAREHOUSE_INVENTORY_PDF_PREVIEW_DEPLOY_675
 GO
+
+-- BEGIN WAREHOUSE_BRANCH_PDF_REPORTS_676
+-- Fecha: 2026-11-27 | Módulos: Almacenes TD y Compras | Repositorio: Smp25
+-- Origen: src/app/domains/ModWareHousesTD/components/inandout-st e interfaces de requisiciones y órdenes de compra en ModWarehouse
+-- Publica el anuncio de forma idempotente. No cambia el esquema.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Almacenes TD y Compras / Reportes PDF' AND title=N'PDF con logos de sucursal y empresa'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.676',N'Almacenes TD y Compras / Reportes PDF','IMPROVEMENT',N'PDF con logos de sucursal y empresa',
+ N'Entradas, salidas, requisiciones y órdenes de compra agregan PDF Sucursal con logo de sucursal a la izquierda y logo de empresa a la derecha. Si falta el logo de sucursal, se muestra solo el de empresa.',
+ N'Permite elegir el formato actual o un reporte identificado con la sucursal del documento.',
+ N'Genera tus reportes de almacén con los logos de sucursal y empresa.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates
+WHERE module=N'Almacenes TD y Compras / Reportes PDF' AND title=N'PDF con logos de sucursal y empresa'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+-- END WAREHOUSE_BRANCH_PDF_REPORTS_676
+GO
