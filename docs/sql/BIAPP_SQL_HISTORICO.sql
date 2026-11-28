@@ -8409,3 +8409,22 @@ WHERE module=N'Publicidad' AND title=N'Imágenes propias por empresa'
   AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 -- END COMPANY_PUBLICITY_THUMBNAILS_LAYOUT_690
 GO
+
+-- BEGIN COMPANY_PUBLICITY_CAROUSEL_POSITION_691
+-- Fecha: 2026-11-28 | Módulo: Publicidad | Repositorio: Smp25
+-- Origen: src/app/pages/welcome/welcome.component.scss
+-- Actualiza el anuncio existente, sin crear uno duplicado.
+UPDATE administration.dbo.product_updates
+SET version=N'5.00.691',
+    description=N'La imagen del carrusel sube 4% para dejar libre el espacio cercano al control de carga.',
+    userBenefit=N'Evita que la imagen se desborde sobre los controles superiores.',
+    promoText=N'Visualiza la publicidad con más espacio para sus controles.',
+    validationStatus='PENDING', releaseStatus='LOCAL'
+WHERE module=N'Publicidad' AND title=N'Imágenes propias por empresa'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates
+WHERE module=N'Publicidad' AND title=N'Imágenes propias por empresa'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+-- END COMPANY_PUBLICITY_CAROUSEL_POSITION_691
+GO

@@ -484,7 +484,7 @@
 .announcement-card__link { margin-top: 2px; font-size: 9px; }
 .welcome__showcase { grid-column: 1 / -1; grid-row: 2; }
 .company-publicity-tools { position: relative; z-index: 5; gap: 8px; margin-bottom: 5px; font-size: 11px; transform: none; }
-.carousel__img { transform: translateY(5%); }
+.carousel__img { transform: translateY(1%); }
 .carousel--hero { min-height: min(76vh, 880px); max-height: min(84vh, 960px); }
 .welcome__showcase--manage { display: grid; grid-template-columns: 112px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); column-gap: 10px; }
 .welcome__showcase--manage > .company-publicity-tools,

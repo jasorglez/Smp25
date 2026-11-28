@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.690 (28 Noviembre 2026 00:44) Miniaturas de publicidad ordenadas',
+  version: '5.00.691 (28 Noviembre 2026 00:50) Ajuste de posición del carrusel',
 };
