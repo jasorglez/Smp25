@@ -1201,7 +1201,7 @@
           "dailyReportCreationTooltip": "Saving will ask for confirmation and create the daily report if it does not exist.",
           "messages": {
             "noLinkedReceiptForIssue": "This issue has no linked receipt voucher; items will not be loaded automatically.",
-            "purchaseOrderItemsLoaded": "{{count}} purchase order item(s) loaded; enter the received quantities and save.",
+            "purchaseOrderItemsLoaded": "{{count}} materials were brought from the purchase order and added to the receipt. Enter the received quantities and save.",
             "pendingReceiptItemsLoaded": "Loaded {{count}} pending receipt voucher item(s).",
             "noPurchaseOrder": "No Purchase Order",
             "entryHasNoPurchaseOrder": "This receipt has no assigned Purchase Order.",
@@ -1209,7 +1209,7 @@
             "purchaseOrderHasNoActiveArticles": "The Purchase Order has no active items to import.",
             "noNewItems": "No new items",
             "purchaseOrderItemsAlreadyAdded": "The Purchase Order items are already in the details.",
-            "newItemsAddedFromPurchaseOrder": "Added {{count}} new item(s) from the Purchase Order.",
+            "newItemsAddedFromPurchaseOrder": "{{count}} materials were brought from the purchase order and added to the receipt. Enter the received quantities and save.",
             "noReceiptVoucher": "No receipt voucher",
             "selectReceiptVoucherForPending": "Select a receipt voucher to load its pending quantities.",
             "noPendingQuantities": "No pending quantities",

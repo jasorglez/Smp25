@@ -387,7 +387,7 @@ export class DetailCellRendererEntryItemsComponent {
             if (ocItems.length > 0) this.hasUnsavedChanges = true;
             if (this.context.ITEMS.updateCount) this.context.ITEMS.updateCount(entryId, this.rowData.length);
             if (ocItems.length > 0 && this.context.movementType === 'IN') {
-              alerts.toastAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.purchaseOrderItemsLoaded', { count: ocItems.length }), 'info');
+              alerts.reportUpdateAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.purchaseOrderItemsLoaded', { count: ocItems.length }));
             }
           });
           return;
@@ -460,7 +460,7 @@ export class DetailCellRendererEntryItemsComponent {
       if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
       this.hasUnsavedChanges = true;
       if (this.context.ITEMS.updateCount) this.context.ITEMS.updateCount(entryId, this.rowData.length);
-      alerts.toastAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.newItemsAddedFromPurchaseOrder', { count: missingItems.length }), 'success');
+      alerts.reportUpdateAlert(this.translate.instant('modules.warehouses.ui.entryDetail.messages.newItemsAddedFromPurchaseOrder', { count: missingItems.length }));
     });
     loadItems();
   }

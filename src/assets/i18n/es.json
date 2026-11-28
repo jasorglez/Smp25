@@ -1309,11 +1309,11 @@
           "addMaterialToDailyReportTooltip": "Agregar este material al Reporte diario al guardar la salida", "material": "Material", "pending": "Pendiente", "receiptReport": "Reporte de entrada",
           "messages": {
             "noLinkedReceiptForIssue": "Esta salida no tiene vale de entrada vinculado; las partidas no se cargarán automáticamente.",
-            "purchaseOrderItemsLoaded": "Se cargaron {{count}} partida(s) de la OC; captura lo recibido y guarda.",
+            "purchaseOrderItemsLoaded": "Se trajeron {{count}} materiales de la OC y se agregaron a la entrada. Captura lo recibido y guarda.",
             "pendingReceiptItemsLoaded": "Se cargaron {{count}} partida(s) pendiente(s) del vale.", "noPurchaseOrder": "Sin orden de compra",
             "entryHasNoPurchaseOrder": "Esta entrada no tiene una orden de compra asignada.", "noArticles": "Sin artículos",
             "purchaseOrderHasNoActiveArticles": "La OC no tiene artículos activos para importar.", "noNewItems": "Sin partidas nuevas",
-            "purchaseOrderItemsAlreadyAdded": "Los artículos de la OC ya están en el detalle.", "newItemsAddedFromPurchaseOrder": "Se agregaron {{count}} partida(s) nueva(s) desde la OC.",
+            "purchaseOrderItemsAlreadyAdded": "Los artículos de la OC ya están en el detalle.", "newItemsAddedFromPurchaseOrder": "Se trajeron {{count}} materiales de la OC y se agregaron a la entrada. Captura lo recibido y guarda.",
             "noReceiptVoucher": "Sin vale de entrada", "selectReceiptVoucherForPending": "Selecciona un vale de entrada para cargar sus cantidades pendientes.",
             "noPendingQuantities": "Sin cantidades pendientes", "receiptVoucherFullySupplied": "El vale de entrada ya fue surtido por completo.",
             "receiptItemsAlreadyAdded": "Los materiales del vale ya están en el detalle.", "pendingItemsAddedFromReceipt": "Se agregaron {{count}} partida(s) pendiente(s) desde el vale de entrada.",

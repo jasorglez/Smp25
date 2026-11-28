@@ -8239,3 +8239,28 @@ WHERE module=N'Permisos / Contratos, proyectos, sucursales y almacenes'
   AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 -- END CREATOR_PERMISSION_MESSAGE_DEPLOY_687
 GO
+
+-- BEGIN WAREHOUSE_ENTRY_OC_IMPORT_MESSAGE_688
+-- Fecha: 2026-11-27 | Módulo: Almacenes TD / Entradas | Repositorio: Smp25
+-- Origen: src/app/domains/ModWareHousesTD/components/inandout-st/detail-cell-renderer-entry-items.component.ts
+-- Ejecutar únicamente este bloque para publicar la novedad; nunca ejecutar todo el histórico.
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Almacenes TD / Entradas' AND title=N'Cantidad de materiales traídos de la OC'
+   AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.688',N'Almacenes TD / Entradas','IMPROVEMENT',N'Cantidad de materiales traídos de la OC',
+ N'Al traer materiales de una orden de compra a una entrada, un aviso muestra cuántos materiales se agregaron, en la carga automática y al usar el botón de importar.',
+ N'Confirma la cantidad agregada al detalle y recuerda guardar las partidas.',
+ N'Confirma cuántos materiales trajiste de la OC a tu entrada.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates
+WHERE module=N'Almacenes TD / Entradas' AND title=N'Cantidad de materiales traídos de la OC'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+-- END WAREHOUSE_ENTRY_OC_IMPORT_MESSAGE_688
+GO
