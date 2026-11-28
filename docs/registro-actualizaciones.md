@@ -1,6 +1,6 @@
 # Registro de actualizaciones
 
-| 2026-11-27 19:03 EST | 5.00.674 · local | Almacenes TD / Inventario | Corrección | Los archivos Excel y PDF del inventario muestran el logo y nombre de la empresa seleccionada en el encabezado. | Permite identificar la empresa al compartir los reportes de existencias. | **Comparte el inventario con la identidad de tu empresa en Excel y PDF.** | Compilación de producción aprobada; despliegue sin confirmar. | Anuncio actualizado ID 332; código LOCAL |
+| 2026-11-27 19:03 EST | 5.00.674 · producción | Almacenes TD / Inventario | Corrección | Los archivos Excel y PDF del inventario muestran el logo y nombre de la empresa seleccionada en el encabezado. | Permite identificar la empresa al compartir los reportes de existencias. | **Comparte el inventario con la identidad de tu empresa en Excel y PDF.** | Compilación de producción aprobada; despliegue GitHub Actions 46086250565 completado con éxito, commit df7daaca. | Anuncio publicado ID 332; código PRODUCTION |
 
 | 2026-11-27 18:49 EST | 5.00.673 · local | Almacenes TD / Inventario | Mejora | El inventario se puede descargar en Excel y PDF con las filas visibles después de buscar, filtrar y ordenar; incluye almacén y valor total. | Facilita compartir y revisar las existencias del almacén en archivos descargables. | **Exporta tu inventario filtrado a Excel o PDF.** | Compilación de producción aprobada; despliegue sin confirmar. | Anuncio publicado ID 332; código LOCAL |
 
