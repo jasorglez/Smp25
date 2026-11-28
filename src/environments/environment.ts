@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.693 (28 Noviembre 2026) Avisos de sucursal sin contratos/almacenes + sidebar mas compacto',
+  version: '5.00.694 (28 Noviembre 2026) Aviso de sucursal sin contratos se oculta solo a los 10s',
 };

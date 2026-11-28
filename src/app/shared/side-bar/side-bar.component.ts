@@ -106,6 +106,7 @@ export class SideBarComponent {
   // true solo cuando una sucursal real ya consulto sus contratos y vino vacia,
   // para avisar en el sidebar sin parpadear mientras aun esta cargando.
   selectedBranchHasNoContracts: boolean = false;
+  private noContractsHintTimer: any = null;
   selectedCProcessId: number = 0;
   selectedPlatformId: number = 0;
   userRoot: number = 0;
@@ -608,8 +609,16 @@ error: (error) => {
         this.selectedContractId = '';
         this.projectData = [];
         this.selectedProjectId = '';
-        // Sucursal real sin contratos: avisamos en el sidebar.
+        // Sucursal real sin contratos: avisamos en el sidebar 10s y lo ocultamos.
+        if (this.noContractsHintTimer) { clearTimeout(this.noContractsHintTimer); this.noContractsHintTimer = null; }
         this.selectedBranchHasNoContracts = this.contractData.length === 0;
+        if (this.selectedBranchHasNoContracts) {
+          this.noContractsHintTimer = setTimeout(() => {
+            this.selectedBranchHasNoContracts = false;
+            this.noContractsHintTimer = null;
+            this.cdr.markForCheck();
+          }, 10000);
+        }
         this.cdr.markForCheck();
         if (this.autoLoadAssignedBranchContext && this.contractData.length > 0) {
           const firstContract = this.contractData[0];
@@ -905,6 +914,7 @@ error: (error) => {
     this.contractData = [];
     this.selectedContractId = '';
     this.selectedBranchHasNoContracts = false;
+    if (this.noContractsHintTimer) { clearTimeout(this.noContractsHintTimer); this.noContractsHintTimer = null; }
     this.signalsService.setContractSelectedBySidebar(null);
     
     // Limpiar datos de projects
