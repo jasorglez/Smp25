@@ -8156,3 +8156,30 @@ WHERE module=N'Almacenes TD / Entradas' AND title=N'Nombre del contrato en Entra
   AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 -- END WAREHOUSE_ENTRY_CONTRACT_NAME_DEPLOY_685
 GO
+
+-- BEGIN CREATOR_ENTITY_PERMISSIONS_686
+-- Fecha: 2026-11-27 | Módulo: Permisos | Repositorio: Smp25
+-- Origen: src/app/services/creator-permission.service.ts y servicios de contratos, proyectos, sucursales y almacenes.
+-- Ejecutar únicamente este bloque para publicar la novedad, nunca todo el histórico.
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Permisos / Contratos, proyectos, sucursales y almacenes'
+   AND title=N'Permiso automático al creador de registros'
+   AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.686',N'Permisos / Contratos, proyectos, sucursales y almacenes','IMPROVEMENT',N'Permiso automático al creador de registros',
+ N'Al crear un contrato, proyecto, sucursal o almacén, el usuario de la sesión recibe automáticamente el permiso de acceso al nuevo registro. Se evita repetir un permiso existente.',
+ N'El creador puede continuar trabajando con lo que acaba de registrar sin solicitar acceso manual.',
+ N'Crea contratos, proyectos, sucursales y almacenes con acceso automático para ti.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates
+WHERE module=N'Permisos / Contratos, proyectos, sucursales y almacenes'
+  AND title=N'Permiso automático al creador de registros'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+-- END CREATOR_ENTITY_PERMISSIONS_686
+GO

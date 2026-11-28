@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.685 (27 Noviembre 2026 22:04) Nombre de contrato en Entradas',
+  version: '5.00.686 (27 Noviembre 2026 22:12) Permisos automáticos al creador',
 };

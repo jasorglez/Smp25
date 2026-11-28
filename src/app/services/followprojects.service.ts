@@ -2,8 +2,9 @@ import { inject, Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { TrackingService } from './tracking.service';
-import { Observable } from 'rxjs';
+import { Observable, switchMap } from 'rxjs';
 import { Icontract } from '../interface/icontract';
+import { CreatorPermissionService } from './creator-permission.service';
 
 
 @Injectable({
@@ -13,6 +14,7 @@ export class FollowprojectsService {
 
   private trackingService = inject(TrackingService);
   private http = inject(HttpClient);
+  private creatorPermissionService = inject(CreatorPermissionService);
 
   getContract(contract: number): Observable<Icontract> {
     return this.http.get<Icontract>(`${environment.urlSmp}/Contract?idBranch=${contract}`, { headers: this.trackingService.getHeaders() });
@@ -45,7 +47,9 @@ export class FollowprojectsService {
 
   //cambios de David
   addContract(data: any): Observable<any> {
-    return this.http.post(`${environment.urlSmp}/Contract`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.post(`${environment.urlSmp}/Contract`, data, { headers: this.trackingService.getHeaders() }).pipe(
+      switchMap(created => this.creatorPermissionService.grantToCreator('contract', created))
+    );
   }
 
   updateContract(id: number, data: any): Observable<any> {

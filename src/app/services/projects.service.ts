@@ -7,6 +7,7 @@ import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular
 import { catchError, EMPTY, map, Observable, of, switchMap, throwError } from 'rxjs';
 import { PrefixSetupService } from './prefix-setup.service';
 import { alerts } from 'app/helpers/alerts';
+import { CreatorPermissionService } from './creator-permission.service';
 
 @Injectable({
   providedIn: 'root'
@@ -16,6 +17,7 @@ export class ProjectsService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
   private prefixSetupService = inject(PrefixSetupService);
+  private creatorPermissionService = inject(CreatorPermissionService);
 
   private getAuthToken(): string {
     return localStorage.getItem('token') || '';
@@ -86,6 +88,12 @@ export class ProjectsService {
             alerts.basicAlert('Prefijos del proyecto', 'El proyecto se creó, pero no se pudieron guardar automáticamente RQ-, OC-, EN- y SA-. Revise la configuración de prefijos del proyecto.', 'warning');
             return of(createdProject);
           })
+        );
+      }),
+      switchMap(created => {
+        const projectId = created?.id ?? created?.Proyecto?.id ?? created?.proyecto?.id;
+        return this.creatorPermissionService.grantToCreator('project', { id: projectId }).pipe(
+          map(() => created)
         );
       })
     );

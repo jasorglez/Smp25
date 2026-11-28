@@ -2,8 +2,9 @@ import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
 
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, switchMap } from 'rxjs';
 import { TrackingService } from './tracking.service';
+import { CreatorPermissionService } from './creator-permission.service';
 
 @Injectable({
   providedIn: 'root'
@@ -12,13 +13,16 @@ export class WarehousesService {
 
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
+  private creatorPermissionService = inject(CreatorPermissionService);
 
   getWarehouses(idRoot: number) {
     return this.http.get(`${environment.urlWarehouse}/Warehouse?idBranch=${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
 
   addWarehouse(data: any): Observable<any> {
-    return this.http.post(`${environment.urlWarehouse}/Warehouse`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.post(`${environment.urlWarehouse}/Warehouse`, data, { headers: this.trackingService.getHeaders() }).pipe(
+      switchMap(created => this.creatorPermissionService.grantToCreator('warehouse', created))
+    );
   }
 
   updateWarehouse(id: string, data: any): Observable<any> {

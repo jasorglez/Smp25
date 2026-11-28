@@ -4,9 +4,10 @@ import { environment } from '@env/environment';
 import { Ibranch } from 'app/interface/ibranch';
 
 import { HttpClient } from '@angular/common/http';
-import { EMPTY, Observable } from 'rxjs';
+import { EMPTY, Observable, switchMap } from 'rxjs';
 import { TrackingService } from './tracking.service';
 import { CobranzaOfflineService } from './cobranza-offline.service';
+import { CreatorPermissionService } from './creator-permission.service';
 
 @Injectable({
   providedIn: 'root'
@@ -16,18 +17,10 @@ export class BranchsService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
   private cobranzaOffline = inject(CobranzaOfflineService);
+  private creatorPermissionService = inject(CreatorPermissionService);
 
   assignPermissionAfterCreation(userId: number, newEntityId: number, type: string): Observable<any> {
-    const permissionData = {
-      idUser: userId,
-      idPermission: newEntityId,
-      type: type,
-      active: 1
-    };
-
-   // alert('Permission assigned successfully!');
-    console.log('Permission assigned successfully!', permissionData );
-    return this.http.post(`${environment.urlSecurity}/Usersxpermission`, permissionData, { headers: this.trackingService.getHeaders() });
+    return this.creatorPermissionService.ensurePermission(userId, newEntityId, type);
   }
 
 
@@ -49,7 +42,9 @@ export class BranchsService {
   }
 
   addBranch(branch: any) : Observable<Ibranch> {
-    return this.http.post<Ibranch>(`${environment.urlSmp}/Branchs`, branch, { headers: this.trackingService.getHeaders() });
+    return this.http.post<Ibranch>(`${environment.urlSmp}/Branchs`, branch, { headers: this.trackingService.getHeaders() }).pipe(
+      switchMap(created => this.creatorPermissionService.grantToCreator('branch', created))
+    );
   }
 
   updateBranch(id: number, branch: any) :Observable<Ibranch>{
