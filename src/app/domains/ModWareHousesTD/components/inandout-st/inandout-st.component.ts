@@ -992,14 +992,13 @@ export class InandoutStComponent implements OnInit {
           valueListMaxHeight: 200,
           formatValue: (value: any) => {
           if (value === this.addNewSentinel) return `+ ${this.translate.instant('modules.warehouses.ui.movements.createProject')}`;
-            const p = this.projectList.find(x => Number(x.id) === Number(value));
-            return p ? (p.description || p.name || `#${value}`) : `#${value}`;
+            return this.getProjectName(value);
           }
         }),
-        valueFormatter: (params: any) => {
-          const p = this.projectList.find(x => Number(x.id) === Number(params.value));
-          return p ? (p.description || p.name || `#${params.value}`) : (params.value || '');
-        },
+        // Misma resolución que usa el sidebar (this.projectList) y que ya usan
+        // el agrupado/banda de color de la grid, en vez de mostrar el id crudo
+        // cuando el proyecto no está en la lista cargada.
+        valueFormatter: (params: any) => this.getProjectName(params.value),
         cellStyle: (params: any) => ({ backgroundColor: this.getProjectBandColor(params.data?.idProject), fontWeight: '600' }),
       },
       {
