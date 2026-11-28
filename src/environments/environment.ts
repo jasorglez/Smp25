@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.683 (27 Noviembre 2026) Entradas: combo de OC combina alcance de proyecto y sucursal',
+  version: '5.00.684 (27 Noviembre 2026) Entradas: columna Contrato ya no se congela antes de cargar proyectos',
 };

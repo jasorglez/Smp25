@@ -799,7 +799,6 @@ export class InandoutStComponent implements OnInit {
         this.rowData = warehouseEntries.map(entry => ({
           ...entry,
           projectName: this.getProjectName(entry.idProject),
-          contractName: this.getProjectContract(entry.idProject),
           ...(this.isTransferType(entry.idType) ? {
             idWarehouse: entry.idWarehouseOrigin,
             idWarehouseOrigin: entry.idWarehouse,
@@ -989,6 +988,12 @@ export class InandoutStComponent implements OnInit {
         width: 140,
         hide: this.movementScope !== 'all',
         editable: false,
+        // valueGetter en vez de depender del "contractName" calculado una sola
+        // vez en loadEntries(): si en ese momento projectList aun no habia
+        // cargado (carga en paralelo, sin orden garantizado), quedaba
+        // congelado el numero crudo de contrato (`#220`) en vez del numero
+        // real. Con valueGetter siempre se resuelve contra el projectList actual.
+        valueGetter: (params: any) => this.getProjectContract(params.data?.idProject),
       },
       {
         field: 'idProject',
