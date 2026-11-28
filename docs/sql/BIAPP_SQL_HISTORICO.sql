@@ -8059,3 +8059,18 @@ WHERE module=N'Almacenes TD / Inventario' AND title=N'Exportación a Excel y PDF
   AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 -- END WAREHOUSE_INVENTORY_PDF_PREVIEW_675
 GO
+
+-- BEGIN WAREHOUSE_INVENTORY_PDF_PREVIEW_DEPLOY_675
+-- Fecha: 2026-11-27 | Módulo: Almacenes TD / Inventario | Repositorio: Smp25
+-- Origen: despliegue GitHub Actions 46087281395, commit 9193f056, resultado success.
+-- Ejecutar únicamente este bloque tras comprobar el despliegue.
+UPDATE administration.dbo.product_updates
+SET releaseStatus='PRODUCTION'
+WHERE module=N'Almacenes TD / Inventario' AND title=N'Exportación a Excel y PDF'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1 AND version=N'5.00.675';
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates
+WHERE module=N'Almacenes TD / Inventario' AND title=N'Exportación a Excel y PDF'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+-- END WAREHOUSE_INVENTORY_PDF_PREVIEW_DEPLOY_675
+GO
