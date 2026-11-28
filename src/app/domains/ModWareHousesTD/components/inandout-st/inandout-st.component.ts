@@ -83,6 +83,11 @@ export class InandoutStComponent implements OnInit {
   rowData: any[] = [];
   selectedWarehouse: any = null;
   warehouses: any[] = [];
+  // Almacenes de TODA la empresa (todas las sucursales), con permiso del
+  // usuario, para traspasos entre sucursales. Independiente de this.warehouses,
+  // que solo trae los de la sucursal activa en el sidebar.
+  transferDestinationWarehouses: any[] = [];
+  private transferWarehousesLoadRequest = 0;
   gridHeight: string = '85vh';
   // Alturas responsivas del detalle master-detail. Se recalculan según el viewport
   // para que, en pantallas pequeñas, el detalle no "se trague" el grid maestro.
@@ -146,7 +151,10 @@ export class InandoutStComponent implements OnInit {
         this.loadCatalogs();
         this.loadUsers();
         this.loadProjectList();
-        if (rootChanged) this.loadWarehouses(email);
+        if (rootChanged) {
+          this.loadWarehouses(email);
+          this.loadTransferDestinationWarehouses(email);
+        }
       }
     });
 
@@ -219,6 +227,9 @@ export class InandoutStComponent implements OnInit {
       this.loadWarehouses(email);
       this.loadOts();
       this.loadOcList();
+    }
+    if (this.idRoot && email) {
+      this.loadTransferDestinationWarehouses(email);
     }
   }
 
@@ -302,6 +313,70 @@ export class InandoutStComponent implements OnInit {
         alerts.basicAlert(this.translate.instant('modules.warehouses.ui.movements.messages.error'), this.translate.instant('modules.warehouses.ui.movements.messages.loadWarehousesFailed'), 'error');
       }
     });
+  }
+
+  /** Almacenes de TODAS las sucursales de la empresa (permiso del usuario),
+   *  usados como opciones de destino en traspasos entre sucursales. No depende
+   *  de la sucursal activa en el sidebar, a diferencia de loadWarehouses(). */
+  loadTransferDestinationWarehouses(email: string) {
+    const idRoot = Number(this.idRoot || 0);
+    const requestId = ++this.transferWarehousesLoadRequest;
+    if (!idRoot || !email) {
+      this.transferDestinationWarehouses = [];
+      return;
+    }
+
+    forkJoin({
+      permitted: this.permitionsService.getPermisionswarehousexEmail(email).pipe(catchError(() => of([]))),
+      branches: this.branchesService.getBranches2fields(idRoot).pipe(catchError(() => of([]))),
+    }).pipe(
+      switchMap(({ permitted, branches }: any) => {
+        const branchList: any[] = Array.isArray(branches) ? branches : [];
+        if (!branchList.length) return of({ permitted, warehouses: [] as any[] });
+        return forkJoin(branchList.map(branch =>
+          this.warehousesService.getWarehouses(Number(branch.id)).pipe(
+            catchError(() => of([])),
+            map((result: any) => (Array.isArray(result) ? result : []).map((warehouse: any) => ({ ...warehouse, branchName: branch.name })))
+          )
+        )).pipe(map((groups: any[][]) => ({ permitted, warehouses: groups.flat() })));
+      })
+    ).subscribe({
+      next: ({ permitted, warehouses }: any) => {
+        if (requestId !== this.transferWarehousesLoadRequest) return;
+        const permittedRows: any[] = Array.isArray(permitted) ? permitted : [];
+        const getWarehouseId = (warehouse: any): number => Number(
+          warehouse?.idAlmacen ?? warehouse?.idWarehouse ?? warehouse?.warehouseId ?? warehouse?.id ?? 0
+        );
+        const permittedIds = new Set(permittedRows.map(getWarehouseId).filter(id => id > 0));
+        const seen = new Set<number>();
+        this.transferDestinationWarehouses = (warehouses as any[]).map(warehouse => {
+          const id = getWarehouseId(warehouse);
+          if (!id) return null;
+          return {
+            ...warehouse,
+            idAlmacen: id,
+            nombreAlmacen: warehouse?.nombreAlmacen ?? warehouse?.nameWarehouse ?? warehouse?.name ?? warehouse?.description ?? `Almacén #${id}`,
+          };
+        }).filter((warehouse: any) => {
+          const id = Number(warehouse?.idAlmacen);
+          if (!id || seen.has(id) || !permittedIds.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+      },
+      error: (error) => {
+        if (requestId !== this.transferWarehousesLoadRequest) return;
+        console.error('Error loading transfer destination warehouses:', error);
+        this.transferDestinationWarehouses = [];
+      }
+    });
+  }
+
+  private formatTransferWarehouseLabel(warehouses: any[], value: any): string {
+    const warehouse = warehouses.find(item => Number(item.idAlmacen) === Number(value));
+    if (!warehouse) return value ? `Almacén #${value}` : '';
+    const name = warehouse.nombreAlmacen || warehouse.name || warehouse.description || `Almacén #${value}`;
+    return warehouse.branchName ? `${name} — ${warehouse.branchName}` : name;
   }
 
   loadCatalogs() {
@@ -1059,26 +1134,25 @@ export class InandoutStComponent implements OnInit {
       {
         field: 'idWarehouseOrigin',
         headerName: this.translate.instant('modules.warehouses.ui.movements.destinationWarehouse'),
-        width: 190,
+        width: 230,
         hide: !this.isTransferType(this.selectedEntry?.idType),
         editable: (params: any) => this.isTransferType(params.data?.idType) && this.canEditAuthorizedRow(params.data),
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: (params: any) => {
+          // Incluye almacenes de TODAS las sucursales de la empresa (con permiso
+          // del usuario), para soportar traspasos dentro de la misma sucursal y
+          // entre sucursales distintas con el mismo selector.
           const destinationId = Number(params.data?.idWarehouse || this.selectedWarehouse?.idAlmacen || 0);
-          const available = this.warehouses.filter(warehouse => Number(warehouse.idAlmacen) !== destinationId);
+          const available = this.transferDestinationWarehouses.filter(warehouse => Number(warehouse.idAlmacen) !== destinationId);
           return {
             values: available.map(warehouse => warehouse.idAlmacen),
-            valueListMaxHeight: 220,
-            formatValue: (value: any) => {
-              const warehouse = available.find(item => Number(item.idAlmacen) === Number(value));
-              return warehouse ? (warehouse.nombreAlmacen || warehouse.name || warehouse.description) : (value || '');
-            }
+            valueListMaxHeight: 260,
+            formatValue: (value: any) => this.formatTransferWarehouseLabel(available, value)
           };
         },
         valueFormatter: (params: any) => {
           if (!params.value) return '';
-          const warehouse = this.warehouses.find(item => Number(item.idAlmacen) === Number(params.value));
-          return warehouse ? (warehouse.nombreAlmacen || warehouse.name || warehouse.description) : `Almacén #${params.value}`;
+          return this.formatTransferWarehouseLabel(this.transferDestinationWarehouses, params.value);
         }
       },
       {

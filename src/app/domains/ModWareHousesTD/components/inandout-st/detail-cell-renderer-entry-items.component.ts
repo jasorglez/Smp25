@@ -1753,7 +1753,7 @@ export class DetailCellRendererEntryItemsComponent {
         ? (this.context?.componentParent?.entryList || []).find((entry: any) => Number(entry.id) === sourceEntryId)
         : null;
       const destinationWarehouseId = Number(this.entryData?.idWarehouseOrigin || 0);
-      const destinationWarehouse = (this.context?.componentParent?.warehouses || []).find((warehouse: any) =>
+      const destinationWarehouse = (this.context?.componentParent?.transferDestinationWarehouses || this.context?.componentParent?.warehouses || []).find((warehouse: any) =>
         Number(warehouse.idAlmacen ?? warehouse.idWarehouse ?? warehouse.id) === destinationWarehouseId
       );
       const destinationWarehouseName = destinationWarehouse
