@@ -8115,3 +8115,29 @@ WHERE module=N'Almacenes TD y Compras / Reportes PDF' AND title=N'PDF con logos 
   AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 -- END WAREHOUSE_BRANCH_PDF_REPORTS_DEPLOY_676
 GO
+
+-- BEGIN WAREHOUSE_ENTRY_CONTRACT_NAME_685
+-- Fecha: 2026-11-27 | Módulo: Almacenes TD / Entradas | Repositorio: Smp25
+-- Origen: src/app/domains/ModWareHousesTD/components/inandout-st/inandout-st.component.ts
+-- Publica el anuncio de forma idempotente. No cambia el esquema.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Almacenes TD / Entradas' AND title=N'Nombre del contrato en Entradas'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.685',N'Almacenes TD / Entradas','FIX',N'Nombre del contrato en Entradas',
+ N'La columna Contrato muestra la descripción del contrato asociado al proyecto al abrir Entradas y se actualiza cuando carga el catálogo.',
+ N'Permite identificar el contrato por su nombre sin confundirlo con su número o ID.',
+ N'Identifica cada entrada por el nombre de su contrato.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates
+WHERE module=N'Almacenes TD / Entradas' AND title=N'Nombre del contrato en Entradas'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+-- END WAREHOUSE_ENTRY_CONTRACT_NAME_685
+GO

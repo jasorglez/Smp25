@@ -1099,6 +1099,8 @@
           "allContracts": "All contracts",
           "onlySidebarProject": "Only the selected project",
           "noContract": "No contract",
+          "loadingContract": "Loading contract…",
+          "contractUnavailable": "Contract name unavailable",
           "createProject": "Create new project",
           "warehouse": "Warehouse",
           "movementType": "Movement type",

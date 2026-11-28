@@ -14,6 +14,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { OtService } from 'app/services/ot.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { ProjectsService } from 'app/services/projects.service';
+import { ContractsService } from 'app/services/contracts.service';
 import { DetailCellRendererEntryItemsComponent } from './detail-cell-renderer-entry-items.component';
 import { alerts } from 'app/helpers/alerts';
 import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
@@ -63,6 +64,7 @@ export class InandoutStComponent implements OnInit {
   private otService = inject(OtService);
   private ocService = inject(OcAndReqsService);
   private projectsService = inject(ProjectsService);
+  private contractsService = inject(ContractsService);
   private route = inject(ActivatedRoute);
   private usersService = inject(UsersService);
   private prefixSetupService = inject(PrefixSetupService);
@@ -123,6 +125,8 @@ export class InandoutStComponent implements OnInit {
   private ocRemainingItemsById = new Map<number, any[]>();
   private entryRemainingItemsById = new Map<number, any[]>();
   projectList: any[] = [];
+  private contractNames = new Map<number, string>();
+  private contractsLoading = false;
   users: any[] = [];
 
   readonly addNewSentinel = '__ADD_NEW__';
@@ -664,12 +668,38 @@ export class InandoutStComponent implements OnInit {
 
   loadProjectList() {
     if (!this.idRoot) return;
-    this.projectsService.getProjectListByCompany(this.idRoot).subscribe({
+    const requestedRoot = Number(this.idRoot);
+    this.contractNames = new Map();
+    this.contractsLoading = true;
+    this.contractsService.getContracts(-requestedRoot).subscribe({
+      next: (response: any) => {
+        if (Number(this.idRoot) !== requestedRoot) return;
+        const contracts: any[] = Array.isArray(response) ? response : (response?.data ?? []);
+        const names = new Map<number, string>();
+        for (const contract of contracts) {
+          const id = Number(contract.idContrato ?? contract.id);
+          const name = String(contract.description || contract.descripSmall || '').trim();
+          if (id > 0 && name) names.set(id, name);
+        }
+        this.contractNames = names;
+        this.contractsLoading = false;
+        this.gridApi?.refreshCells({ columns: ['contractName'], force: true });
+      },
+      error: (error) => {
+        if (Number(this.idRoot) !== requestedRoot) return;
+        if (error?.status !== 404) console.error('Error loading contracts:', error);
+        this.contractsLoading = false;
+        this.gridApi?.refreshCells({ columns: ['contractName'], force: true });
+      },
+    });
+    this.projectsService.getProjectListByCompany(requestedRoot).subscribe({
       next: (data: any) => {
+        if (Number(this.idRoot) !== requestedRoot) return;
         this.projectList = Array.isArray(data) ? data : (data?.data ?? []);
         this.refreshColumns();
       },
       error: (error) => {
+        if (Number(this.idRoot) !== requestedRoot) return;
         if (error?.status !== 404) console.error('Error loading projects:', error);
         this.projectList = [];
       }
@@ -840,7 +870,9 @@ export class InandoutStComponent implements OnInit {
     const project = this.projectList.find(item => Number(item.id) === Number(projectId));
     const contractId = Number(project?.idContrato || 0);
     if (!contractId) return this.translate.instant('modules.warehouses.ui.movements.noContract');
-    return project?.contractNumber || `#${contractId}`;
+    return this.contractNames.get(contractId) || this.translate.instant(this.contractsLoading
+      ? 'modules.warehouses.ui.movements.loadingContract'
+      : 'modules.warehouses.ui.movements.contractUnavailable');
   }
 
   // Paleta estable (misma pastilla siempre para el mismo proyecto) usada como
@@ -985,15 +1017,12 @@ export class InandoutStComponent implements OnInit {
       {
         field: 'contractName',
         headerName: this.translate.instant('modules.warehouses.ui.movements.contract'),
-        width: 140,
+        width: 260,
         hide: this.movementScope !== 'all',
         editable: false,
-        // valueGetter en vez de depender del "contractName" calculado una sola
-        // vez en loadEntries(): si en ese momento projectList aun no habia
-        // cargado (carga en paralelo, sin orden garantizado), quedaba
-        // congelado el numero crudo de contrato (`#220`) en vez del numero
-        // real. Con valueGetter siempre se resuelve contra el projectList actual.
+        // Los proyectos y los nombres de contrato cargan en paralelo.
         valueGetter: (params: any) => this.getProjectContract(params.data?.idProject),
+        tooltipValueGetter: (params: any) => this.getProjectContract(params.data?.idProject),
       },
       {
         field: 'idProject',
