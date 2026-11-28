@@ -824,7 +824,10 @@ export class InandoutStComponent implements OnInit {
   private getProjectName(projectId: number | null | undefined): string {
     if (!projectId) return this.translate.instant('modules.warehouses.ui.movements.noProject');
     const project = this.projectList.find(item => Number(item.id) === Number(projectId));
-    return project ? (project.description || project.name || `#${projectId}`) : `#${projectId}`;
+    // Mismo campo que usa el sidebar para el selector de proyecto (project.name):
+    // "description" puede traer texto de prueba/placeholder sin relación con el
+    // nombre real del proyecto.
+    return project ? (project.name || project.description || `#${projectId}`) : `#${projectId}`;
   }
 
   private getProjectContract(projectId: number | null | undefined): string {
