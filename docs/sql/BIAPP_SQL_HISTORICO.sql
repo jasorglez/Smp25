@@ -8100,3 +8100,18 @@ WHERE module=N'Almacenes TD y Compras / Reportes PDF' AND title=N'PDF con logos 
 COMMIT TRANSACTION;
 -- END WAREHOUSE_BRANCH_PDF_REPORTS_676
 GO
+
+-- BEGIN WAREHOUSE_BRANCH_PDF_REPORTS_DEPLOY_676
+-- Fecha: 2026-11-27 | Módulos: Almacenes TD y Compras | Repositorio: Smp25
+-- Origen: despliegue GitHub Actions 46089138416, commit 77efc28d, resultado success.
+-- Ejecutar únicamente este bloque tras comprobar el despliegue.
+UPDATE administration.dbo.product_updates
+SET releaseStatus='PRODUCTION'
+WHERE module=N'Almacenes TD y Compras / Reportes PDF' AND title=N'PDF con logos de sucursal y empresa'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1 AND version=N'5.00.676';
+SELECT id,version,validationStatus,releaseStatus,publicationStatus
+FROM administration.dbo.product_updates
+WHERE module=N'Almacenes TD y Compras / Reportes PDF' AND title=N'PDF con logos de sucursal y empresa'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+-- END WAREHOUSE_BRANCH_PDF_REPORTS_DEPLOY_676
+GO
