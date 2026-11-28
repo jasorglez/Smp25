@@ -143,9 +143,14 @@ import { SignalrService } from 'app/services/signalr.service';
         <!-- Col 1: Top Proveedores / Empleados -->
         <div class="col-12 col-xl-3">
           <div class="chart-card h-100 d-flex flex-column">
-            <div class="chart-header">
-              <i class="bi bi-person-lines-fill me-2 text-danger"></i>
-              <span>Top Proveedores / Emp.</span>
+            <div class="chart-header d-flex justify-content-between align-items-center gap-2">
+              <span><i class="bi bi-person-lines-fill me-2 text-danger"></i>Top Proveedores / Emp.</span>
+              <div class="currency-switch" role="group" aria-label="Moneda de Top Proveedores">
+                <button type="button" [class.active]="provCurrency === 'MXN'"
+                        (click)="setProvCurrency('MXN')">MN</button>
+                <button type="button" [class.active]="provCurrency === 'USD'"
+                        (click)="setProvCurrency('USD')">USD</button>
+              </div>
             </div>
             <div class="date-range-bar">
               <input type="date" class="date-input" [(ngModel)]="provStartDate" (change)="onProvDateChange()">
@@ -171,12 +176,12 @@ import { SignalrService } from 'app/services/signalr.service';
                          [style.background]="BAR_PALETTE[i % BAR_PALETTE.length]"></div>
                   </div>
                 </div>
-                <span class="client-total" [style.color]="BAR_PALETTE[i % BAR_PALETTE.length]">\${{ e.total | number:'1.0-0' }}</span>
+                <span class="client-total" [style.color]="BAR_PALETTE[i % BAR_PALETTE.length]">{{ provCurrencySymbol }}{{ e.total | number:'1.0-0' }} {{ provCurrency }}</span>
               </button>
             </div>
             <div class="list-footer egreso-footer" *ngIf="topEntityTotal">
               <span class="footer-label"><i class="bi bi-calendar3 me-1"></i>{{ topEntityLabel }}</span>
-              <span class="footer-total egreso-total">\${{ topEntityTotal | number:'1.0-0' }}</span>
+              <span class="footer-total egreso-total">{{ provCurrencySymbol }}{{ topEntityTotal | number:'1.0-0' }} {{ provCurrency }}</span>
             </div>
           </div>
         </div>
@@ -613,7 +618,12 @@ export class DashAdmonComponent implements OnInit {
   topEntityLabel: string = '';
   provStartDate: string = '';
   provEndDate: string   = '';
+  provCurrency: 'MXN' | 'USD' = 'MXN';
   private allEgresosData: any[] = [];
+
+  get provCurrencySymbol(): string {
+    return this.provCurrency === 'USD' ? 'US$' : '$';
+  }
 
   constructor() {
     const now = new Date();
@@ -725,11 +735,11 @@ export class DashAdmonComponent implements OnInit {
         document: this.firstValue(row, ['numberDocument', 'documentNumber', 'numDocument', 'folio', 'number']),
         description: this.firstValue(row, ['description', 'concept', 'conceptName', 'concepto', 'name']),
         quantity: this.numericValue(row.quantity),
-        amount: this.getExpenseAmount(row)
+        amount: this.getExpenseAmount(row, this.provCurrency)
       }));
     this.movementDetail = {
       kind: 'ENTIDAD', name: `${entity.type === 'PROVEEDOR' ? 'Proveedor' : entity.type === 'EMPLEADO' ? 'Empleado' : 'Otro'} · ${entity.name}`,
-      rows, total: rows.reduce((sum, row) => sum + row.amount, 0), currency: 'MXN',
+      rows, total: rows.reduce((sum, row) => sum + row.amount, 0), currency: this.provCurrency,
       periodLabel: this.periodLabel(this.provStartDate, this.provEndDate)
     };
   }
@@ -758,6 +768,13 @@ export class DashAdmonComponent implements OnInit {
     if (this.clientCurrency === currency) return;
     this.clientCurrency = currency;
     this.buildClientList(this.allIngresosData);
+    this.cdr.markForCheck();
+  }
+
+  setProvCurrency(currency: 'MXN' | 'USD'): void {
+    if (this.provCurrency === currency) return;
+    this.provCurrency = currency;
+    this.buildTopEntityList(this.allEgresosData);
     this.cdr.markForCheck();
   }
 
@@ -866,15 +883,18 @@ export class DashAdmonComponent implements OnInit {
     const from = this.provStartDate ? new Date(this.provStartDate + 'T00:00:00') : null;
     const to   = this.provEndDate   ? new Date(this.provEndDate   + 'T23:59:59') : null;
 
-    const byEntity: { [key: string]: { total: number; type: string } } = {};
-    data.forEach(e => {
+    const filtered = data.filter(e => {
       const d = new Date(e.dateExpend);
-      if ((from && d < from) || (to && d > to)) return;
+      return (!from || d >= from) && (!to || d <= to);
+    });
+
+    const byEntity: { [key: string]: { total: number; type: string } } = {};
+    filtered.forEach(e => {
       const name = e.entityName || 'Sin nombre';
       const type = e.entityType || 'OTRO';
       const key  = `${type}||${name}`;
       if (!byEntity[key]) byEntity[key] = { total: 0, type };
-      byEntity[key].total += this.getExpenseAmount(e);
+      byEntity[key].total += this.getExpenseAmount(e, this.provCurrency);
     });
 
     this.topEntityList = Object.entries(byEntity)
@@ -882,8 +902,15 @@ export class DashAdmonComponent implements OnInit {
       .sort((a, b) => b.total - a.total);
     this.topEntityTotal = this.topEntityList.reduce((s, e) => s + e.total, 0);
 
-    const topNe = this.topEntityList.slice(0, 8);
-    const restoE = this.topEntityTotal - topNe.reduce((s, e) => s + e.total, 0);
+    // La gráfica de pastel siempre usa MXN, independientemente del selector de la lista.
+    const pieTotals = new Map<string, number>();
+    filtered.forEach(e => {
+      const name = e.entityName || 'Sin nombre';
+      pieTotals.set(name, (pieTotals.get(name) || 0) + this.getExpenseAmount(e, 'MXN'));
+    });
+    const pieEntities = [...pieTotals].map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
+    const topNe = pieEntities.slice(0, 8);
+    const restoE = pieEntities.slice(8).reduce((sum, e) => sum + e.total, 0);
     this.egrPieLabels = [...topNe.map(e => e.name.length > 18 ? e.name.substring(0, 18) + '…' : e.name), ...(restoE > 0 ? ['Otros'] : [])];
     this.egrPieSeries = [...topNe.map(e => e.total), ...(restoE > 0 ? [restoE] : [])];
 
@@ -913,8 +940,8 @@ export class DashAdmonComponent implements OnInit {
     return convertDashboardAmount(income.totalconcepto, income.moneda, income.tipoCambio, currency, this.clientExchangeRate) ?? 0;
   }
 
-  private getExpenseAmount(expense: any): number {
-    return convertDashboardAmount(expense.totalFinal, expense.moneda, expense.tipoCambio, 'MXN', this.clientExchangeRate) ?? 0;
+  private getExpenseAmount(expense: any, currency: 'MXN' | 'USD' = 'MXN'): number {
+    return convertDashboardAmount(expense.totalFinal, expense.moneda, expense.tipoCambio, currency, this.clientExchangeRate) ?? 0;
   }
 
   private buildBankBalances(): void {
